@@ -10,6 +10,7 @@
     "build": "npm run build:server && npm run build:client",
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
+    "generate:api": "openapi-typescript openapi.yaml -o shared/src/api.ts",
     "db:migrate": "cd server && npx knex migrate:latest",
     "db:migrate:rollback": "cd server && npx knex migrate:rollback",
     "db:seed": "cd server && npx knex seed:run",
@@ -21,6 +22,7 @@
     "test:shared": "cd shared && npx vitest run"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "openapi-typescript": "^7.13.0"
   }
 }

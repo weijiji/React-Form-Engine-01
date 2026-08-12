@@ -1,0 +1,284 @@
+openapi: 3.1.0
+info:
+  title: Form Engine API
+  version: 0.1.0
+  description: |
+    Dynamic Form Engine — configuration-driven form building and approval workflows.
+
+    All routes use the `/api/v1` prefix (see ADR-0005). This document is the
+    hand-written API contract (spec-first, see ADR-0007) from which client/server
+    TypeScript types are generated via `openapi-typescript`.
+
+    SSE streams (notification push, work order 07) are intentionally not modelled
+    here — OpenAPI 3.x has weak SSE support; they are described separately.
+
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+
+tags:
+  - name: system
+    description: Operational endpoints (health, diagnostics)
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [system]
+      summary: Server health check
+      description: Returns server health and database connectivity. 200 when healthy, 503 when degraded.
+      operationId: getHealth
+      responses:
+        "200":
+          description: Server and database healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Server up but database unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  schemas:
+    ErrorEnvelope:
+      type: object
+      description: Standard error shape returned by the unified error handler and 404 catch-all.
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code, e.g. NOT_FOUND, VALIDATION_ERROR.
+            message:
+              type: string
+              description: Human-readable message (Chinese in the MVP).
+
+    HealthResponse:
+      type: object
+      required: [status, db, timestamp, uptime, env]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        db:
+          type: string
+          enum: [connected, disconnected]
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+          description: Process uptime in seconds.
+        env:
+          type: string
+          description: Runtime environment, e.g. development, production.
+
+    FormTemplate:
+      type: object
+      description: A form template (configuration, not a filled form). Mirrors the form_templates table.
+      required: [id, name, version, status, created_by, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        category:
+          type: [string, "null"]
+        version:
+          type: integer
+          description: Optimistic-locking version (INT), not the schema format version.
+        schema:
+          type: object
+          additionalProperties: true
+          description: Form structure (JSONB) — sections, fields, validation, conditions. Root contains schemaVersion.
+        approval_chain:
+          type: [object, "null"]
+          description: Approval chain configuration (JSONB) — nodes array.
+        status:
+          type: string
+          enum: [draft, published, archived]
+        locked_by:
+          type: [string, "null"]
+          format: uuid
+        locked_at:
+          type: [string, "null"]
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FormInstance:
+      type: object
+      description: A filled form submission at runtime. Mirrors the form_instances table.
+      required: [id, template_id, template_snapshot, field_values, status, current_node_index, version, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        template_id:
+          type: string
+          format: uuid
+        template_snapshot:
+          type: object
+          additionalProperties: true
+          description: Frozen copy of the template schema at submission time.
+        field_values:
+          type: object
+          additionalProperties: true
+          description: User-filled field values (JSONB).
+        status:
+          type: string
+          enum: [draft, submitted, in_approval, approved, rejected, returned, withdrawn]
+        current_node_index:
+          type: integer
+          description: Current approval node index (0-based).
+        version:
+          type: integer
+          description: Optimistic-locking version.
+        submitted_by:
+          type: [string, "null"]
+          format: uuid
+        submitted_at:
+          type: [string, "null"]
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ApprovalRecord:
+      type: object
+      description: A single approval node execution record. Mirrors the approval_records table.
+      required: [id, instance_id, node_id, node_order, action, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        instance_id:
+          type: string
+          format: uuid
+        node_id:
+          type: string
+          description: Approval node ID from the approval_chain.
+        node_order:
+          type: integer
+          description: Sequential order in the chain.
+        approver_id:
+          type: [string, "null"]
+          format: uuid
+        action:
+          type: string
+          enum: [pending, approved, rejected, returned, transferred]
+        comment:
+          type: [string, "null"]
+        transferred_from:
+          type: [string, "null"]
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        acted_at:
+          type: [string, "null"]
+          format: date-time
+
+    Draft:
+      type: object
+      description: A partially-filled, unsaved form. Independent of FormInstance's draft status (CONTEXT.md "Draft").
+      required: [id, template_id, user_id, field_values, created_at, updated_at, expires_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        template_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        field_values:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          description: 2-year retention, after which drafts are purged.
+
+    Notification:
+      type: object
+      description: A message triggered by a business event. Mirrors the notifications table.
+      required: [id, recipient_id, type, title, is_read, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        recipient_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - instance_submitted
+            - instance_approved
+            - instance_rejected
+            - instance_returned
+            - instance_transferred
+            - instance_withdrawn
+            - instance_completed
+        title:
+          type: string
+        content:
+          type: [string, "null"]
+        ref_type:
+          type: [string, "null"]
+          description: Associated entity type (instance | template).
+        ref_id:
+          type: [string, "null"]
+          format: uuid
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+  parameters:
+    TraceId:
+      name: X-Trace-Id
+      in: header
+      description: Correlation ID propagated across logs and echoed in responses.
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Client-generated key for idempotent writes (24h window, ADR-0002).
+      schema:
+        type: string
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      description: CSRF token required for mutating methods; read from the xsrf-token cookie.
+      schema:
+        type: string
