@@ -1,19 +1,34 @@
 import { createApp } from "./app";
 import { getDb, closeDb } from "./db/connection";
+import { runMigrations, runSeedIfEmpty } from "./db/migrate";
 import { config } from "./config";
 import { logger } from "./middleware/logger";
 
-async function main(): Promise<void> {
-  const app = createApp();
-
-  // Verify database connection on startup
+/**
+ * Verify the database connection and bring the schema up to date.
+ * On failure the server still starts (in degraded mode) so the health
+ * endpoint can report the outage rather than crashing the process.
+ */
+async function initializeDatabase(): Promise<void> {
   try {
     const db = getDb();
     await db.raw("SELECT 1");
     logger.info("Database connection established successfully");
+
+    await runMigrations();
+    await runSeedIfEmpty();
   } catch (err) {
-    logger.error({ err }, "Failed to connect to database — server starting in degraded mode");
+    logger.error(
+      { err },
+      "Failed to initialize database — server starting in degraded mode"
+    );
   }
+}
+
+async function main(): Promise<void> {
+  const app = createApp();
+
+  await initializeDatabase();
 
   const server = app.listen(config.port, () => {
     logger.info(
