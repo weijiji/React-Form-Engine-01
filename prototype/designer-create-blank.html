@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>空白模板创建 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .blank-form {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .tip-box {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      background: var(--brand-soft);
+      border: 1px solid var(--brand-line);
+      border-radius: 12px;
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .tip-box .icon {
+      color: var(--brand);
+      margin-top: 2px;
+    }
+    .tip-box b {
+      color: var(--brand);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        <div>
+          <div class="brand-name">动态表单引擎</div>
+          <div class="brand-sub">模板设计者门户</div>
+        </div>
+      </div>
+      <nav class="nav-group">
+        <div class="nav-label">设计工作台</div>
+        <a class="nav-item" href="designer-templates.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+          我的模板 <span class="count">7</span>
+        </a>
+        <a class="nav-item active" href="designer-create.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          创建表单
+        </a>
+        <a class="nav-item" href="designer-drafts.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          草稿模板 <span class="count">3</span>
+        </a>
+        <div class="nav-label">通用</div>
+        <a class="nav-item" href="notifications.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          通知中心 <span class="count" style="background:var(--danger-bg);color:var(--danger)">2</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="avatar"></span>
+          <div class="grow">
+            <div class="u-name"></div>
+            <div class="u-role"></div>
+          </div>
+          <button class="icon-btn" title="退出登录" onclick="location.href='login.html'">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <header class="topbar">
+        <a class="btn btn-ghost btn-sm" href="designer-create.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          选择创建方式
+        </a>
+        <div>
+          <div class="tb-crumb">创建表单</div>
+          <div class="tb-title">空白模板</div>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="blank-form">
+          <div class="tip-box">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+            <div>创建后将 <b>自动签出</b> 该模板并进入设计器。签出期间模板被加锁，其他设计者只能只读查看，编辑完成后请及时 <b>签入</b> 保存。</div>
+          </div>
+
+          <div class="card card-pad">
+            <form id="blankForm" novalidate>
+              <div style="margin-bottom:16px">
+                <label class="label" for="tplName">模板名称 <span class="req">*</span></label>
+                <input class="input" id="tplName" type="text" placeholder="例如：员工入职信息登记表" />
+              </div>
+
+              <div style="margin-bottom:16px">
+                <label class="label" for="tplDesc">模板描述</label>
+                <textarea class="textarea" id="tplDesc" placeholder="用一句话说明该模板的用途，方便其他用户理解（可选）"></textarea>
+                <div class="hint">建议填写用途说明，帮助填写者判断该表单适用场景。</div>
+              </div>
+
+              <div style="margin-bottom:20px">
+                <label class="label" for="tplCat">模板分类 <span class="req">*</span></label>
+                <select class="select" id="tplCat">
+                  <option value="">请选择分类</option>
+                  <option value="通用">通用</option>
+                  <option value="人力资源" selected>人力资源</option>
+                  <option value="行政">行政</option>
+                  <option value="财务">财务</option>
+                  <option value="采购">采购</option>
+                  <option value="IT">IT</option>
+                </select>
+              </div>
+
+              <div style="display:flex;gap:10px;justify-content:flex-end">
+                <button type="button" class="btn" onclick="history.back()">取消</button>
+                <button type="submit" class="btn btn-primary">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  创建并进入设计器
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="small" style="color:var(--text-3);margin-top:16px;text-align:center">
+            创建后可在设计器中通过「组件面板」添加章节与字段，并配置验证规则、条件联动与审批链。
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    document.getElementById("blankForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var name = document.getElementById("tplName").value.trim();
+      var cat = document.getElementById("tplCat").value;
+      if (!name) {
+        toast("请输入模板名称", "err");
+        document.getElementById("tplName").focus();
+        return;
+      }
+      if (!cat) {
+        toast("请选择模板分类", "err");
+        return;
+      }
+      var btn = this.querySelector("button[type=submit]");
+      btn.disabled = true;
+      btn.innerHTML = "正在创建…";
+      toast("模板「" + name + "」已创建并自动签出", "ok");
+      setTimeout(function () {
+        location.href = "designer-edit.html";
+      }, 900);
+    });
+  </script>
+</body>
+</html>

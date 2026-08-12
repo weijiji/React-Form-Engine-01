@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>导出配置 · 员工入职信息登记表 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .export-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    .export-side {
+      position: sticky;
+      top: 84px;
+    }
+    .dl-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .warn-banner {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 13px 16px;
+      border-radius: 11px;
+      background: var(--warning-bg);
+      border: 1px solid #f0dcba;
+      color: var(--warning);
+      font-size: 13.5px;
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+    .warn-banner .icon { margin-top: 2px; flex: none; }
+    .dl-confirm {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: var(--text-2);
+      padding: 12px 14px;
+      border: 1px dashed var(--warning);
+      border-radius: 10px;
+      background: var(--warning-bg);
+      cursor: pointer;
+    }
+    .dl-confirm input { accent-color: var(--warning); }
+    .json-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .json-meta .jm-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    @media (max-width: 1000px) {
+      .export-grid { grid-template-columns: 1fr; }
+      .export-side { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        <div>
+          <div class="brand-name">动态表单引擎</div>
+          <div class="brand-sub">模板设计者门户</div>
+        </div>
+      </div>
+      <nav class="nav-group">
+        <div class="nav-label">设计工作台</div>
+        <a class="nav-item" href="designer-templates.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+          我的模板 <span class="count">7</span>
+        </a>
+        <a class="nav-item" href="designer-create.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          创建表单
+        </a>
+        <a class="nav-item" href="designer-drafts.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          草稿模板 <span class="count">3</span>
+        </a>
+        <div class="nav-label">通用</div>
+        <a class="nav-item" href="notifications.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          通知中心 <span class="count" style="background:var(--danger-bg);color:var(--danger)">2</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="avatar"></span>
+          <div class="grow">
+            <div class="u-name"></div>
+            <div class="u-role"></div>
+          </div>
+          <button class="icon-btn" title="退出登录" onclick="location.href='login.html'">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <header class="topbar">
+        <a class="btn btn-ghost btn-sm" href="designer-templates.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          我的模板
+        </a>
+        <div>
+          <div class="tb-crumb">模板设计者门户</div>
+          <div class="tb-title">导出配置</div>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="export-grid" style="max-width:1100px;margin:0 auto">
+          <!-- 左侧：校验清单 -->
+          <div>
+            <div class="warn-banner">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>
+              <div>检测到 <b>1 项导出前校验未通过</b>：审批链节点「财务审批」未配置审批人规则。建议前往设计器修复后再导出，以免导入生产环境后审批流程无法流转。</div>
+            </div>
+
+            <div class="card card-pad" style="padding:20px">
+              <div class="card-title" style="margin-bottom:14px">导出前校验</div>
+              <div id="checkList"></div>
+
+              <div class="dl-confirm" onclick="this.querySelector('input').click()">
+                <input type="checkbox" id="ackBox" onchange="toggleDownload()" />
+                <span>我已了解上述警告，仍要导出此配置（<b>不推荐</b>）</span>
+              </div>
+
+              <div class="dl-actions">
+                <button class="btn btn-primary" id="dlBtn" disabled onclick="downloadJson()">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+                  下载 JSON 配置
+                </button>
+                <a class="btn" href="designer-edit.html">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  前往设计器修复
+                </a>
+              </div>
+              <div class="hint" id="dlHint">请先通过全部校验（或确认警告）后再下载。</div>
+            </div>
+          </div>
+
+          <!-- 右侧：JSON 预览 -->
+          <div class="export-side">
+            <div class="json-meta">
+              <span class="jm-name">employee-onboarding.json</span>
+              <span class="badge badge-indigo">v1.2</span>
+              <span class="badge badge-gray">9 字段</span>
+            </div>
+            <div class="code-block" id="jsonBlock"></div>
+            <div class="xsmall" style="color:var(--text-3);margin-top:10px;line-height:1.7">
+              该 JSON 可由运维人员在 PROD 环境的「导入配置」中上传，用于将模板迁移至生产环境。导出仅包含配置，不含已收集的填报数据。
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    var ex = DB.exportTarget;
+    var ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    var ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>';
+
+    function renderChecks() {
+      var wrap = document.getElementById("checkList");
+      wrap.innerHTML = "";
+      ex.checks.forEach(function (c) {
+        var el = document.createElement("div");
+        el.className = "check-item";
+        el.innerHTML =
+          '<span class="ci-state ' + (c.ok ? "ok" : "warn") + '">' + (c.ok ? ICON_OK : ICON_WARN) + "</span>" +
+          '<div><div class="ci-title">' + esc(c.title) + "</div>" +
+          '<div class="ci-desc">' + esc(c.desc) + "</div></div>";
+        wrap.appendChild(el);
+      });
+    }
+
+    function renderJson() {
+      var data = {
+        schemaVersion: "1.0",
+        templateId: ex.id,
+        name: ex.name,
+        version: ex.version,
+        category: ex.category,
+        status: ex.status,
+        fields: ex.fields,
+        updatedAt: ex.updated,
+        sections: [
+          { id: "sec-1", title: "基本信息", fields: ["姓名(text,必填)", "工号(number,必填)", "入职日期(date,必填)"] },
+          { id: "sec-2", title: "联系信息", fields: ["手机号码(text,必填,正则)", "电子邮箱(text,必填,正则)"] },
+          { id: "sec-3", title: "职位信息", fields: ["所属部门(select,必填)", "岗位名称(text,必填)", "直属上级(user)"] },
+        ],
+        approvalChain: [
+          { node: 1, name: "直属上级审批", rule: "组织架构", value: "直属上级" },
+          { node: 2, name: "IT 负责人审批", rule: "指定角色", value: "IT 负责人" },
+          { node: 3, name: "财务审批", rule: "指定人员", value: null, warning: "未配置审批人规则" },
+        ],
+      };
+      var s = JSON.stringify(data, null, 2);
+      // 简单高亮
+      s = esc(s);
+      s = s.replace(/(&quot;)([a-zA-Z0-9_\-\/\.]+)(&quot;)(\s*:)/g, '<span class="k">$1$2$3</span>$4');
+      s = s.replace(/: (&quot;[^&]*?&quot;)/g, ': <span class="s">$1</span>');
+      s = s.replace(/: (true|false|null|\d+)/g, ': <span class="n">$1</span>');
+      document.getElementById("jsonBlock").innerHTML = s;
+    }
+
+    function toggleDownload() {
+      document.getElementById("dlBtn").disabled = !document.getElementById("ackBox").checked;
+      document.getElementById("dlHint").textContent = document.getElementById("ackBox").checked
+        ? "将按当前配置导出（含未配置审批人的节点）。"
+        : "请先通过全部校验（或确认警告）后再下载。";
+    }
+
+    function downloadJson() {
+      toast("已生成 employee-onboarding.json 并开始下载", "ok");
+    }
+
+    renderChecks();
+    renderJson();
+  </script>
+</body>
+</html>

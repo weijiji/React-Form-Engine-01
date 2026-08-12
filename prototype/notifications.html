@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>通知中心 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .notif-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .notif-head h2 {
+      font-size: 17px;
+    }
+    .notif-head .nh-count {
+      font-size: 12.5px;
+      color: var(--text-3);
+      background: #eef0f4;
+      padding: 2px 9px;
+      border-radius: 999px;
+    }
+    .notif-head .nh-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .n-ico.ok { background: var(--success-bg); color: var(--success); }
+    .n-ico.warn { background: var(--warning-bg); color: var(--warning); }
+    .n-ico.blue { background: var(--info-bg); color: var(--info); }
+    .n-ico.indigo { background: var(--brand-soft); color: var(--brand); }
+    .n-ico.gray { background: #eef0f4; color: var(--text-2); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        <div>
+          <div class="brand-name">动态表单引擎</div>
+          <div class="brand-sub">模板设计者门户</div>
+        </div>
+      </div>
+
+      <nav class="nav-group">
+        <div class="nav-label">设计工作台</div>
+        <a class="nav-item" href="designer-templates.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+          我的模板
+          <span class="count">7</span>
+        </a>
+        <a class="nav-item" href="designer-create.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          创建表单
+        </a>
+        <a class="nav-item" href="designer-drafts.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          草稿模板
+          <span class="count">3</span>
+        </a>
+        <div class="nav-label">通用</div>
+        <a class="nav-item" href="notifications.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          通知中心
+          <span class="count" style="background:var(--danger-bg);color:var(--danger)">2</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="avatar"></span>
+          <div class="grow">
+            <div class="u-name"></div>
+            <div class="u-role"></div>
+          </div>
+          <button class="icon-btn" title="退出登录" onclick="location.href='login.html'">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="tb-crumb">通用 / 通知中心</div>
+          <div class="tb-title">通知中心</div>
+        </div>
+        <div class="tb-actions">
+          <a class="btn btn-sm" href="designer-templates.html">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+            返回门户
+          </a>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="notif-layout">
+          <div class="notif-head">
+            <h2>全部通知</h2>
+            <span class="nh-count" id="totalCount">0 条</span>
+            <div class="nh-actions">
+              <button class="btn btn-sm" id="markAllBtn" onclick="markAllRead()">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                全部标为已读
+              </button>
+              <div class="seg" id="filterSeg">
+                <button class="active" data-f="all" onclick="setFilter('all',this)">全部</button>
+                <button data-f="unread" onclick="setFilter('unread',this)">未读</button>
+                <button data-f="read" onclick="setFilter('read',this)">已读</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="notifList"></div>
+
+          <div class="empty hide" id="emptyState">
+            <div class="empty-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            </div>
+            <h3 id="emptyTitle">暂无通知</h3>
+            <p id="emptyDesc">当你收到审批、签出或系统消息时，会在这里显示。</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    var filter = "all";
+
+    function render() {
+      var list = DB.notifications.filter(function (n) {
+        if (filter === "unread") return n.unread;
+        if (filter === "read") return !n.unread;
+        return true;
+      });
+      var unreadCount = DB.notifications.filter(function (n) { return n.unread; }).length;
+      document.getElementById("totalCount").textContent = DB.notifications.length + " 条 · " + unreadCount + " 未读";
+
+      var listEl = document.getElementById("notifList");
+      listEl.innerHTML = "";
+      list.forEach(function (n) {
+        var el = document.createElement("div");
+        el.className = "notif-item" + (n.unread ? " unread" : "");
+        el.innerHTML =
+          '<span class="n-ico ' + (NOTIF_COLORS[n.type] || "gray") + '">' + NOTIF_ICONS[n.type] + "</span>" +
+          '<div class="n-body">' +
+            '<div class="n-title">' + esc(n.title) + "</div>" +
+            '<div class="n-text">' + esc(n.text) + "</div>" +
+            '<div class="n-time">' + esc(n.time) + "</div>" +
+          "</div>" +
+          (n.unread ? '<span class="n-unread"></span>' : "");
+        el.addEventListener("click", function () {
+          n.unread = false;
+          render();
+          // 原型跳转：跳转到对应目标（这里统一演示）
+          toast("跳转到：" + n.to);
+        });
+        listEl.appendChild(el);
+      });
+
+      var empty = document.getElementById("emptyState");
+      if (list.length === 0) {
+        empty.classList.remove("hide");
+        listEl.classList.add("hide");
+        document.getElementById("emptyTitle").textContent =
+          filter === "unread" ? "没有未读通知" : filter === "read" ? "没有已读通知" : "暂无通知";
+        document.getElementById("emptyDesc").textContent =
+          "当你收到审批、签出或系统消息时，会在这里显示。";
+      } else {
+        empty.classList.add("hide");
+        listEl.classList.remove("hide");
+      }
+    }
+
+    function setFilter(f, btn) {
+      filter = f;
+      document.querySelectorAll("#filterSeg button").forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      render();
+    }
+
+    function markAllRead() {
+      DB.notifications.forEach(function (n) { n.unread = false; });
+      render();
+      toast("已将全部通知标为已读", "ok");
+    }
+
+    render();
+  </script>
+</body>
+</html>

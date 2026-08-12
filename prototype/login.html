@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登录 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    /* 登录页专属：左右分栏布局 */
+    .login-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .login-hero {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 48px;
+      background:
+        radial-gradient(700px 400px at 20% 0%, rgba(124, 58, 237, 0.35), transparent 60%),
+        radial-gradient(700px 420px at 100% 100%, rgba(79, 70, 229, 0.4), transparent 60%),
+        linear-gradient(160deg, #1f2350, #2a2f6e 45%, #3b2f78);
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+      background-size: 26px 26px;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .login-hero .lh-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 17px;
+      font-weight: 700;
+      position: relative;
+      z-index: 1;
+    }
+    .login-hero .lh-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-hero .lh-logo svg {
+      width: 22px;
+      height: 22px;
+    }
+    .login-hero .lh-mid {
+      position: relative;
+      z-index: 1;
+      max-width: 440px;
+    }
+    .login-hero h1 {
+      color: #fff;
+      font-size: 30px;
+      line-height: 1.35;
+      margin: 0 0 14px;
+    }
+    .login-hero p {
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 15px;
+      line-height: 1.8;
+      margin: 0 0 30px;
+    }
+    .hero-points {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .hero-point {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.88);
+    }
+    .hero-point .hp-ico {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+    }
+    .hero-point .hp-ico svg {
+      width: 17px;
+      height: 17px;
+    }
+    .login-hero .lh-foot {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      position: relative;
+      z-index: 1;
+    }
+    .login-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      background: var(--bg);
+    }
+    .login-box {
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-box .lb-head {
+      margin-bottom: 28px;
+    }
+    .login-box .lb-head h2 {
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+    .login-box .lb-head p {
+      color: var(--text-3);
+      margin: 0;
+      font-size: 14px;
+    }
+    .login-row {
+      margin-bottom: 16px;
+    }
+    .login-row .lr-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .login-row .forgot {
+      font-size: 13px;
+    }
+    .login-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 4px 0 22px;
+    }
+    .demo-hint {
+      margin-top: 22px;
+      padding: 13px 14px;
+      border: 1px dashed var(--brand-line);
+      background: var(--brand-soft);
+      border-radius: 10px;
+      font-size: 12.5px;
+      color: var(--text-2);
+      line-height: 1.7;
+    }
+    .demo-hint b {
+      color: var(--brand);
+    }
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-3);
+      font-size: 12px;
+      margin: 22px 0;
+    }
+    .login-divider::before,
+    .login-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    @media (max-width: 900px) {
+      .login-shell {
+        grid-template-columns: 1fr;
+      }
+      .login-hero {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-shell">
+    <!-- 左侧品牌区 -->
+    <aside class="login-hero">
+      <div class="lh-brand">
+        <span class="lh-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        动态表单引擎
+      </div>
+
+      <div class="lh-mid">
+        <h1>配置驱动的表单<br />设计、填写与审批</h1>
+        <p>业务人员通过可视化设计器快速搭建表单模板，AI 辅助生成结构，端到端完成从设计、填写到审批的完整闭环。</p>
+        <div class="hero-points">
+          <div class="hero-point">
+            <span class="hp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+            模板签出/签入，多人协作编辑不冲突
+          </div>
+          <div class="hero-point">
+            <span class="hp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+            自然语言描述，AI 生成表单结构
+          </div>
+          <div class="hero-point">
+            <span class="hp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg></span>
+            可视化审批链配置，实时掌握进度
+          </div>
+        </div>
+      </div>
+
+      <div class="lh-foot">© 2026 动态表单引擎 · 原型 v08</div>
+    </aside>
+
+    <!-- 右侧登录表单 -->
+    <main class="login-panel">
+      <div class="login-box">
+        <div class="lb-head">
+          <h2>欢迎回来 👋</h2>
+          <p>请登录你的账户以继续</p>
+        </div>
+
+        <form id="loginForm" novalidate>
+          <div class="login-row">
+            <div class="lr-head">
+              <label class="label" for="username" style="margin:0">账号</label>
+            </div>
+            <div class="input-wrap">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input class="input" id="username" type="text" placeholder="请输入账号 / 工号" autocomplete="username" value="lchen" />
+            </div>
+          </div>
+
+          <div class="login-row">
+            <div class="lr-head">
+              <label class="label" for="password" style="margin:0">密码</label>
+              <a class="forgot" href="javascript:void(0)" onclick="toast('请联系系统管理员重置密码')">忘记密码？</a>
+            </div>
+            <div class="input-wrap">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input class="input" id="password" type="password" placeholder="请输入密码" autocomplete="current-password" value="123456" />
+            </div>
+          </div>
+
+          <div class="login-options">
+            <label class="check-row" style="font-size:13px">
+              <input type="checkbox" checked /> 记住我
+            </label>
+            <span class="xsmall" style="color:var(--text-3)">UAT 环境</span>
+          </div>
+
+          <button class="btn btn-primary btn-lg btn-block" type="submit">登 录</button>
+        </form>
+
+        <div class="demo-hint">
+          <b>原型演示：</b>当前账号 <b>lchen</b>（模板设计者）。点击登录后以模板设计者身份进入「我的模板」。<br />
+          <span class="xsmall" style="color:var(--text-3)">密码任意填写即可。</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var u = document.getElementById("username").value.trim();
+      if (!u) {
+        toast("请输入账号", "err");
+        return;
+      }
+      var btn = this.querySelector("button[type=submit]");
+      btn.disabled = true;
+      btn.innerHTML = "登录中…";
+      setTimeout(function () {
+        location.href = "designer-templates.html";
+      }, 600);
+    });
+  </script>
+</body>
+</html>

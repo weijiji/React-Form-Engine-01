@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>自然语言创建 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .nl-wrap {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    .nl-head {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .nl-head h2 {
+      font-size: 19px;
+    }
+    .nl-head p {
+      color: var(--text-3);
+      font-size: 13.5px;
+      margin: 6px 0 0;
+    }
+    .chat {
+      min-height: 440px;
+    }
+    .gen-preview {
+      margin-top: 0;
+    }
+    .gen-preview .gp-actions {
+      display: flex;
+      gap: 10px;
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-subtle);
+    }
+    .gen-preview .gp-actions .btn {
+      flex: 1;
+    }
+    .typing {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px 2px;
+    }
+    .typing span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-3);
+      animation: blink 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-3px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        <div>
+          <div class="brand-name">动态表单引擎</div>
+          <div class="brand-sub">模板设计者门户</div>
+        </div>
+      </div>
+      <nav class="nav-group">
+        <div class="nav-label">设计工作台</div>
+        <a class="nav-item" href="designer-templates.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+          我的模板 <span class="count">7</span>
+        </a>
+        <a class="nav-item active" href="designer-create.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          创建表单
+        </a>
+        <a class="nav-item" href="designer-drafts.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          草稿模板 <span class="count">3</span>
+        </a>
+        <div class="nav-label">通用</div>
+        <a class="nav-item" href="notifications.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          通知中心 <span class="count" style="background:var(--danger-bg);color:var(--danger)">2</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="avatar"></span>
+          <div class="grow">
+            <div class="u-name"></div>
+            <div class="u-role"></div>
+          </div>
+          <button class="icon-btn" title="退出登录" onclick="location.href='login.html'">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <header class="topbar">
+        <a class="btn btn-ghost btn-sm" href="designer-create.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          选择创建方式
+        </a>
+        <div>
+          <div class="tb-crumb">创建表单</div>
+          <div class="tb-title">自然语言创建</div>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="nl-wrap">
+          <div class="nl-head">
+            <h2>用自然语言描述你的表单 💬</h2>
+            <p>例如“帮我建一个请假申请单，包含请假类型、起止时间和事由”，AI 将自动生成表单结构。</p>
+          </div>
+
+          <div class="chat" id="chat">
+            <div class="chat-bubble ai" id="welcomeBubble">
+              你好，我是表单助手 👋<br />
+              请描述你需要的表单，例如：<em>“日常请假申请，需要请假类型、起止时间、天数与事由，审批人为直属上级”</em>。<br /><br />
+              也可以从下方快捷示例开始：
+              <div class="quick-chips" style="margin-top:12px">
+                <span class="quick-chip" onclick="sendExample('leave')">🏖️ 请假申请</span>
+                <span class="quick-chip" onclick="sendExample('purchase')">🛒 采购申请</span>
+                <span class="quick-chip" onclick="sendExample('expense')">🧾 报销申请</span>
+                <span class="quick-chip" onclick="sendExample('onboard')">👤 入职登记</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-bar">
+            <div class="chat-input-box">
+              <textarea class="textarea" id="nlInput" placeholder="描述你的表单需求，按 Enter 发送…" rows="1"></textarea>
+              <button class="btn btn-primary" onclick="sendText()" style="border-radius:10px">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                生成
+              </button>
+            </div>
+            <div class="xsmall" style="color:var(--text-3);padding:6px 4px">Enter 发送 · Shift+Enter 换行 · 生成后可编辑字段</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    var chat = document.getElementById("chat");
+    var nlInput = document.getElementById("nlInput");
+    var generated = false;
+
+    /* 示例与对应生成结果 */
+    var EXAMPLES = {
+      leave: {
+        prompt: "日常请假申请单：请假类型（年假/事假/病假/调休）、起止日期、请假天数、请假事由。",
+        name: "日常请假申请单",
+        fields: [
+          { n: "请假类型", t: "单选", req: true },
+          { n: "开始日期", t: "日期", req: true },
+          { n: "结束日期", t: "日期", req: true },
+          { n: "请假天数", t: "数字", req: true },
+          { n: "请假事由", t: "多行文本", req: false },
+          { n: "紧急联系人", t: "文本", req: false },
+        ],
+      },
+      purchase: {
+        prompt: "办公用品采购申请表：物品清单明细、预算金额、采购用途、期望到货日期。",
+        name: "办公用品采购申请表",
+        fields: [
+          { n: "物品清单", t: "表格明细", req: true },
+          { n: "预算金额", t: "数字", req: true },
+          { n: "采购用途", t: "多行文本", req: true },
+          { n: "期望到货日期", t: "日期", req: false },
+          { n: "附件", t: "文件上传", req: false },
+        ],
+      },
+      expense: {
+        prompt: "差旅费用报销单：费用明细、发票附件、报销总额、出差事由与日期。",
+        name: "差旅费用报销单",
+        fields: [
+          { n: "出差日期", t: "日期范围", req: true },
+          { n: "出差事由", t: "多行文本", req: true },
+          { n: "费用明细", t: "表格明细", req: true },
+          { n: "报销总额", t: "数字", req: true },
+          { n: "发票附件", t: "文件上传", req: true },
+        ],
+      },
+      onboard: {
+        prompt: "员工入职信息登记表：基本信息、联系方式、职位信息与紧急联系人。",
+        name: "员工入职信息登记表",
+        fields: [
+          { n: "姓名", t: "文本", req: true },
+          { n: "工号", t: "数字", req: true },
+          { n: "入职日期", t: "日期", req: true },
+          { n: "手机号码", t: "文本", req: true },
+          { n: "电子邮箱", t: "文本", req: true },
+          { n: "所属部门", t: "下拉", req: true },
+          { n: "试用期（月）", t: "数字", req: false },
+        ],
+      },
+    };
+
+    function scrollBottom() {
+      var p = document.querySelector(".page");
+      p.scrollTop = p.scrollHeight;
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function addBubble(text, who) {
+      var b = document.createElement("div");
+      b.className = "chat-bubble " + who;
+      b.innerHTML = text;
+      chat.appendChild(b);
+      scrollBottom();
+      return b;
+    }
+
+    function addTyping() {
+      var b = addBubble('<span class="typing"><span></span><span></span><span></span></span>', "ai");
+      return b;
+    }
+
+    function renderPreview(key) {
+      var ex = EXAMPLES[key];
+      var html = "";
+      ex.fields.forEach(function (f) {
+        html +=
+          '<div class="gp-field">' +
+            '<span class="gf-type">' + esc(f.t) + "</span>" +
+            '<span class="gf-name">' + esc(f.n) + "</span>" +
+            (f.req ? '<span class="gf-req">*</span>' : "") +
+          "</div>";
+      });
+      var wrap = addBubble(
+        '<div class="gen-preview">' +
+          '<div class="gp-head">' +
+            '<svg class="icon" style="color:var(--brand)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>' +
+            '<b>' + esc(ex.name) + "</b>" +
+            '<span class="badge badge-green" style="margin-left:auto"><span class="dot"></span>结构已生成</span>' +
+          "</div>" +
+          '<div class="gp-body">' + html + "</div>" +
+          '<div class="gp-actions">' +
+            '<button class="btn btn-primary" onclick="goDesigner()">进入设计器微调</button>' +
+            '<button class="btn" onclick="toast(\'已保存为草稿\',\'ok\');location.href=\'designer-drafts.html\'">存为草稿</button>' +
+          "</div>" +
+        "</div>",
+        "ai"
+      );
+      generated = true;
+      return wrap;
+    }
+
+    function generate(key) {
+      addTyping();
+      setTimeout(function () {
+        // 移除 typing 气泡
+        var t = chat.querySelector(".typing");
+        if (t) t.closest(".chat-bubble").remove();
+        renderPreview(key);
+      }, 900);
+    }
+
+    function sendExample(key) {
+      if (generated) return;
+      var ex = EXAMPLES[key];
+      addBubble(esc(ex.prompt), "user");
+      generate(key);
+    }
+
+    function sendText() {
+      var v = nlInput.value.trim();
+      if (!v || generated) return;
+      addBubble(esc(v), "user");
+      nlInput.value = "";
+      // 匹配示例关键词
+      var key = null;
+      if (v.indexOf("请假") > -1) key = "leave";
+      else if (v.indexOf("采购") > -1) key = "purchase";
+      else if (v.indexOf("报销") > -1 || v.indexOf("费用") > -1) key = "expense";
+      else if (v.indexOf("入职") > -1 || v.indexOf("员工") > -1) key = "onboard";
+      if (key) {
+        generate(key);
+      } else {
+        var b = addTyping();
+        setTimeout(function () {
+          b.remove();
+          addBubble("我已经理解了需求，正在生成表单结构…（原型中请选择左侧快捷示例体验完整流程）", "ai");
+        }, 900);
+      }
+    }
+
+    function goDesigner() {
+      toast("模板已创建并自动签出，正在进入设计器…", "ok");
+      setTimeout(function () { location.href = "designer-edit.html"; }, 800);
+    }
+
+    nlInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendText();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模板详情 · 员工入职信息登记表 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .detail-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .detail-head .dh-title {
+      flex: 1;
+    }
+    .detail-head h2 {
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .detail-head .dh-desc {
+      color: var(--text-2);
+      font-size: 13.5px;
+      margin-top: 6px;
+      max-width: 640px;
+    }
+    .detail-head .dh-actions {
+      display: flex;
+      gap: 10px;
+      flex: none;
+    }
+    .readonly-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--warning);
+      background: var(--warning-bg);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .sec-ro {
+      margin-bottom: 18px;
+    }
+    .sec-ro .sr-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 650;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border);
+    }
+    .sec-ro .sr-title .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        <div>
+          <div class="brand-name">动态表单引擎</div>
+          <div class="brand-sub">模板设计者门户</div>
+        </div>
+      </div>
+      <nav class="nav-group">
+        <div class="nav-label">设计工作台</div>
+        <a class="nav-item active" href="designer-templates.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+          我的模板 <span class="count">7</span>
+        </a>
+        <a class="nav-item" href="designer-create.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          创建表单
+        </a>
+        <a class="nav-item" href="designer-drafts.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          草稿模板 <span class="count">3</span>
+        </a>
+        <div class="nav-label">通用</div>
+        <a class="nav-item" href="notifications.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          通知中心 <span class="count" style="background:var(--danger-bg);color:var(--danger)">2</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="avatar"></span>
+          <div class="grow">
+            <div class="u-name"></div>
+            <div class="u-role"></div>
+          </div>
+          <button class="icon-btn" title="退出登录" onclick="location.href='login.html'">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <header class="topbar">
+        <a class="btn btn-ghost btn-sm" href="designer-templates.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          我的模板
+        </a>
+        <div>
+          <div class="tb-crumb">模板详情（只读）</div>
+          <div class="tb-title">员工入职信息登记表</div>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="page-narrow">
+          <!-- 他人签出提示 -->
+          <div class="alert-banner warn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div><b>该模板正由 王芳 编辑中</b>，当前处于只读状态。编辑锁释放后（签入/超时）方可编辑，你也可以在页面顶部申请“强制签入”以释放锁。</div>
+          </div>
+
+          <!-- 头部信息 -->
+          <div class="detail-head">
+            <div class="dh-title">
+              <h2>
+                员工入职信息登记表
+                <span class="badge badge-green"><span class="dot"></span>已发布</span>
+                <span class="badge badge-indigo">v1.2</span>
+                <span class="readonly-tag">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  只读
+                </span>
+              </h2>
+              <p class="dh-desc">用于新员工入职时采集基本信息、联系方式和职位信息，支持附件上传与紧急联系人登记。</p>
+            </div>
+            <div class="dh-actions">
+              <a class="btn" href="designer-export.html">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+                导出配置
+              </a>
+              <button class="btn btn-primary" disabled title="模板被他人签出，暂不可编辑">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                编辑模板
+              </button>
+            </div>
+          </div>
+
+          <!-- 基本信息卡片 -->
+          <div class="card card-pad" style="margin-bottom:18px">
+            <div class="info-grid">
+              <div class="info-item"><div class="ii-label">模板分类</div><div class="ii-value">人力资源</div></div>
+              <div class="info-item"><div class="ii-label">模板状态</div><div class="ii-value"><span class="badge badge-green"><span class="dot"></span>已发布</span></div></div>
+              <div class="info-item"><div class="ii-label">当前版本</div><div class="ii-value">v1.2</div></div>
+              <div class="info-item"><div class="ii-label">字段数量</div><div class="ii-value">9 个字段 · 3 个章节</div></div>
+              <div class="info-item"><div class="ii-label">创建时间</div><div class="ii-value">2026-07-18</div></div>
+              <div class="info-item"><div class="ii-label">最后修改</div><div class="ii-value">2026-08-06 14:32</div></div>
+              <div class="info-item"><div class="ii-label">负责人</div><div class="ii-value">李晨</div></div>
+              <div class="info-item"><div class="ii-label">累计提交</div><div class="ii-value">128 份</div></div>
+            </div>
+          </div>
+
+          <!-- 页签 -->
+          <div class="tabs" style="margin-bottom:16px">
+            <button class="tab active" data-tab="preview" onclick="switchTab('preview',this)">表单预览</button>
+            <button class="tab" data-tab="version" onclick="switchTab('version',this)">版本历史</button>
+          </div>
+
+          <!-- 表单预览（只读） -->
+          <div id="pane-preview" class="preview-readonly">
+            <div id="schemaPreview"></div>
+            <div class="alert-banner info" style="margin:18px 0 0">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              <div>当前为只读预览。模板正由 <b>王芳</b> 编辑中，展示内容为最近一次签入的 v1.2 快照。</div>
+            </div>
+          </div>
+
+          <!-- 版本历史 -->
+          <div id="pane-version" class="hide">
+            <div class="card">
+              <table class="table">
+                <thead>
+                  <tr><th>版本</th><th>说明</th><th>字段数</th><th>修改人</th><th>时间</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><span class="badge badge-indigo">v1.2</span></td><td>新增「试用期」字段，完善邮箱正则验证</td><td>9</td><td>李晨</td><td>2026-08-06 14:32</td></tr>
+                  <tr><td><span class="badge badge-gray">v1.1</span></td><td>调整审批链顺序，增加财务节点</td><td>8</td><td>李晨</td><td>2026-07-30 10:12</td></tr>
+                  <tr><td><span class="badge badge-gray">v1.0</span></td><td>初始发布</td><td>8</td><td>李晨</td><td>2026-07-18 09:00</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    var t = DB.templateDetail;
+
+    var FIELD_LABEL = { text: "文本", number: "数字", date: "日期", select: "下拉" };
+
+    function renderSchema() {
+      var html = "";
+      t.schema.sections.forEach(function (sec) {
+        html +=
+          '<div class="sec-ro">' +
+            '<div class="sr-title"><span class="dot"></span>' + esc(sec.title) + "</div>";
+        sec.fields.forEach(function (f) {
+          html +=
+            '<div class="ro-field">' +
+              '<label>' + esc(f.name) + (f.required ? '<span style="color:var(--danger)"> *</span>' : "") +
+                ' <span class="xsmall" style="color:var(--text-3);font-weight:400">(' + FIELD_LABEL[f.type] + ")</span></label>" +
+              '<div class="ro-value placeholder">—</div>' +
+            "</div>";
+        });
+        html += "</div>";
+      });
+      document.getElementById("schemaPreview").innerHTML = html;
+    }
+
+    function switchTab(tab, btn) {
+      document.querySelectorAll(".tab").forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      document.getElementById("pane-preview").classList.toggle("hide", tab !== "preview");
+      document.getElementById("pane-version").classList.toggle("hide", tab !== "version");
+    }
+
+    renderSchema();
+  </script>
+</body>
+</html>

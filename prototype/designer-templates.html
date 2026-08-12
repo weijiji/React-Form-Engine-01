@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>我的模板 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .tpl-card .t-icon.cat-hr { background:#e7f6ee; color:var(--success); }
+    .tpl-card .t-icon.cat-ps { background:#f1ebfe; color:var(--purple); }
+    .tpl-card .t-icon.cat-fn { background:#fdf3e2; color:var(--warning); }
+    .tpl-card .t-icon.cat-xz { background:#e4f5f8; color:var(--info); }
+    .tpl-card .t-icon.cat-it { background:#eef2ff; color:var(--brand); }
+    .tpl-card .t-icon.cat-tg { background:#eef0f4; color:var(--text-2); }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .toolbar .tb-title {
+      font-size: 17px;
+      font-weight: 650;
+      margin-right: 4px;
+    }
+    .toolbar .tb-search {
+      margin-left: auto;
+      width: 260px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        <div>
+          <div class="brand-name">动态表单引擎</div>
+          <div class="brand-sub">模板设计者门户</div>
+        </div>
+      </div>
+      <nav class="nav-group">
+        <div class="nav-label">设计工作台</div>
+        <a class="nav-item active" href="designer-templates.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+          我的模板 <span class="count">7</span>
+        </a>
+        <a class="nav-item" href="designer-create.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          创建表单
+        </a>
+        <a class="nav-item" href="designer-drafts.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          草稿模板 <span class="count">3</span>
+        </a>
+        <div class="nav-label">通用</div>
+        <a class="nav-item" href="notifications.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          通知中心 <span class="count" style="background:var(--danger-bg);color:var(--danger)">2</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="avatar"></span>
+          <div class="grow">
+            <div class="u-name"></div>
+            <div class="u-role"></div>
+          </div>
+          <button class="icon-btn" title="退出登录" onclick="location.href='login.html'">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="tb-crumb">模板设计者门户</div>
+          <div class="tb-title">我的模板</div>
+        </div>
+        <div class="tb-actions">
+          <a class="btn btn-primary" href="designer-create.html">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            新建表单
+          </a>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="page-narrow">
+          <div class="toolbar">
+            <div class="seg" id="statusSeg">
+              <button class="active" data-s="all" onclick="setStatus('all',this)">全部</button>
+              <button data-s="published" onclick="setStatus('published',this)">已发布</button>
+              <button data-s="draft" onclick="setStatus('draft',this)">草稿</button>
+            </div>
+            <div class="input-wrap tb-search">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input class="input input-sm" id="searchInput" placeholder="搜索模板名称…" oninput="render()" />
+            </div>
+          </div>
+
+          <div class="tpl-grid" id="tplGrid"></div>
+
+          <div class="empty hide" id="emptyState">
+            <div class="empty-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+            </div>
+            <h3 id="emptyTitle">没有匹配的模板</h3>
+            <p>调整筛选条件，或创建一个新的表单模板。</p>
+            <a class="btn btn-primary" href="designer-create.html">新建表单</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    var status = "all";
+
+    var CAT_ICON = {
+      "人力资源": "cat-hr",
+      "采购": "cat-ps",
+      "财务": "cat-fn",
+      "行政": "cat-xz",
+      "IT": "cat-it",
+      "通用": "cat-tg",
+    };
+    var ICONS = {
+      form: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>',
+      edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+      eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+      dl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>',
+      trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+      more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+    };
+
+    function statusBadge(s) {
+      return s === "published"
+        ? '<span class="badge badge-green"><span class="dot"></span>已发布</span>'
+        : '<span class="badge badge-amber"><span class="dot"></span>草稿</span>';
+    }
+
+    function render() {
+      var kw = document.getElementById("searchInput").value.trim().toLowerCase();
+      var list = DB.templates.filter(function (t) {
+        if (status !== "all" && t.status !== status) return false;
+        if (kw && t.name.toLowerCase().indexOf(kw) === -1) return false;
+        return true;
+      });
+
+      var grid = document.getElementById("tplGrid");
+      grid.innerHTML = "";
+      list.forEach(function (t) {
+        var card = document.createElement("div");
+        card.className = "tpl-card";
+        card.innerHTML =
+          '<div class="t-head">' +
+            '<span class="t-icon ' + (CAT_ICON[t.category] || "cat-tg") + '">' + ICONS.form + "</span>" +
+            '<div class="t-head-right">' +
+              statusBadge(t.status) +
+              '<span class="menu-wrap">' +
+                '<button class="icon-btn menu-trigger" title="更多操作" onclick="event.stopPropagation();toggleMenu(this)">' + ICONS.more + "</button>" +
+                '<div class="tpl-menu">' +
+                  '<button class="menu-item" onclick="event.stopPropagation();closeMenus();goEdit(\'' + t.id + '\')">' + ICONS.edit + "编辑</button>" +
+                  '<button class="menu-item" onclick="event.stopPropagation();closeMenus();location.href=\'designer-templates-detail.html\'">' + ICONS.eye + "查看详情</button>" +
+                  '<button class="menu-item" onclick="event.stopPropagation();closeMenus();location.href=\'designer-export.html\'">' + ICONS.dl + "导出配置</button>" +
+                  '<div class="menu-divider"></div>' +
+                  '<button class="menu-item danger" onclick="event.stopPropagation();closeMenus();removeTpl(\'' + t.id + '\')">' + ICONS.trash + "删除</button>" +
+                "</div>" +
+              "</span>" +
+            "</div>" +
+          "</div>" +
+          "<h3>" + esc(t.name) + "</h3>" +
+          '<p class="t-desc">' + esc(t.desc) + "</p>" +
+          '<div class="t-meta">' +
+            '<span>' + esc(t.category) + " · " + t.fields + " 个字段</span>" +
+            '<span>更新于 ' + esc(t.updated) + "</span>" +
+          "</div>";
+        card.addEventListener("click", function () {
+          location.href = "designer-templates-detail.html";
+        });
+        grid.appendChild(card);
+      });
+
+      var empty = document.getElementById("emptyState");
+      empty.classList.toggle("hide", list.length > 0);
+    }
+
+    function setStatus(s, btn) {
+      status = s;
+      document.querySelectorAll("#statusSeg button").forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      render();
+    }
+
+    function goEdit(id) {
+      location.href = "designer-edit.html";
+    }
+
+    function toggleMenu(btn) {
+      var wrap = btn.closest(".menu-wrap");
+      var menu = wrap.querySelector(".tpl-menu");
+      var willOpen = !menu.classList.contains("open");
+      closeMenus();
+      if (willOpen) {
+        menu.classList.add("open");
+        btn.classList.add("active");
+      }
+    }
+
+    function closeMenus() {
+      $$(".tpl-menu.open").forEach(function (m) { m.classList.remove("open"); });
+      $$(".menu-trigger.active").forEach(function (b) { b.classList.remove("active"); });
+    }
+
+    document.addEventListener("click", function (e) {
+      if (!e.target.closest(".menu-wrap")) closeMenus();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeMenus();
+    });
+
+    function removeTpl(id) {
+      var t = DB.templates.find(function (x) { return x.id === id; });
+      if (confirm("确定删除模板「" + t.name + "」吗？\n删除后不可恢复，已发布模板将同时下架。")) {
+        DB.templates = DB.templates.filter(function (x) { return x.id !== id; });
+        render();
+        toast("模板已删除", "ok");
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>

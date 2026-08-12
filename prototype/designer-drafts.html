@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>草稿模板 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .draft-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+    .draft-card:hover {
+      border-color: var(--brand-line);
+      box-shadow: var(--shadow);
+    }
+    .draft-card .d-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--warning-bg);
+      color: var(--warning);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+    }
+    .draft-card .d-icon svg { width: 22px; height: 22px; }
+    .draft-card .d-main {
+      flex: 1;
+      min-width: 0;
+    }
+    .draft-card .d-main h3 {
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .draft-card .d-main .d-desc {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-top: 3px;
+    }
+    .draft-card .d-main .d-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .draft-card .d-actions {
+      display: flex;
+      gap: 8px;
+      flex: none;
+    }
+    .draft-card .d-progress {
+      width: 150px;
+      flex: none;
+    }
+    .draft-card .d-progress .dp-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: #eef0f4;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+    .draft-card .d-progress .dp-bar i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--brand), #8b5cf6);
+      border-radius: 999px;
+    }
+    .draft-card .d-progress .dp-label {
+      font-size: 11.5px;
+      color: var(--text-3);
+      text-align: right;
+    }
+    @media (max-width: 900px) {
+      .draft-card .d-progress { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg>
+        </span>
+        <div>
+          <div class="brand-name">动态表单引擎</div>
+          <div class="brand-sub">模板设计者门户</div>
+        </div>
+      </div>
+      <nav class="nav-group">
+        <div class="nav-label">设计工作台</div>
+        <a class="nav-item" href="designer-templates.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+          我的模板 <span class="count">7</span>
+        </a>
+        <a class="nav-item" href="designer-create.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          创建表单
+        </a>
+        <a class="nav-item active" href="designer-drafts.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          草稿模板 <span class="count">3</span>
+        </a>
+        <div class="nav-label">通用</div>
+        <a class="nav-item" href="notifications.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          通知中心 <span class="count" style="background:var(--danger-bg);color:var(--danger)">2</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span class="avatar"></span>
+          <div class="grow">
+            <div class="u-name"></div>
+            <div class="u-role"></div>
+          </div>
+          <button class="icon-btn" title="退出登录" onclick="location.href='login.html'">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="tb-crumb">模板设计者门户</div>
+          <div class="tb-title">草稿模板</div>
+        </div>
+        <div class="tb-actions">
+          <a class="btn btn-primary" href="designer-create.html">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            新建表单
+          </a>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="page-narrow">
+          <div class="mb-16 flex gap-8">
+            <h2 style="font-size:17px">未发布的模板</h2>
+            <span class="badge badge-amber" id="draftCount">3 个草稿</span>
+          </div>
+
+          <div id="draftList"></div>
+
+          <div class="empty hide" id="emptyState">
+            <div class="empty-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+            </div>
+            <h3>没有待完成的模板</h3>
+            <p>所有草稿都已完成，或你还没有开始创建。</p>
+            <a class="btn btn-primary" href="designer-create.html">新建表单</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    var list = document.getElementById("draftList");
+    var ICONS = {
+      edit: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+      trash: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+      doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>',
+    };
+
+    function render() {
+      list.innerHTML = "";
+      DB.drafts.forEach(function (d, i) {
+        var progress = Math.min(100, 40 + i * 25);
+        var card = document.createElement("div");
+        card.className = "draft-card";
+        card.innerHTML =
+          '<div class="d-icon">' + ICONS.doc + "</div>" +
+          '<div class="d-main">' +
+            "<h3>" + esc(d.name) + ' <span class="badge badge-amber"><span class="dot"></span>草稿</span></h3>' +
+            '<div class="d-desc">' + esc(d.desc) + "</div>" +
+            '<div class="d-meta">' +
+              "<span>" + esc(d.category) + "</span>" +
+              "<span>" + d.fields + " 个字段</span>" +
+              "<span>最近编辑：" + esc(d.lastEdit) + "</span>" +
+              "<span>更新于 " + esc(d.updated) + "</span>" +
+            "</div>" +
+          "</div>" +
+          '<div class="d-progress">' +
+            '<div class="dp-bar"><i style="width:' + progress + '%"></i></div>' +
+            '<div class="dp-label">完成度 ' + progress + '%</div>' +
+          "</div>" +
+          '<div class="d-actions">' +
+            '<button class="btn btn-sm btn-primary" onclick="continueEdit(\'' + d.id + '\')">' + ICONS.edit + "继续编辑</button>" +
+            '<button class="btn btn-sm btn-ghost" onclick="deleteDraft(this,\'' + d.id + '\')">' + ICONS.trash + "</button>" +
+          "</div>";
+        card.addEventListener("click", function (e) {
+          if (!e.target.closest(".btn")) continueEdit(d.id);
+        });
+        list.appendChild(card);
+      });
+      document.getElementById("draftCount").textContent = DB.drafts.length + " 个草稿";
+      document.getElementById("emptyState").classList.toggle("hide", DB.drafts.length > 0);
+    }
+
+    function continueEdit(id) {
+      location.href = "designer-edit.html";
+    }
+
+    function deleteDraft(btn, id) {
+      var d = DB.drafts.find(function (x) { return x.id === id; });
+      if (confirm("确定删除草稿「" + d.name + "」吗？\n删除后该模板将无法恢复。")) {
+        DB.drafts = DB.drafts.filter(function (x) { return x.id !== id; });
+        render();
+        toast("草稿已删除", "ok");
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>

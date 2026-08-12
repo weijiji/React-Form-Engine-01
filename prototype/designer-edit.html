@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>设计器 · 员工入职信息登记表 · 动态表单引擎</title>
+  <link rel="stylesheet" href="assets/app.css" />
+  <style>
+    .et-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+    }
+    .et-dot.gray { background: var(--text-3); }
+    .editor-top .et-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12.5px;
+      color: var(--text-2);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      padding: 5px 11px;
+      border-radius: 999px;
+    }
+    .checkout-tip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      background: var(--success-bg);
+      border: 1px solid #bfe6cd;
+      border-radius: 11px;
+      font-size: 13px;
+      color: var(--success);
+      margin: 16px auto 0;
+      max-width: 640px;
+    }
+    .checkout-tip .btn {
+      margin-left: auto;
+    }
+    .canvas .canvas-inner {
+      position: relative;
+    }
+    .cv-drop-zone {
+      display: none;
+    }
+    .empty-canvas {
+      border: 1.5px dashed var(--border-strong);
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+      margin: 8px 0;
+    }
+    .empty-canvas .btn {
+      margin-top: 12px;
+    }
+    .canvas-mask {
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      background: transparent;
+      z-index: 5;
+      display: none;
+    }
+    .editor.test-mode .canvas-mask {
+      display: block;
+      pointer-events: none;
+    }
+    .chain-add {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      padding: 10px;
+      border: 1.5px dashed var(--border-strong);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 550;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .chain-add:hover {
+      border-color: var(--brand);
+      background: var(--brand-soft);
+    }
+    .cond-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-subtle);
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .cond-row .select,
+    .cond-row .input {
+      width: auto;
+      flex: 1;
+      min-width: 100px;
+    }
+    .cond-and {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: 12.5px;
+      color: var(--text-3);
+    }
+    .cond-and .seg button {
+      font-size: 12px;
+      padding: 4px 12px;
+    }
+    .rule-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--brand);
+      background: var(--brand-soft);
+      border-radius: 999px;
+      padding: 3px 10px;
+      cursor: pointer;
+    }
+    .rule-badge:hover {
+      background: var(--brand-line);
+    }
+    .rule-select-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rule-select-row .select {
+      flex: 1;
+    }
+    .node-name-input {
+      flex: 1;
+    }
+    .cond-desc {
+      font-size: 12.5px;
+      color: var(--text-2);
+      padding: 10px 12px;
+      background: var(--brand-soft);
+      border: 1px solid var(--brand-line);
+      border-radius: 10px;
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+    .cond-desc b {
+      color: var(--brand);
+    }
+    .kv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .kv-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .kv-item .kv-k {
+      width: 88px;
+      flex: none;
+      font-size: 13px;
+      font-weight: 550;
+      color: var(--text-2);
+    }
+    .kv-item .input,
+    .kv-item .select {
+      height: 32px;
+      font-size: 13px;
+    }
+    .kv-item .icon-btn {
+      margin-left: auto;
+    }
+    .test-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--info);
+      background: var(--info-bg);
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body>
+  <div class="editor" id="editor" style="height:100vh">
+    <!-- 顶栏 -->
+    <div class="editor-top">
+      <a class="btn btn-ghost btn-sm" href="designer-templates.html" title="返回我的模板（将提示签入）">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      </a>
+      <div>
+        <div class="et-name" id="etName">员工入职信息登记表</div>
+        <div class="et-sub">创建于 2026-07-18 · v1.2（编辑中）</div>
+      </div>
+      <span class="et-status">
+        <span class="et-dot"></span>
+        已签出 · 正在编辑
+      </span>
+      <div class="et-actions">
+        <div class="seg" id="modeSeg">
+          <button class="active" data-m="static" onclick="setMode('static',this)">静态预览</button>
+          <button data-m="test" onclick="setMode('test',this)">交互测试</button>
+        </div>
+        <span class="test-badge hide" id="testBadge">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+          独立测试 Store，改动不影响模板
+        </span>
+        <button class="btn" onclick="saveDraft()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          保存草稿
+        </button>
+        <button class="btn btn-primary" onclick="publish()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          发布
+        </button>
+      </div>
+    </div>
+
+    <!-- 三栏 -->
+    <div class="editor-body">
+      <!-- 左：组件面板 -->
+      <aside class="comp-panel">
+        <div class="panel-title">组件面板</div>
+        <div class="panel-scroll" id="compPanel"></div>
+      </aside>
+
+      <!-- 中：实时预览 -->
+      <div class="canvas" id="canvas" onclick="clearSelection()">
+        <div class="canvas-inner" id="canvasInner" onclick="event.stopPropagation()">
+          <div class="canvas-mask" id="canvasMask"></div>
+          <div class="canvas-head">
+            <h2>员工入职信息登记表</h2>
+            <p>请完整填写以下信息，带 <span style="color:var(--danger)">*</span> 为必填项</p>
+          </div>
+          <div id="canvasFields"></div>
+          <div class="empty-canvas hide" id="emptyCanvas">
+            画布为空。从左侧「组件面板」点击或拖拽组件到此处开始设计。
+            <div><button class="btn btn-sm" onclick="addSection()">添加章节</button></div>
+          </div>
+          <div class="drop-hint hide" id="dropHint">松开以将组件添加到此处</div>
+        </div>
+      </div>
+
+      <!-- 右：结构树 / 属性 / 审批链 -->
+      <aside class="side-panel">
+        <div class="side-tabs">
+          <button class="side-tab active" data-t="tree" onclick="switchSide('tree',this)">结构树</button>
+          <button class="side-tab" data-t="props" onclick="switchSide('props',this)">属性</button>
+          <button class="side-tab" data-t="chain" onclick="switchSide('chain',this)">审批链</button>
+        </div>
+
+        <!-- 结构树 -->
+        <div class="side-body">
+          <div class="side-pane active" id="pane-tree">
+            <div class="tree" id="tree"></div>
+          </div>
+
+          <!-- 属性 -->
+          <div class="side-pane" id="pane-props">
+            <div class="props">
+              <div class="props-empty hide" id="propsEmpty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
+                <div>在画布或结构树中<b>选择一个字段</b>以编辑属性</div>
+              </div>
+              <div id="propsBody"></div>
+            </div>
+          </div>
+
+          <!-- 审批链 -->
+          <div class="side-pane" id="pane-chain">
+            <div class="chain" id="chain"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- 条件联动编辑器 -->
+  <div class="modal-mask" id="condMask">
+    <div class="modal modal-lg">
+      <div class="modal-head">
+        <h3>条件联动编辑器</h3>
+        <button class="icon-btn" onclick="closeCond()" title="">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="cond-desc">
+          当满足以下条件时，<b>显示</b> 字段「<span id="condTarget">所属部门</span>」。支持多条件 <b>AND / OR</b> 组合，联动效果会在保存后实时反映到预览画布。
+        </div>
+        <div id="condRows"></div>
+        <div class="cond-and">
+          组合方式：
+          <span class="seg" id="condLogic">
+            <button class="active" onclick="setCondLogic('AND',this)">且 (AND)</button>
+            <button onclick="setCondLogic('OR',this)">或 (OR)</button>
+          </span>
+        </div>
+        <button class="chip-add" onclick="addCondRow()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          添加条件
+        </button>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeCond()">取消</button>
+        <button class="btn btn-primary" onclick="saveCond()">保存联动</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 签入确认弹窗 -->
+  <div class="modal-mask" id="checkinMask">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-body" style="text-align:center;padding:28px">
+        <div class="error-ico" style="width:56px;height:56px;margin:0 auto 14px;border-radius:16px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center">
+          <svg class="icon" style="width:26px;height:26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3 style="font-size:16px;margin-bottom:6px">签出内容尚未保存</h3>
+        <p style="color:var(--text-2);font-size:13.5px;margin:0 0 4px">离开前请签入当前模板，否则已做的修改不会保存。</p>
+        <p style="color:var(--text-3);font-size:12.5px;margin:0 0 18px">离开后其他设计者可以开始编辑该模板。</p>
+        <div style="display:flex;gap:10px;justify-content:center">
+          <button class="btn" onclick="closeCheckin()">留下继续编辑</button>
+          <button class="btn btn-primary" onclick="checkinAndLeave()">签入并离开</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    /* ================= 状态 ================= */
+    var state = {
+      name: "员工入职信息登记表",
+      selectedId: null,
+      mode: "static",
+      condLogic: "AND",
+      sections: [
+        {
+          id: "sec-1", title: "基本信息", fields: [
+            { id: "f-1", type: "text", name: "姓名", required: true, placeholder: "请输入姓名", default: "", help: "需与身份证信息一致", validation: {} },
+            { id: "f-2", type: "number", name: "工号", required: true, placeholder: "请输入工号", default: "", help: "", validation: { min: 4, max: 8 } },
+            { id: "f-3", type: "date", name: "入职日期", required: true, placeholder: "", default: "", help: "", validation: {} },
+          ],
+        },
+        {
+          id: "sec-2", title: "联系信息", fields: [
+            { id: "f-4", type: "text", name: "手机号码", required: true, placeholder: "11 位手机号", default: "", help: "", validation: { pattern: "^1\\d{10}$", patternHint: "请输入 11 位手机号" } },
+            { id: "f-5", type: "text", name: "电子邮箱", required: true, placeholder: "name@example.com", default: "", help: "用于接收审批结果通知", validation: { pattern: "^[\\w.-]+@[\\w-]+\\.[\\w.]+$", patternHint: "邮箱格式不正确" } },
+          ],
+        },
+        {
+          id: "sec-3", title: "职位信息", fields: [
+            { id: "f-6", type: "select", name: "所属部门", required: true, placeholder: "", default: "", help: "", options: ["技术部", "产品部", "运营部", "人事部"], validation: {} },
+            { id: "f-7", type: "text", name: "岗位名称", required: true, placeholder: "例如：前端工程师", default: "", help: "", validation: {} },
+            { id: "f-8", type: "user", name: "直属上级", required: false, placeholder: "选择直属上级", default: "", help: "用于审批链自动定位", validation: {} },
+          ],
+        },
+      ],
+      chain: [
+        { id: "c-1", name: "直属上级审批", rule: "组织架构", ruleValue: "直属上级" },
+        { id: "c-2", name: "IT 负责人审批", rule: "指定角色", ruleValue: "IT 负责人" },
+        { id: "c-3", name: "财务审批", rule: "指定人员", ruleValue: "王芳" },
+      ],
+      conds: [
+        { dep: "f-6", op: "等于", val: "技术部", target: "f-7", logic: "AND" },
+      ],
+    };
+
+    /* ================= 组件库 ================= */
+    var COMP_GROUPS = [
+      {
+        label: "布局组件",
+        items: [
+          { type: "section", name: "章节容器", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>' },
+        ],
+      },
+      {
+        label: "基础控件",
+        items: [
+          { type: "text", name: "文本输入", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6M12 4v16"/></svg>' },
+          { type: "textarea", name: "多行文本", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>' },
+          { type: "number", name: "数字输入", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>' },
+          { type: "select", name: "下拉框", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' },
+        ],
+      },
+      {
+        label: "选择控件",
+        items: [
+          { type: "radio", name: "单选按钮", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>' },
+          { type: "checkbox", name: "多选框", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="m9 12 2 2 4-4"/></svg>' },
+        ],
+      },
+      {
+        label: "日期控件",
+        items: [
+          { type: "date", name: "日期选择", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>' },
+          { type: "datetime", name: "日期时间", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>' },
+        ],
+      },
+      {
+        label: "高级控件",
+        items: [
+          { type: "file", name: "文件上传", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>' },
+          { type: "user", name: "人员选择", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
+        ],
+      },
+    ];
+
+    var FIELD_LABEL = {
+      text: "文本输入", textarea: "多行文本", number: "数字输入", select: "下拉框",
+      radio: "单选按钮", checkbox: "多选框", date: "日期选择", datetime: "日期时间",
+      file: "文件上传", user: "人员选择",
+    };
+
+    var OPERATORS = ["等于", "不等于", "包含", "大于", "小于", "为空", "不为空"];
+
+    function genId(prefix) {
+      return prefix + "-" + Math.random().toString(36).slice(2, 8);
+    }
+
+    function newField(type) {
+      var base = {
+        id: genId("f"), type: type, name: "新字段", required: false,
+        placeholder: "", default: "", help: "", validation: {},
+      };
+      var labels = { text: "文本字段", textarea: "多行文本", number: "数字字段", select: "下拉选项", radio: "单选组", checkbox: "多选组", date: "日期", datetime: "日期时间", file: "文件上传", user: "人员选择" };
+      base.name = labels[type] || "新字段";
+      if (type === "select" || type === "radio" || type === "checkbox") base.options = ["选项一", "选项二", "选项三"];
+      if (type === "file") base.fileLimit = { type: "图片/文档", maxSize: "10MB" };
+      if (type === "user") base.placeholder = "选择人员";
+      return base;
+    }
+
+    /* ================= 组件面板渲染 ================= */
+    function renderCompPanel() {
+      var html = "";
+      COMP_GROUPS.forEach(function (g) {
+        html += '<div class="comp-group">' + esc(g.label) + "</div>";
+        g.items.forEach(function (it) {
+          html +=
+            '<div class="comp-item" draggable="true" data-type="' + it.type + '" title="点击添加 / 拖拽到画布">' +
+              it.icon + "<span>" + esc(it.name) + "</span>" +
+              '<svg class="grip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/></svg>' +
+            "</div>";
+        });
+      });
+      var panel = document.getElementById("compPanel");
+      panel.innerHTML = html;
+
+      panel.querySelectorAll(".comp-item").forEach(function (item) {
+        item.addEventListener("click", function () { addComponent(item.getAttribute("data-type")); });
+        item.addEventListener("dragstart", function (e) {
+          e.dataTransfer.setData("text/plain", item.getAttribute("data-type"));
+          e.dataTransfer.effectAllowed = "copy";
+        });
+      });
+    }
+
+    function addComponent(type) {
+      if (type === "section") {
+        addSection();
+        return;
+      }
+      var f = newField(type);
+      var sec = getSelectedSection() || state.sections[0];
+      if (!sec) {
+        sec = addSection();
+      }
+      sec.fields.push(f);
+      state.selectedId = f.id;
+      renderAll();
+      toast("已添加「" + f.name + "」", "ok");
+    }
+
+    function addSection() {
+      var sec = { id: genId("sec"), title: "新章节", fields: [] };
+      state.sections.push(sec);
+      state.selectedId = sec.id;
+      renderAll();
+      return sec;
+    }
+
+    function getField(id) {
+      for (var i = 0; i < state.sections.length; i++) {
+        for (var j = 0; j < state.sections[i].fields.length; j++) {
+          if (state.sections[i].fields[j].id === id) return state.sections[i].fields[j];
+        }
+      }
+      return null;
+    }
+    function getSelectedSection() {
+      if (!state.selectedId) return null;
+      for (var i = 0; i < state.sections.length; i++) {
+        var s = state.sections[i];
+        if (s.id === state.selectedId) return s;
+        for (var j = 0; j < s.fields.length; j++) {
+          if (s.fields[j].id === state.selectedId) return s;
+        }
+      }
+      return null;
+    }
+
+    /* ================= 画布渲染 ================= */
+    function renderControl(f) {
+      var r = state.mode === "test";
+      var readOnly = r ? "" : " readonly";
+      var ph = r ? ' placeholder="' + esc(f.placeholder || "") + '"' : "";
+      switch (f.type) {
+        case "text":
+        case "number":
+          return '<input class="fld-control" type="' + (f.type === "number" ? "number" : "text") + '" value="' + esc(f.default) + '"' + ph + readOnly + " />";
+        case "textarea":
+          return '<textarea class="fld-control multi" rows="3"' + ph + readOnly + ">" + esc(f.default) + "</textarea>";
+        case "select":
+          var opts = (f.options || []).map(function (o) { return '<option>' + esc(o) + "</option>"; }).join("");
+          return '<select class="fld-control"' + (r ? "" : " disabled") + '><option value="">请选择</option>' + opts + "</select>";
+        case "radio":
+          return (f.options || []).map(function (o) {
+            return '<label class="check-row" style="margin-bottom:6px"><input type="radio" name="' + f.id + '"' + (r ? "" : " disabled") + "/>" + esc(o) + "</label>";
+          }).join("");
+        case "checkbox":
+          return (f.options || []).map(function (o) {
+            return '<label class="check-row" style="margin-bottom:6px"><input type="checkbox"' + (r ? "" : " disabled") + "/>" + esc(o) + "</label>";
+          }).join("");
+        case "date":
+          return '<input class="fld-control" type="date"' + readOnly + " />";
+        case "datetime":
+          return '<input class="fld-control" type="datetime-local"' + readOnly + " />";
+        case "file":
+          return '<div class="fld-control" style="display:flex;align-items:center;gap:8px;color:var(--text-3);cursor:' + (r ? "pointer" : "default") + '">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>' +
+            '<span>点击上传文件（' + esc((f.fileLimit && f.fileLimit.maxSize) || "10MB") + "）</span></div>";
+        case "user":
+          return '<div class="fld-control" style="display:flex;align-items:center;gap:8px;color:var(--text-3)">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
+            '<span>' + esc(f.placeholder || "选择人员") + "</span></div>";
+      }
+      return "";
+    }
+
+    function renderCanvas() {
+      var inner = document.getElementById("canvasFields");
+      var html = "";
+      state.sections.forEach(function (sec, si) {
+        var selected = state.selectedId === sec.id;
+        html +=
+          '<div class="fld-section' + (selected ? " selected" : "") + '" id="' + sec.id + '" onclick="event.stopPropagation();selectField(\'' + sec.id + '\')">' +
+            '<div class="sec-head">' +
+              '<span class="sec-dot"></span>' +
+              '<span class="sec-title">' + esc(sec.title) + "</span>" +
+              '<span class="sec-count">' + sec.fields.length + " 个字段</span>" +
+              '<div class="sec-tools">' +
+                '<button class="icon-btn" title="删除章节" onclick="event.stopPropagation();deleteSection(\'' + sec.id + '\')">' +
+                  '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+                "</button>" +
+              "</div>" +
+            "</div>";
+        sec.fields.forEach(function (f) {
+          html += renderField(f);
+        });
+        if (sec.fields.length === 0) {
+          html += '<div class="empty-canvas" style="padding:20px">该章节暂无字段，点击左侧组件添加</div>';
+        }
+        html += "</div>";
+      });
+      inner.innerHTML = html;
+      document.getElementById("emptyCanvas").classList.toggle("hide", state.sections.length > 0);
+    }
+
+    function renderField(f) {
+      var sel = state.selectedId === f.id;
+      var label = esc(f.name) + (f.required ? '<span class="req"> *</span>' : "");
+      var help = f.help ? '<div class="fld-help">' + esc(f.help) + "</div>" : "";
+      return (
+        '<div class="fld' + (sel ? " selected" : "") + '" id="' + f.id + '" onclick="event.stopPropagation();selectField(\'' + f.id + '\')">' +
+          '<div class="fld-tools">' +
+            '<button class="icon-btn" title="删除" onclick="event.stopPropagation();deleteField(\'' + f.id + '\')">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+            "</button>" +
+            '<button class="icon-btn" title="复制" onclick="event.stopPropagation();duplicateField(\'' + f.id + '\')">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>' +
+            "</button>" +
+          "</div>" +
+          "<label>" + label + "</label>" +
+          renderControl(f) +
+          help +
+        "</div>"
+      );
+    }
+
+    function selectField(id) {
+      state.selectedId = id;
+      renderAll();
+    }
+
+    function clearSelection() {
+      state.selectedId = null;
+      renderAll();
+    }
+
+    function deleteField(id) {
+      for (var i = 0; i < state.sections.length; i++) {
+        var s = state.sections[i];
+        var idx = s.fields.findIndex(function (f) { return f.id === id; });
+        if (idx > -1) {
+          s.fields.splice(idx, 1);
+          break;
+        }
+      }
+      state.selectedId = null;
+      renderAll();
+      toast("字段已删除", "ok");
+    }
+
+    function duplicateField(id) {
+      var f = getField(id);
+      if (!f) return;
+      var copy = JSON.parse(JSON.stringify(f));
+      copy.id = genId("f");
+      copy.name = f.name + "（副本）";
+      var sec = getSelectedSection();
+      sec.fields.push(copy);
+      state.selectedId = copy.id;
+      renderAll();
+      toast("已复制字段", "ok");
+    }
+
+    function deleteSection(id) {
+      if (!confirm("确定删除章节「" + state.sections.find(function (s) { return s.id === id; }).title + "」及其所有字段吗？")) return;
+      state.sections = state.sections.filter(function (s) { return s.id !== id; });
+      state.selectedId = null;
+      renderAll();
+      toast("章节已删除", "ok");
+    }
+
+    /* ================= 结构树 ================= */
+    function renderTree() {
+      var tree = document.getElementById("tree");
+      var html = "";
+      state.sections.forEach(function (sec) {
+        html +=
+          '<div class="tree-node sec" id="tn-' + sec.id + '">' +
+            '<div class="tree-node-head' + (state.selectedId === sec.id ? " selected" : "") + '" data-id="' + sec.id + '">' +
+              '<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>' +
+              '<svg class="t-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>' +
+              '<span class="t-name">' + esc(sec.title) + "</span>" +
+              '<span class="t-type">章节 · ' + sec.fields.length + "</span>" +
+              '<span class="t-tools">' +
+                '<button class="icon-btn" title="添加字段" onclick="event.stopPropagation();addToSection(\'' + sec.id + '\')">' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>' +
+                "</button>" +
+                '<button class="icon-btn" title="删除章节" onclick="event.stopPropagation();deleteSection(\'' + sec.id + '\')">' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>' +
+                "</button>" +
+              "</span>" +
+            "</div>" +
+            '<div class="tree-children">';
+        sec.fields.forEach(function (f) {
+          html +=
+            '<div class="tree-node" draggable="true" data-sec="' + sec.id + '" id="tn-' + f.id + '">' +
+              '<div class="tree-node-head' + (state.selectedId === f.id ? " selected" : "") + '" data-id="' + f.id + '">' +
+                '<svg class="t-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+                '<span class="t-name">' + esc(f.name) + (f.required ? '<span style="color:var(--danger)"> *</span>' : "") + "</span>" +
+                '<span class="t-type">' + (FIELD_LABEL[f.type] || f.type) + "</span>" +
+                '<span class="t-tools">' +
+                  '<button class="icon-btn" title="上移" onclick="event.stopPropagation();moveField(\'' + f.id + '\',-1)">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>' +
+                  "</button>" +
+                  '<button class="icon-btn" title="下移" onclick="event.stopPropagation();moveField(\'' + f.id + '\',1)">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+                  "</button>" +
+                  '<button class="icon-btn" title="删除" onclick="event.stopPropagation();deleteField(\'' + f.id + '\')">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>' +
+                  "</button>" +
+                "</span>" +
+              "</div>" +
+            "</div>";
+        });
+        html += "</div></div>";
+      });
+      tree.innerHTML = html;
+
+      /* 绑定点击 + 拖拽 */
+      tree.querySelectorAll(".tree-node-head").forEach(function (head) {
+        head.addEventListener("click", function (e) {
+          if (e.target.closest(".t-tools")) return;
+          var id = head.getAttribute("data-id");
+          if (state.sections.some(function (s) { return s.id === id; })) {
+            // 章节：折叠/展开
+            var children = head.parentElement.querySelector(".tree-children");
+            children.style.display = children.style.display === "none" ? "" : "none";
+            head.querySelector(".caret").style.transform = children.style.display === "none" ? "rotate(-90deg)" : "";
+          }
+          selectField(id);
+        });
+      });
+      /* 拖拽排序：字段 */
+      tree.querySelectorAll('.tree-node[data-sec]').forEach(function (node) {
+        node.addEventListener("dragstart", function (e) {
+          e.dataTransfer.setData("text/plain", "field:" + node.id.replace("tn-", ""));
+          node.classList.add("dragging");
+        });
+        node.addEventListener("dragend", function () { node.classList.remove("dragging"); });
+        node.addEventListener("dragover", function (e) { e.preventDefault(); });
+        node.addEventListener("drop", function (e) {
+          e.preventDefault();
+          var data = e.dataTransfer.getData("text/plain");
+          if (!data || data.indexOf("field:") !== 0) return;
+          var fid = data.replace("field:", "");
+          var targetId = node.id.replace("tn-", "");
+          moveFieldRelative(fid, targetId);
+        });
+      });
+    }
+
+    function addToSection(secId) {
+      var f = newField("text");
+      state.sections.find(function (s) { return s.id === secId; }).fields.push(f);
+      state.selectedId = f.id;
+      renderAll();
+      toast("已添加字段「" + f.name + "」，可在属性面板重命名", "ok");
+    }
+
+    function moveField(id, dir) {
+      for (var i = 0; i < state.sections.length; i++) {
+        var s = state.sections[i];
+        var idx = s.fields.findIndex(function (f) { return f.id === id; });
+        if (idx > -1) {
+          var ni = idx + dir;
+          if (ni >= 0 && ni < s.fields.length) {
+            var tmp = s.fields[idx];
+            s.fields[idx] = s.fields[ni];
+            s.fields[ni] = tmp;
+          }
+          break;
+        }
+      }
+      renderAll();
+    }
+
+    function moveFieldRelative(fid, targetId) {
+      var srcSec = null, srcIdx = -1, tgtSec = null, tgtIdx = -1;
+      state.sections.forEach(function (s) {
+        s.fields.forEach(function (f, i) {
+          if (f.id === fid) { srcSec = s; srcIdx = i; }
+          if (f.id === targetId) { tgtSec = s; tgtIdx = i; }
+        });
+      });
+      if (!srcSec || !tgtSec || fid === targetId) return;
+      var moved = srcSec.fields.splice(srcIdx, 1)[0];
+      var newIdx = tgtIdx; // 插入到目标前
+      tgtSec.fields.splice(newIdx, 0, moved);
+      renderAll();
+      toast("已调整字段顺序", "ok");
+    }
+
+    /* ================= 属性面板 ================= */
+    function renderProps() {
+      var body = document.getElementById("propsBody");
+      var empty = document.getElementById("propsEmpty");
+      var f = getField(state.selectedId);
+      if (!f) {
+        empty.classList.remove("hide");
+        body.classList.add("hide");
+        return;
+      }
+      empty.classList.add("hide");
+      body.classList.remove("hide");
+
+      var optRows = "";
+      if (f.options) {
+        optRows =
+          '<div class="prop-group-title">选项</div>' +
+          f.options.map(function (o, i) {
+            return '<div class="prop-row flex gap-8">' +
+              '<input class="input" value="' + esc(o) + '" onchange="editOption(\'' + f.id + '\',' + i + ',this.value)" />' +
+              '<button class="icon-btn danger" onclick="removeOption(\'' + f.id + '\',' + i + ')">' +
+                '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' +
+              "</button></div>";
+          }).join("") +
+          '<button class="chip-add" onclick="addOption(\'' + f.id + '\')">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>添加选项</button>';
+      }
+
+      /* 验证区 */
+      var val = "";
+      if (f.type === "text" || f.type === "textarea" || f.type === "number") {
+        val =
+          '<div class="prop-group-title">验证</div>' +
+          '<div class="prop-row"><label class="label">长度限制</label>' +
+            '<div class="field-group"><div><input class="input" type="number" placeholder="最小" value="' + (f.validation.min || "") + '" onchange="setVal(\'' + f.id + '\',\'min\',this.value)" /></div>' +
+            '<div><input class="input" type="number" placeholder="最大" value="' + (f.validation.max || "") + '" onchange="setVal(\'' + f.id + '\',\'max\',this.value)" /></div></div></div>' +
+          '<div class="prop-row"><label class="label">正则表达式</label>' +
+            '<input class="input mono" placeholder="例如 ^1\\d{10}$" value="' + esc(f.validation.pattern || "") + '" onchange="setVal(\'' + f.id + '\',\'pattern\',this.value)" />' +
+            '<div class="hint">不匹配时提示：<input class="input" style="margin-top:6px" placeholder="自定义提示（可选）" value="' + esc(f.validation.patternHint || "") + '" onchange="setVal(\'' + f.id + '\',\'patternHint\',this.value)" /></div></div>';
+      }
+      if (f.type === "number") {
+        val +=
+          '<div class="prop-row"><label class="label">数值范围</label>' +
+            '<div class="field-group"><div><input class="input" type="number" placeholder="最小" value="' + (f.validation.minNum || "") + '" onchange="setVal(\'' + f.id + '\',\'minNum\',this.value)" /></div>' +
+            '<div><input class="input" type="number" placeholder="最大" value="' + (f.validation.maxNum || "") + '" onchange="setVal(\'' + f.id + '\',\'maxNum\',this.value)" /></div></div></div>';
+      }
+      if (f.type === "file") {
+        val +=
+          '<div class="prop-group-title">文件限制</div>' +
+          '<div class="prop-row"><label class="label">允许类型</label><select class="select" onchange="setFileLimit(\'' + f.id + '\',\'type\',this.value)">' +
+            '<option' + (f.fileLimit.type === "图片/文档" ? " selected" : "") + '>图片/文档</option>' +
+            '<option' + (f.fileLimit.type === "仅图片" ? " selected" : "") + '>仅图片</option>' +
+            '<option' + (f.fileLimit.type === "仅文档" ? " selected" : "") + '>仅文档</option></select></div>' +
+          '<div class="prop-row"><label class="label">最大大小</label><select class="select" onchange="setFileLimit(\'' + f.id + '\',\'maxSize\',this.value)">' +
+            ["5MB", "10MB", "20MB", "50MB"].map(function (s) { return '<option' + (f.fileLimit.maxSize === s ? " selected" : "") + ">" + s + "</option>"; }).join("") +
+            "</select></div>";
+      }
+
+      /* 条件联动 */
+      var conds = state.conds.filter(function (c) { return c.target === f.id; });
+      var condHtml =
+        '<div class="prop-group-title">高级 · 条件联动</div>' +
+        '<div class="prop-row">' +
+          (conds.length
+            ? conds.map(function (c) {
+                var dep = getField(c.dep);
+                return '<span class="chip">' + esc((dep ? dep.name : c.dep)) + " " + c.op + " " + esc(c.val) +
+                  '<svg class="x" onclick="removeCondFor(\'' + f.id + '\')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>';
+              }).join("")
+            : '<span class="muted" style="font-size:12.5px">未配置联动条件</span>') +
+        "</div>" +
+        '<button class="chip-add" onclick="openCond(\'' + f.id + '\')">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>' +
+          (conds.length ? "编辑联动" : "配置联动") + "</button>";
+
+      body.innerHTML =
+        '<div class="prop-group-title">基本</div>' +
+        '<div class="prop-row"><label class="label">字段标签</label><input class="input" value="' + esc(f.name) + '" onchange="setField(\'' + f.id + '\',\'name\',this.value)" /></div>' +
+        (f.type !== "select" && f.type !== "radio" && f.type !== "checkbox" && f.type !== "date" && f.type !== "datetime" && f.type !== "file" && f.type !== "user"
+          ? '<div class="prop-row"><label class="label">占位提示</label><input class="input" value="' + esc(f.placeholder || "") + '" onchange="setField(\'' + f.id + '\',\'placeholder\',this.value)" /></div>' : "") +
+        (f.type === "text" || f.type === "textarea" || f.type === "number"
+          ? '<div class="prop-row"><label class="label">默认值</label><input class="input" value="' + esc(f.default || "") + '" onchange="setField(\'' + f.id + '\',\'default\',this.value)" /></div>' : "") +
+        (f.type === "text" || f.type === "textarea" || f.type === "number" || f.type === "user"
+          ? '<div class="prop-row"><label class="label">帮助文本</label><textarea class="textarea" onchange="setField(\'' + f.id + '\',\'help\',this.value)">' + esc(f.help || "") + "</textarea></div>" : "") +
+        '<div class="prop-row prop-switch"><div><div class="ps-label">必填</div><div class="ps-hint">填写者必须填写此字段</div></div>' +
+          '<label class="switch"><input type="checkbox" ' + (f.required ? "checked" : "") + ' onchange="setField(\'' + f.id + '\',\'required\',this.checked)" /><span class="track"></span></label></div>' +
+        optRows +
+        val +
+        condHtml;
+    }
+
+    function setField(id, key, val) {
+      var f = getField(id);
+      if (!f) return;
+      if (key === "required") f.required = !!val;
+      else f[key] = val;
+      renderAll();
+    }
+    function setVal(id, key, val) {
+      var f = getField(id);
+      if (!f) return;
+      f.validation[key] = val;
+    }
+    function setFileLimit(id, key, val) {
+      var f = getField(id);
+      if (f) f.fileLimit[key] = val;
+    }
+    function editOption(id, i, val) {
+      var f = getField(id);
+      if (f && f.options) f.options[i] = val;
+      renderCanvas();
+    }
+    function addOption(id) {
+      var f = getField(id);
+      if (f) { f.options.push("新选项"); renderAll(); }
+    }
+    function removeOption(id, i) {
+      var f = getField(id);
+      if (f) { f.options.splice(i, 1); renderAll(); }
+    }
+
+    /* ================= 模式切换 ================= */
+    function setMode(m, btn) {
+      state.mode = m;
+      document.querySelectorAll("#modeSeg button").forEach(function (b) { b.classList.toggle("active", b === btn); });
+      document.getElementById("testBadge").classList.toggle("hide", m !== "test");
+      document.getElementById("editor").classList.toggle("test-mode", m === "test");
+      if (m === "test") toast("已切换交互测试模式（独立 Store，不影响模板）", "ok");
+      renderCanvas();
+    }
+
+    /* ================= 条件联动编辑器 ================= */
+    var condTarget = null;
+    function openCond(fid) {
+      condTarget = fid;
+      var f = getField(fid);
+      document.getElementById("condTarget").textContent = f ? f.name : fid;
+      var existing = state.conds.filter(function (c) { return c.target === fid; });
+      state.condLogic = existing.length ? existing[0].logic : "AND";
+      renderCondRows(existing);
+      document.querySelectorAll("#condLogic button").forEach(function (b) {
+        b.classList.toggle("active", b.textContent.indexOf(state.condLogic) > -1);
+      });
+      document.getElementById("condMask").classList.add("open");
+    }
+    function closeCond() {
+      document.getElementById("condMask").classList.remove("open");
+    }
+    function renderCondRows(list) {
+      var wrap = document.getElementById("condRows");
+      wrap.innerHTML = "";
+      var rows = list.length ? list : [{ dep: "", op: "等于", val: "" }];
+      var fieldOpts = allFieldOptions();
+      rows.forEach(function (c, i) {
+        var row = document.createElement("div");
+        row.className = "cond-row";
+        row.innerHTML =
+          '<select class="select" data-role="dep">' + fieldOpts + "</select>" +
+          '<select class="select" data-role="op" style="flex:0 0 110px">' +
+            OPERATORS.map(function (o) { return '<option' + (o === c.op ? " selected" : "") + ">" + o + "</option>"; }).join("") +
+          "</select>" +
+          '<input class="input" data-role="val" placeholder="比较值" value="' + esc(c.val || "") + '" />' +
+          '<button class="icon-btn danger" onclick="this.closest(\'.cond-row\').remove()">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' +
+          "</button>";
+        var depSel = row.querySelector('[data-role=dep]');
+        if (c.dep) depSel.value = c.dep;
+        if (!c.dep && c.target === condTarget) depSel.value = "";
+        wrap.appendChild(row);
+      });
+      if (!list.length) {
+        // 默认选择第一个可用依赖字段
+        var first = wrap.querySelector('[data-role=dep]');
+        if (first) first.selectedIndex = 0;
+      }
+    }
+    function addCondRow() {
+      renderCondRows([]);
+    }
+    function setCondLogic(l, btn) {
+      state.condLogic = l;
+      document.querySelectorAll("#condLogic button").forEach(function (b) { b.classList.toggle("active", b === btn); });
+    }
+    function allFieldOptions() {
+      var opts = '<option value="">选择依赖字段…</option>';
+      state.sections.forEach(function (s) {
+        s.fields.forEach(function (f) {
+          if (f.id === condTarget) return;
+          opts += '<option value="' + f.id + '">' + esc(f.name) + "</option>";
+        });
+      });
+      return opts;
+    }
+    function saveCond() {
+      var rows = [];
+      document.querySelectorAll("#condRows .cond-row").forEach(function (row) {
+        var dep = row.querySelector('[data-role=dep]').value;
+        var op = row.querySelector('[data-role=op]').value;
+        var val = row.querySelector('[data-role=val]').value.trim();
+        if (dep) rows.push({ dep: dep, op: op, val: val });
+      });
+      // 移除该目标已有条件，重新写入
+      state.conds = state.conds.filter(function (c) { return c.target !== condTarget; });
+      rows.forEach(function (r) { state.conds.push({ dep: r.dep, op: r.op, val: r.val, target: condTarget, logic: state.condLogic }); });
+      closeCond();
+      renderAll();
+      toast(rows.length ? "联动条件已保存" : "已清除联动条件", rows.length ? "ok" : "");
+    }
+    function removeCondFor(fid) {
+      state.conds = state.conds.filter(function (c) { return c.target !== fid; });
+      renderAll();
+      toast("已移除联动条件", "ok");
+    }
+
+    /* ================= 审批链 ================= */
+    var RULE_OPTIONS = { "组织架构": ["直属上级", "部门负责人", "总经理"], "指定角色": ["IT 负责人", "财务审批人", "HR 负责人"], "指定人员": ["王芳", "陈静", "周婷", "刘洋"] };
+
+    function renderChain() {
+      var wrap = document.getElementById("chain");
+      var html = "";
+      state.chain.forEach(function (n, i) {
+        html +=
+          '<div class="chain-node">' +
+            '<div class="cn-rail"><span class="cn-dot">' + (i + 1) + '</span><span class="cn-line"></span></div>' +
+            '<div class="chain-card">' +
+              '<div class="cc-head">' +
+                '<span class="cc-title">' + esc(n.name) + "</span>" +
+                '<span class="cc-tools">' +
+                  '<button class="icon-btn" title="上移" onclick="moveChain(\'' + n.id + '\',-1)">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>' +
+                  "</button>" +
+                  '<button class="icon-btn" title="下移" onclick="moveChain(\'' + n.id + '\',1)">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+                  "</button>" +
+                  '<button class="icon-btn danger" title="删除节点" onclick="removeChain(\'' + n.id + '\')">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>' +
+                  "</button>" +
+                "</span>" +
+              "</div>" +
+              '<div class="rule-select-row">' +
+                '<select class="select" onchange="changeChainRule(\'' + n.id + '\',this.value)">' +
+                  Object.keys(RULE_OPTIONS).map(function (k) { return '<option' + (n.rule === k ? " selected" : "") + ">" + k + "</option>"; }).join("") +
+                "</select>" +
+                '<select class="select" onchange="changeChainValue(\'' + n.id + '\',this.value)">' +
+                  RULE_OPTIONS[n.rule].map(function (v) { return '<option' + (n.ruleValue === v ? " selected" : "") + ">" + v + "</option>"; }).join("") +
+                "</select>" +
+              "</div>" +
+            "</div>" +
+          "</div>";
+      });
+      wrap.innerHTML = html +
+        '<button class="chain-add" onclick="addChain()">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>添加审批节点</button>' +
+        '<div class="xsmall" style="color:var(--text-3);margin-top:12px;line-height:1.7">审批人规则将在表单提交时动态解析（组织架构 / 指定角色 / 指定人员）。节点按顺序依次审批。</div>';
+    }
+    function moveChain(id, dir) {
+      var idx = state.chain.findIndex(function (n) { return n.id === id; });
+      var ni = idx + dir;
+      if (idx > -1 && ni >= 0 && ni < state.chain.length) {
+        var tmp = state.chain[idx]; state.chain[idx] = state.chain[ni]; state.chain[ni] = tmp;
+        renderChain();
+      }
+    }
+    function removeChain(id) {
+      if (state.chain.length <= 1) { toast("至少保留一个审批节点", "err"); return; }
+      state.chain = state.chain.filter(function (n) { return n.id !== id; });
+      renderChain();
+    }
+    function addChain() {
+      state.chain.push({ id: genId("c"), name: "新增审批节点", rule: "指定人员", ruleValue: "王芳" });
+      renderChain();
+      toast("已添加审批节点", "ok");
+    }
+    function changeChainRule(id, rule) {
+      var n = state.chain.find(function (x) { return x.id === id; });
+      n.rule = rule; n.ruleValue = RULE_OPTIONS[rule][0];
+      renderChain();
+    }
+    function changeChainValue(id, val) {
+      state.chain.find(function (x) { return x.id === id; }).ruleValue = val;
+    }
+
+    /* ================= 页签切换 ================= */
+    function switchSide(t, btn) {
+      document.querySelectorAll(".side-tab").forEach(function (b) { b.classList.toggle("active", b === btn); });
+      document.querySelectorAll(".side-pane").forEach(function (p) { p.classList.remove("active"); });
+      document.getElementById("pane-" + t).classList.add("active");
+      if (t === "props") renderProps();
+      if (t === "chain") renderChain();
+      if (t === "tree") renderTree();
+    }
+
+    /* ================= 保存 / 发布 / 签入 ================= */
+    function saveDraft() {
+      toast("草稿已保存（签出状态下自动保存）", "ok");
+    }
+    function publish() {
+      if (confirm("发布后所有用户将可使用该模板填写表单。\n\n发布后仍可在设计器中修改并重新发布，已提交的表单不受影响。\n\n确认发布「" + state.name + "」吗？")) {
+        toast("模板已发布 🎉", "ok");
+        setTimeout(function () { location.href = "designer-templates.html"; }, 900);
+      }
+    }
+    var leaving = false;
+    window.addEventListener("beforeunload", function (e) {
+      if (leaving) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
+    function checkinAndLeave() {
+      leaving = true;
+      toast("已签入，模板锁已释放", "ok");
+      setTimeout(function () { location.href = "designer-templates.html"; }, 700);
+    }
+    function closeCheckin() {
+      document.getElementById("checkinMask").classList.remove("open");
+    }
+    // 拦截返回按钮，弹出签入确认
+    document.querySelector(".editor-top a[href='designer-templates.html']").addEventListener("click", function (e) {
+      e.preventDefault();
+      document.getElementById("checkinMask").classList.add("open");
+    });
+
+    /* ================= 拖拽添加（组件 → 画布） ================= */
+    var canvas = document.getElementById("canvas");
+    var canvasInner = document.getElementById("canvasInner");
+    var dropHint = document.getElementById("dropHint");
+    canvas.addEventListener("dragover", function (e) {
+      if (e.dataTransfer.types.indexOf("text/plain") > -1 && e.dataTransfer.getData("text/plain").indexOf("field:") !== 0) {
+        e.preventDefault();
+        dropHint.classList.remove("hide");
+      }
+    });
+    canvas.addEventListener("dragleave", function (e) {
+      if (!canvas.contains(e.relatedTarget)) dropHint.classList.add("hide");
+    });
+    canvas.addEventListener("drop", function (e) {
+      e.preventDefault();
+      dropHint.classList.add("hide");
+      var type = e.dataTransfer.getData("text/plain");
+      if (type && type.indexOf("field:") !== 0) {
+        addComponent(type);
+      }
+    });
+
+    /* ================= 总渲染 ================= */
+    function renderAll() {
+      renderCanvas();
+      renderTree();
+      if (document.getElementById("pane-props").classList.contains("active")) renderProps();
+      if (document.getElementById("pane-chain").classList.contains("active")) renderChain();
+    }
+
+    renderCompPanel();
+    renderAll();
+  </script>
+</body>
+</html>
