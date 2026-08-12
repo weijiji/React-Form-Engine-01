@@ -6,9 +6,13 @@ import { AdminLayout } from "../layouts/AdminLayout";
 import { UserLayout } from "../layouts/UserLayout";
 import { HomePage } from "../pages/HomePage";
 import { TemplatesPage } from "../pages/admin/TemplatesPage";
+import { PreviewPage } from "../pages/PreviewPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
 export const router = createBrowserRouter([
+  // ── Temporary demo route (work order 03) ──
+  { path: "/preview", element: <PreviewPage /> },
+
   // ── Admin (Designer) routes ──
   {
     path: "/admin",
