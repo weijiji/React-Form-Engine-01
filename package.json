@@ -13,9 +13,12 @@
     "db:migrate": "cd server && npx knex migrate:latest",
     "db:migrate:rollback": "cd server && npx knex migrate:rollback",
     "db:seed": "cd server && npx knex seed:run",
-    "typecheck": "npm run typecheck:server && npm run typecheck:client",
+    "typecheck": "npm run typecheck:shared && npm run typecheck:server && npm run typecheck:client",
+    "typecheck:shared": "cd shared && npx tsc --noEmit",
     "typecheck:server": "cd server && npx tsc --noEmit",
-    "typecheck:client": "cd client && npx tsc --noEmit"
+    "typecheck:client": "cd client && npx tsc --noEmit",
+    "test": "npm run test:shared",
+    "test:shared": "cd shared && npx vitest run"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
