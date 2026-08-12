@@ -1,0 +1,23 @@
+{
+  "name": "react-form-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dynamic Form Engine — configuration-driven form building and approval workflows",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "db:migrate": "cd server && npx knex migrate:latest",
+    "db:migrate:rollback": "cd server && npx knex migrate:rollback",
+    "db:seed": "cd server && npx knex seed:run",
+    "typecheck": "npm run typecheck:server && npm run typecheck:client",
+    "typecheck:server": "cd server && npx tsc --noEmit",
+    "typecheck:client": "cd client && npx tsc --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,14 @@
+# Development image with hot-reload
+FROM node:20-alpine
+WORKDIR /app
+
+# Install dependencies first for caching
+COPY package*.json ./
+RUN npm install
+
+# Copy the rest (src is mounted as volume in docker-compose)
+COPY tsconfig.json ./
+COPY knexfile.ts ./
+
+EXPOSE 3001
+CMD ["npx", "nodemon", "--exec", "npx ts-node src/index.ts", "--watch", "src"]

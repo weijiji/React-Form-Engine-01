@@ -1,1 +1,38 @@
-.specstory
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+client/dist/
+server/dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+docker/postgres-data/
+docker/volumes/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo

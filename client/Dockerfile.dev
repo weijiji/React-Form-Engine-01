@@ -1,0 +1,14 @@
+# Development image with Vite HMR
+FROM node:20-alpine
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+# Source is mounted as a volume in docker-compose
+COPY tsconfig.json ./
+COPY vite.config.ts ./
+COPY index.html ./
+
+EXPOSE 5173
+CMD ["npx", "vite", "--host", "0.0.0.0"]
