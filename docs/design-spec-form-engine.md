@@ -846,32 +846,64 @@ Event:    approval_update → { nodeOrder, status, approverName, comment }
 
 ### 5.1 路由结构
 
-```
-设计器端 (/admin)
-├── /admin/templates              # 模板列表
-├── /admin/templates/new          # 新建模板 → 跳转设计器
-├── /admin/templates/:id/design   # 设计器（签名出）
-├── /admin/templates/:id/preview  # 只读预览
-└── /admin/import                 # 导入配置
+前端采用 **5 角色门户 + 公共页面**（ADR-0009），权威结构见 `sitemap-form-engine.md`：
 
-填写器端 (/)
-├── /forms                        # 表单中心（可用表单列表）
-├── /forms/:templateId/fill       # 填写表单（新建实例）
-├── /drafts                       # 我的草稿
-├── /drafts/:id/edit              # 继续填写草稿
-├── /submissions                  # 我的提交
-├── /submissions/:id              # 查看提交详情（表单 + 审批链）
-├── /approvals                    # 待审批列表
-├── /approvals/:id                # 审批详情 → 审批操作
-├── /data                         # 数据管理
-├── /data/:instanceId             # 数据详情
-├── /stats                        # 统计看板
-├── /notifications                # 通知中心
-└── /admin/roles                  # 角色管理（管理员）
-
-注：设计器端和填写器端可部署为同一个 SPA 的两个路由区域，
-    或独立部署为两个 SPA。MVP 建议合并部署，按角色显示导航。
 ```
+/                                    # 根路径 → 按角色重定向到对应门户
+                                     #（MVP 无鉴权时默认 /designer，issue 09 接入鉴权后按角色）
+
+/login  /403  /404  /notifications   # 公共页面（不使用共享 Shell）
+
+/designer                            模板设计者门户（桌面端）
+├── /designer/templates              我的模板
+├── /designer/templates/:id          模板详情（只读）
+├── /designer/create                 创建表单（入口选择）
+│   ├── /designer/create/nl          NL 对话创建
+│   └── /designer/create/blank       空白模板创建
+├── /designer/edit/:templateId       设计器（三栏工作台）⭐
+├── /designer/drafts                 草稿模板
+└── /designer/export/:templateId     导出配置
+
+/filler                              表单填写者门户（PC + 移动端）
+├── /filler/forms                    可用表单
+├── /filler/forms/:formId            填写表单 ⭐
+├── /filler/forms/:formId/track      提交追踪
+├── /filler/forms/:formId/edit       退回修改后重新编辑
+├── /filler/drafts                   我的草稿
+├── /filler/submissions              我的提交
+├── /filler/submissions/:id          提交详情
+└── /filler/submissions/:id/resubmit 重新提交
+
+/approver                            审批人门户（移动端优先）
+├── /approver/pending                待审批 ⭐
+├── /approver/pending/:taskId        审批详情
+├── /approver/history                已审批
+└── /approver/history/:taskId        历史审批详情
+
+/admin                               系统管理员门户（桌面端）
+├── /admin/users                     用户管理
+├── /admin/users/:userId             用户详情
+├── /admin/users/:userId/roles       分配角色
+├── /admin/roles                     角色管理
+├── /admin/roles/create              创建角色
+├── /admin/roles/:roleId             编辑角色
+├── /admin/roles/:roleId/delete      删除角色
+├── /admin/data                      数据管理
+├── /admin/data/:submissionId        数据详情
+├── /admin/data/export               导出 Excel
+├── /admin/statistics                统计看板
+├── /admin/templates                 模板管理
+└── /admin/templates/:id/force-checkin 强制签入
+
+/ops                                 运维人员门户（桌面端）
+├── /ops/import                      导入配置 ⭐
+├── /ops/migrations                  迁移记录
+├── /ops/migrations/:id              迁移详情
+├── /ops/templates                   PROD 模板查看
+└── /ops/templates/:id               模板详情
+```
+
+> **语义翻转（vs 旧版 2 门户）**：`/admin` 现在是**系统管理员**门户，设计者迁移到 `/designer`；填写者从 `/` 迁移到 `/filler`。5 个门户复用同一 `Shell`，仅导航项不同（ADR-0008）。
 
 ### 5.2 组件树（关键页面）
 
