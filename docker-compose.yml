@@ -9,8 +9,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-form_engine}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-form_engine_pass}
       POSTGRES_DB: ${POSTGRES_DB:-form_engine_db}
+    # Host port 5433 → container 5432. 5432 is occupied by the native Windows
+    # PostgreSQL 18 service on this dev machine.
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
