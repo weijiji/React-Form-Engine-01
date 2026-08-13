@@ -38,4 +38,4 @@ coverage/
 *.tsbuildinfo
 
 # Others
-.specstory/*.json
+.specstory/

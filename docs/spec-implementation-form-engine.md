@@ -185,6 +185,7 @@ React Testing Library + 模拟 FormEngine：
 ```
 VALIDATION_ERROR          → 422  字段值校验失败
 NOT_FOUND                 → 404  资源不存在
+FORBIDDEN                 → 403  无权限操作（非资源所有者）
 VERSION_CONFLICT          → 409  乐观锁冲突
 IDEMPOTENCY_CONFLICT      → 409  幂等键重复（不同请求体）
 TEMPLATE_LOCKED           → 409  模板已被他人签出

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   validateAll,
 } from "form-engine-core";
@@ -52,6 +52,8 @@ export interface FormProps {
   submitLabel?: string;
   /** Read-only preview — disables every field and hides the submit button. */
   readOnly?: boolean;
+  /** Fired on every value change (not on mount) — used by the filler's autosave. */
+  onChange?: (values: FormValues) => void;
 }
 
 /**
@@ -72,9 +74,22 @@ export function Form({
   orgDataSource = null,
   submitLabel = "提交",
   readOnly = false,
+  onChange,
 }: FormProps) {
   const { state, dispatch, setSubmitting } = useForm(schema, initialValues);
   const [attempted, setAttempted] = useState(false);
+  const firstRenderRef = useRef(true);
+
+  // Emit value changes for autosave. `state.values` only changes identity on a
+  // real SET_VALUE (the reducer preserves the reference for BLUR/VALIDATE_ALL),
+  // so this fires exactly when the user edits a field — never on mount.
+  useEffect(() => {
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false;
+      return;
+    }
+    onChange?.(state.values);
+  }, [state.values, onChange]);
 
   const hasErrors = useMemo(() => {
     const errors = validateAll(schema, state.values);

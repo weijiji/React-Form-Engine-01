@@ -9,6 +9,9 @@ import { errorHandlerMiddleware } from "./middleware/errorHandler";
 import healthRouter from "./routes/health";
 import meRouter from "./routes/me";
 import templatesRouter from "./routes/templates";
+import formsRouter from "./routes/forms";
+import instancesRouter from "./routes/instances";
+import draftsRouter from "./routes/drafts";
 
 /**
  * Create and configure the Express application.
@@ -42,6 +45,9 @@ export function createApp(): express.Application {
   app.use(healthRouter);
   app.use(meRouter);
   app.use("/api/v1/templates", templatesRouter);
+  app.use("/api/v1/forms", formsRouter);
+  app.use("/api/v1/instances", instancesRouter);
+  app.use("/api/v1/drafts", draftsRouter);
 
   // ── 404 catch-all ─────────────────────────────────────────
   app.use((_req, res) => {

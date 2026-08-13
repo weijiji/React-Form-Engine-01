@@ -27,6 +27,10 @@ import { CreateTemplatePage } from "../pages/designer/CreateTemplatePage";
 import { DesignerPage } from "../pages/designer/DesignerPage";
 import { PreviewPage } from "../pages/PreviewPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import { FormCenter } from "../pages/filler/FormCenter";
+import { FormFillPage } from "../pages/filler/FormFillPage";
+import { MyDrafts } from "../pages/filler/MyDrafts";
+import { MySubmissions } from "../pages/filler/MySubmissions";
 
 // Per-portal nav configuration (ADR-0008 / ADR-0009). One shared Shell, five
 // portals, only the nav differs. Nav labels and items follow sitemap-form-engine.md;
@@ -189,17 +193,22 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/filler/forms" replace /> },
       {
         path: "forms",
-        element: <PlaceholderPage />,
+        element: <FormCenter />,
         handle: { title: "表单中心", crumb: "表单填写者门户" } satisfies ShellHandle,
       },
       {
+        path: "instances/:id",
+        element: <FormFillPage />,
+        handle: { title: "填写表单", crumb: "表单填写者门户" } satisfies ShellHandle,
+      },
+      {
         path: "drafts",
-        element: <PlaceholderPage />,
+        element: <MyDrafts />,
         handle: { title: "我的草稿", crumb: "表单填写者门户" } satisfies ShellHandle,
       },
       {
         path: "submissions",
-        element: <PlaceholderPage />,
+        element: <MySubmissions />,
         handle: { title: "我的提交", crumb: "表单填写者门户" } satisfies ShellHandle,
       },
       { path: "*", element: <NotFoundPage /> },

@@ -14,7 +14,7 @@ Monorepo with three packages plus docs. There is **no npm workspaces config** �
 
 - **`client/`** — React frontend. Vite dev server on port 5173, proxies `/api` → `localhost:3001`.
 - **`server/`** — Express API server (port 3001). Knex migrations/seeds, Pino logging.
-- **`shared/`** — package `form-engine-core`: the pure-logic engine. **Zero runtime dependencies.** Its `package.json` `exports` points at `./src/index.ts` (TypeScript source, not compiled output). It is currently **only type-checked and unit-tested standalone** — client/server do not yet import it.
+- **`shared/`** — package `form-engine-core`: the pure-logic engine. **Zero runtime dependencies.** It compiles to `dist/` (`npm run build:shared`); its `package.json` `exports` points at `./dist/index.js`. The **client** consumes the TypeScript source directly via a Vite alias to `../shared/src/index.ts`, while the **server** imports the compiled `dist` through a `file:../shared` dependency.
 - **`docs/`** — product/design/UX specs, `design-system-form-engine.md` (design tokens + shared shell, ADR-0008), `adr/` (9 ADRs), and `spec-implementation-form-engine.md` (the implementation spec, contains the canonical test seams and error-code table).
 - **`.scratch/form-engine-mvp/issues/`** — the 13 work orders (工单) that drive implementation. `13 个工单：执行顺序.md` maps their dependency graph and execution order.
 - **`CONTEXT.md`** — the domain glossary (Chinese). The semantic authority for all terms: `FormTemplate`, `FormInstance`, `ApprovalRecord`, `Draft`, `OrgDataSource`, `schemaVersion`, etc. Read it before introducing or renaming domain concepts.
@@ -28,8 +28,8 @@ All root scripts delegate via `cd <pkg> && …`. Run from the repo root unless n
 npm run dev            # concurrently: server (nodemon+ts-node) + client (vite)
 
 # Build / typecheck
-npm run build          # build server (tsc) then client (tsc -b && vite build)
-npm run typecheck      # typecheck shared + server + client (tsc --noEmit each)
+npm run build          # build shared (tsc) → server (tsc) → client (tsc -b && vite build)
+npm run typecheck      # build shared, then typecheck shared + server + client (tsc --noEmit)
 
 # Tests (Vitest, shared package only)
 npm test               # runs shared's vitest suite once

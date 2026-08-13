@@ -1,14 +1,20 @@
-# Development image with hot-reload
+# Development image with hot-reload.
+# Build context is the repo ROOT (see docker-compose.yml) so the shared engine can
+# be installed via the server's `file:../shared` dependency and built to CommonJS.
 FROM node:20-alpine
 WORKDIR /app
 
-# Install dependencies first for caching
-COPY package*.json ./
-RUN npm install
+# Build the shared pure-logic engine first (resolved by `file:../shared` → /shared).
+COPY shared/ /shared/
+RUN cd /shared && npm install --no-audit --no-fund && npm run build
 
-# Copy the rest (src is mounted as volume in docker-compose)
-COPY tsconfig.json ./
-COPY knexfile.ts ./
+# Install server dependencies (creates node_modules/form-engine-core -> /shared).
+COPY server/package*.json ./
+RUN npm install --no-audit --no-fund
+
+# Copy the rest (src is mounted as volume in docker-compose).
+COPY server/tsconfig.json ./
+COPY server/knexfile.ts ./
 
 EXPOSE 3001
-CMD ["npx", "nodemon", "--exec", "npx ts-node src/index.ts", "--watch", "src"]
+CMD ["npx", "nodemon", "--exec", "npx", "ts-node", "src/index.ts", "--watch", "src"]

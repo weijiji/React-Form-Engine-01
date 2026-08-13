@@ -201,7 +201,6 @@ export async function seed(knex: Knex): Promise<void> {
             helpText: "",
             validation: {
               rules: [
-                { type: "required", message: "请输入申领人姓名" },
                 { type: "minLength", value: 2, message: "姓名至少2个字符" },
                 { type: "maxLength", value: 50, message: "姓名不超过50个字符" },
               ],
@@ -222,7 +221,7 @@ export async function seed(knex: Knex): Promise<void> {
               { label: "其他", value: "other" },
             ],
             validation: {
-              rules: [{ type: "required", message: "请选择设备类型" }],
+              rules: [],
             },
             visibilityCondition: null,
           },
@@ -235,7 +234,6 @@ export async function seed(knex: Knex): Promise<void> {
             defaultValue: 1,
             validation: {
               rules: [
-                { type: "required", message: "请输入申领数量" },
                 { type: "min", value: 1, message: "数量不能少于1" },
                 { type: "max", value: 100, message: "数量不能超过100" },
               ],
@@ -261,7 +259,6 @@ export async function seed(knex: Knex): Promise<void> {
             defaultValue: "",
             validation: {
               rules: [
-                { type: "required", message: "请填写申领理由" },
                 { type: "minLength", value: 10, message: "申领理由至少10个字符" },
                 { type: "maxLength", value: 500, message: "申领理由不超过500个字符" },
               ],
@@ -281,7 +278,7 @@ export async function seed(knex: Knex): Promise<void> {
             ],
             defaultValue: "normal",
             validation: {
-              rules: [{ type: "required", message: "请选择紧急程度" }],
+              rules: [],
             },
             visibilityCondition: null,
           },
@@ -294,15 +291,7 @@ export async function seed(knex: Knex): Promise<void> {
         collapsible: true,
         defaultCollapsed: true,
         visibilityCondition: {
-          type: "AndCondition",
-          conditions: [
-            {
-              type: "LeafCondition",
-              fieldId: "fld-002",
-              operator: "in",
-              value: ["laptop", "desktop"],
-            },
-          ],
+          conditions: [{ fieldId: "fld-002", operator: "in", value: ["laptop", "desktop"] }],
         },
         fields: [
           {
@@ -348,10 +337,10 @@ export async function seed(knex: Knex): Promise<void> {
       {
         id: "node-002",
         order: 2,
-        label: "IT部门审批",
+        label: "系统管理员审批",
         approverRule: {
-          type: "role",
-          roleId: "role-it-dept",
+          type: "specific",
+          userId: admin.id,
         },
       },
     ],

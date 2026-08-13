@@ -24,8 +24,8 @@ services:
 
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: server/Dockerfile.dev
     container_name: form-engine-server
     restart: unless-stopped
     ports:

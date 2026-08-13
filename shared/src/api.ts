@@ -154,7 +154,7 @@ export interface paths {
         put?: never;
         /**
          * Check in a template
-         * @description Releases the edit lock. Only the holder (or an admin) may check in.
+         * @description Releases the edit lock. Only the current holder may check in (admin override lands with auth, issue 09).
          */
         post: operations["checkinTemplate"];
         delete?: never;
@@ -204,6 +204,225 @@ export interface paths {
          */
         post: operations["forceUnlockTemplate"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List published forms
+         * @description Lists the forms a filler can start — only *published* templates. Supports
+         *     category + search filters and offset pagination.
+         */
+        get: operations["listForms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a draft instance
+         * @description Starts a new form for a published template. The instance begins in `draft` status.
+         */
+        post: operations["createInstance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instances/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my instances
+         * @description Drafts and submissions owned by the acting user, newest first. Optional
+         *     comma-separated status filter.
+         */
+        get: operations["listMyInstances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instances/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get instance detail
+         * @description Returns the instance plus its approval records and the live template.
+         *     Drafts render against `template.schema`; submitted instances carry a frozen
+         *     `template_snapshot`.
+         */
+        get: operations["getInstance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instances/{id}/values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Autosave field values
+         * @description Persists field values on a draft instance without bumping the optimistic
+         *     lock version. Rejects non-draft instances.
+         */
+        put: operations["saveInstanceValues"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instances/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit an instance
+         * @description Validates the field values against the current template schema and
+         *     atomically submits (ADR-0001): the instance update, frozen snapshot, and
+         *     approval-record inserts commit together; approver resolution runs inside
+         *     that transaction. Notifications persist async after commit.
+         */
+        post: operations["submitInstance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instances/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a submitted instance
+         * @description Reverts a `submitted`/`in_approval` instance back to draft. Optimistic
+         *     locking on `version` (409 VERSION_CONFLICT); rejected if any approver has
+         *     already acted (400 APPROVAL_NOT_PENDING).
+         */
+        post: operations["withdrawInstance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my drafts
+         * @description Offset-paginated drafts owned by the acting user, newest first.
+         */
+        get: operations["listDrafts"];
+        put?: never;
+        /**
+         * Create a draft
+         * @description Saves a lightweight draft for a published template.
+         */
+        post: operations["createDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Draft UUID. */
+                id: components["parameters"]["DraftId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Resume a draft
+         * @description Returns the draft with best-effort fieldId migration against the current
+         *     template schema (ADR-0004): still-valid fields are kept, removed fields
+         *     move to `_orphaned`, and `version_mismatch` flags when anything moved.
+         */
+        get: operations["getDraft"];
+        /**
+         * Update a draft
+         * @description Replaces the draft's field values.
+         */
+        put: operations["updateDraft"];
+        post?: never;
+        /**
+         * Discard a draft
+         * @description Deletes the draft. Returns 204 on success.
+         */
+        delete: operations["deleteDraft"];
         options?: never;
         head?: never;
         patch?: never;
@@ -388,6 +607,125 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        /** @description A reduced template view embedded in instance/draft detail responses. */
+        TemplateSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            schema: {
+                [key: string]: unknown;
+            };
+            approval_chain?: Record<string, never> | null;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description A published form in the form center list. */
+        FormSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description?: string | null;
+            category?: string | null;
+            schema: {
+                [key: string]: unknown;
+            };
+            approval_chain?: Record<string, never> | null;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        FormListResponse: {
+            items: components["schemas"]["FormSummary"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        /** @description An approval record with the approver's display name resolved. */
+        ApprovalRecordSummary: {
+            /** Format: uuid */
+            id: string;
+            node_id: string;
+            node_order: number;
+            /** Format: uuid */
+            approver_id?: string | null;
+            approver_name?: string | null;
+            /** @enum {string} */
+            action: "pending" | "approved" | "rejected" | "returned" | "transferred";
+            comment?: string | null;
+            /** Format: date-time */
+            acted_at?: string | null;
+        };
+        /** @description A FormInstance enriched with approval progress and the live template. */
+        InstanceDetail: components["schemas"]["FormInstance"] & {
+            approval_records: components["schemas"]["ApprovalRecordSummary"][];
+            template: components["schemas"]["TemplateSummary"];
+        };
+        /** @description A FormInstance with the template display name resolved. */
+        InstanceListItem: components["schemas"]["FormInstance"] & {
+            template_name?: string | null;
+        };
+        InstanceListResponse: {
+            items: components["schemas"]["InstanceListItem"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        CreateInstanceRequest: {
+            /** Format: uuid */
+            template_id: string;
+            /** @description Optional initial field values. */
+            field_values?: {
+                [key: string]: unknown;
+            };
+        };
+        SaveValuesRequest: {
+            field_values: {
+                [key: string]: unknown;
+            };
+        };
+        SubmitRequest: {
+            /** @description Final values to submit; defaults to the last autosaved values. */
+            field_values?: {
+                [key: string]: unknown;
+            };
+        };
+        WithdrawRequest: {
+            /** @description Expected optimistic-lock version (required); a mismatch yields 409 VERSION_CONFLICT. */
+            version: number;
+        };
+        /** @description A draft after version-mismatch migration, with the live template attached. */
+        DraftDetail: components["schemas"]["Draft"] & {
+            /** @description Values whose fieldId no longer exists in the current schema. */
+            _orphaned?: {
+                [key: string]: unknown;
+            };
+            /** @description True when at least one value was orphaned by migration. */
+            version_mismatch: boolean;
+            template: components["schemas"]["TemplateSummary"];
+        };
+        /** @description A draft with the template display name resolved. */
+        DraftListItem: components["schemas"]["Draft"] & {
+            template_name?: string | null;
+        };
+        DraftListResponse: {
+            items: components["schemas"]["DraftListItem"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        CreateDraftRequest: {
+            /** Format: uuid */
+            template_id: string;
+            field_values?: {
+                [key: string]: unknown;
+            };
+        };
+        UpdateDraftRequest: {
+            field_values: {
+                [key: string]: unknown;
+            };
+        };
     };
     responses: never;
     parameters: {
@@ -399,6 +737,10 @@ export interface components {
         CsrfToken: string;
         /** @description Form template UUID. */
         TemplateId: string;
+        /** @description Form instance UUID. */
+        InstanceId: string;
+        /** @description Draft UUID. */
+        DraftId: string;
     };
     requestBodies: never;
     headers: never;
@@ -737,6 +1079,474 @@ export interface operations {
                 };
             };
             /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listForms: {
+        parameters: {
+            query?: {
+                category?: string;
+                /** @description Case-insensitive substring match on form name. */
+                search?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of published forms */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormListResponse"];
+                };
+            };
+        };
+    };
+    createInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInstanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft instance created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description Template not published */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listMyInstances: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated status filter, e.g. `draft,submitted`. */
+                status?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of the user's instances */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceListResponse"];
+                };
+            };
+        };
+    };
+    getInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Instance found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description Instance not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    saveInstanceValues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveValuesRequest"];
+            };
+        };
+        responses: {
+            /** @description Values saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormInstance"];
+                };
+            };
+            /** @description Instance is not in draft status */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not the owner of the instance */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Instance not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    submitInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Submitted (status submitted, or approved when no approvers) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description Not a draft/withdrawn instance or template not published */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not the owner of the instance */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Already submitted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Field validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Approver resolution failed */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    withdrawInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form instance UUID. */
+                id: components["parameters"]["InstanceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WithdrawRequest"];
+            };
+        };
+        responses: {
+            /** @description Withdrawn (back to draft) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description Not a withdrawable status, or an approver already acted */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not the owner of the instance */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Optimistic-lock version conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDrafts: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of drafts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftListResponse"];
+                };
+            };
+        };
+    };
+    createDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Template not published */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Draft UUID. */
+                id: components["parameters"]["DraftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft (migrated) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftDetail"];
+                };
+            };
+            /** @description Draft not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Draft UUID. */
+                id: components["parameters"]["DraftId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Draft not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Draft UUID. */
+                id: components["parameters"]["DraftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Draft not found */
             404: {
                 headers: {
                     [name: string]: unknown;

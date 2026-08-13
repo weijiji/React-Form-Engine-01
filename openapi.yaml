@@ -21,6 +21,12 @@ tags:
     description: Operational endpoints (health, diagnostics)
   - name: templates
     description: Form template CRUD, checkout/checkin locking, and publishing
+  - name: forms
+    description: Form center — published forms a filler can start
+  - name: instances
+    description: Form instance lifecycle — create, autosave, submit, withdraw
+  - name: drafts
+    description: Lightweight unsaved drafts with template version-mismatch migration
 
 paths:
   /api/v1/health:
@@ -284,6 +290,396 @@ paths:
                 $ref: "#/components/schemas/FormTemplate"
         "404":
           description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/forms:
+    get:
+      tags: [forms]
+      summary: List published forms
+      description: |
+        Lists the forms a filler can start — only *published* templates. Supports
+        category + search filters and offset pagination.
+      operationId: listForms
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match on form name.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of published forms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormListResponse"
+
+  /api/v1/instances:
+    post:
+      tags: [instances]
+      summary: Create a draft instance
+      description: Starts a new form for a published template. The instance begins in `draft` status.
+      operationId: createInstance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInstanceRequest"
+      responses:
+        "201":
+          description: Draft instance created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceDetail"
+        "400":
+          description: Template not published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/instances/my:
+    get:
+      tags: [instances]
+      summary: List my instances
+      description: |
+        Drafts and submissions owned by the acting user, newest first. Optional
+        comma-separated status filter.
+      operationId: listMyInstances
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+          description: Comma-separated status filter, e.g. `draft,submitted`.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of the user's instances
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceListResponse"
+
+  /api/v1/instances/{id}:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    get:
+      tags: [instances]
+      summary: Get instance detail
+      description: |
+        Returns the instance plus its approval records and the live template.
+        Drafts render against `template.schema`; submitted instances carry a frozen
+        `template_snapshot`.
+      operationId: getInstance
+      responses:
+        "200":
+          description: Instance found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceDetail"
+        "404":
+          description: Instance not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/instances/{id}/values:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    put:
+      tags: [instances]
+      summary: Autosave field values
+      description: |
+        Persists field values on a draft instance without bumping the optimistic
+        lock version. Rejects non-draft instances.
+      operationId: saveInstanceValues
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveValuesRequest"
+      responses:
+        "200":
+          description: Values saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormInstance"
+        "400":
+          description: Instance is not in draft status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not the owner of the instance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Instance not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/instances/{id}/submit:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [instances]
+      summary: Submit an instance
+      description: |
+        Validates the field values against the current template schema and
+        atomically submits (ADR-0001): the instance update, frozen snapshot, and
+        approval-record inserts commit together; approver resolution runs inside
+        that transaction. Notifications persist async after commit.
+      operationId: submitInstance
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitRequest"
+      responses:
+        "200":
+          description: Submitted (status submitted, or approved when no approvers)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceDetail"
+        "400":
+          description: Not a draft/withdrawn instance or template not published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not the owner of the instance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Already submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Field validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Approver resolution failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/instances/{id}/withdraw:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [instances]
+      summary: Withdraw a submitted instance
+      description: |
+        Reverts a `submitted`/`in_approval` instance back to draft. Optimistic
+        locking on `version` (409 VERSION_CONFLICT); rejected if any approver has
+        already acted (400 APPROVAL_NOT_PENDING).
+      operationId: withdrawInstance
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WithdrawRequest"
+      responses:
+        "200":
+          description: Withdrawn (back to draft)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceDetail"
+        "400":
+          description: Not a withdrawable status, or an approver already acted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not the owner of the instance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Optimistic-lock version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/drafts:
+    get:
+      tags: [drafts]
+      summary: List my drafts
+      description: Offset-paginated drafts owned by the acting user, newest first.
+      operationId: listDrafts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of drafts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftListResponse"
+    post:
+      tags: [drafts]
+      summary: Create a draft
+      description: Saves a lightweight draft for a published template.
+      operationId: createDraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDraftRequest"
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Draft"
+        "400":
+          description: Template not published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/drafts/{id}:
+    parameters:
+      - $ref: "#/components/parameters/DraftId"
+    get:
+      tags: [drafts]
+      summary: Resume a draft
+      description: |
+        Returns the draft with best-effort fieldId migration against the current
+        template schema (ADR-0004): still-valid fields are kept, removed fields
+        move to `_orphaned`, and `version_mismatch` flags when anything moved.
+      operationId: getDraft
+      responses:
+        "200":
+          description: Draft (migrated)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftDetail"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    put:
+      tags: [drafts]
+      summary: Update a draft
+      description: Replaces the draft's field values.
+      operationId: updateDraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDraftRequest"
+      responses:
+        "200":
+          description: Draft updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Draft"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      tags: [drafts]
+      summary: Discard a draft
+      description: Deletes the draft. Returns 204 on success.
+      operationId: deleteDraft
+      responses:
+        "204":
+          description: Draft deleted
+        "404":
+          description: Draft not found
           content:
             application/json:
               schema:
@@ -574,6 +970,230 @@ components:
           type: string
           format: date-time
 
+    TemplateSummary:
+      type: object
+      description: A reduced template view embedded in instance/draft detail responses.
+      required: [id, name, status, schema, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, archived]
+        schema:
+          type: object
+          additionalProperties: true
+        approval_chain:
+          type: [object, "null"]
+        updated_at:
+          type: string
+          format: date-time
+
+    FormSummary:
+      type: object
+      description: A published form in the form center list.
+      required: [id, name, schema, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        category:
+          type: [string, "null"]
+        schema:
+          type: object
+          additionalProperties: true
+        approval_chain:
+          type: [object, "null"]
+        updated_at:
+          type: string
+          format: date-time
+
+    FormListResponse:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormSummary"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    ApprovalRecordSummary:
+      type: object
+      description: An approval record with the approver's display name resolved.
+      required: [id, node_id, node_order, action]
+      properties:
+        id:
+          type: string
+          format: uuid
+        node_id:
+          type: string
+        node_order:
+          type: integer
+        approver_id:
+          type: [string, "null"]
+          format: uuid
+        approver_name:
+          type: [string, "null"]
+        action:
+          type: string
+          enum: [pending, approved, rejected, returned, transferred]
+        comment:
+          type: [string, "null"]
+        acted_at:
+          type: [string, "null"]
+          format: date-time
+
+    InstanceDetail:
+      type: object
+      description: A FormInstance enriched with approval progress and the live template.
+      allOf:
+        - $ref: "#/components/schemas/FormInstance"
+        - type: object
+          required: [approval_records, template]
+          properties:
+            approval_records:
+              type: array
+              items:
+                $ref: "#/components/schemas/ApprovalRecordSummary"
+            template:
+              $ref: "#/components/schemas/TemplateSummary"
+
+    InstanceListItem:
+      type: object
+      description: A FormInstance with the template display name resolved.
+      allOf:
+        - $ref: "#/components/schemas/FormInstance"
+        - type: object
+          properties:
+            template_name:
+              type: [string, "null"]
+
+    InstanceListResponse:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InstanceListItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    CreateInstanceRequest:
+      type: object
+      required: [template_id]
+      properties:
+        template_id:
+          type: string
+          format: uuid
+        field_values:
+          type: object
+          additionalProperties: true
+          description: Optional initial field values.
+
+    SaveValuesRequest:
+      type: object
+      required: [field_values]
+      properties:
+        field_values:
+          type: object
+          additionalProperties: true
+
+    SubmitRequest:
+      type: object
+      properties:
+        field_values:
+          type: object
+          additionalProperties: true
+          description: Final values to submit; defaults to the last autosaved values.
+
+    WithdrawRequest:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: integer
+          description: Expected optimistic-lock version (required); a mismatch yields 409 VERSION_CONFLICT.
+
+    DraftDetail:
+      type: object
+      description: A draft after version-mismatch migration, with the live template attached.
+      allOf:
+        - $ref: "#/components/schemas/Draft"
+        - type: object
+          required: [field_values, version_mismatch, template]
+          properties:
+            _orphaned:
+              type: object
+              additionalProperties: true
+              description: Values whose fieldId no longer exists in the current schema.
+            version_mismatch:
+              type: boolean
+              description: True when at least one value was orphaned by migration.
+            template:
+              $ref: "#/components/schemas/TemplateSummary"
+
+    DraftListItem:
+      type: object
+      description: A draft with the template display name resolved.
+      allOf:
+        - $ref: "#/components/schemas/Draft"
+        - type: object
+          properties:
+            template_name:
+              type: [string, "null"]
+
+    DraftListResponse:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DraftListItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    CreateDraftRequest:
+      type: object
+      required: [template_id]
+      properties:
+        template_id:
+          type: string
+          format: uuid
+        field_values:
+          type: object
+          additionalProperties: true
+
+    UpdateDraftRequest:
+      type: object
+      required: [field_values]
+      properties:
+        field_values:
+          type: object
+          additionalProperties: true
+
   parameters:
     TraceId:
       name: X-Trace-Id
@@ -598,6 +1218,22 @@ components:
       in: path
       required: true
       description: Form template UUID.
+      schema:
+        type: string
+        format: uuid
+    InstanceId:
+      name: id
+      in: path
+      required: true
+      description: Form instance UUID.
+      schema:
+        type: string
+        format: uuid
+    DraftId:
+      name: id
+      in: path
+      required: true
+      description: Draft UUID.
       schema:
         type: string
         format: uuid

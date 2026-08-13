@@ -94,6 +94,11 @@ beforeEach(() => {
       if (url.includes("/templates")) {
         return jsonResponse({ items: [], total: 0, page: 1, pageSize: 50 });
       }
+      // Filler pages (work order 05) fetch these on mount; empty lists keep the
+      // portal-nav tests independent of the filler's own data.
+      if (url.includes("/forms") || url.includes("/instances") || url.includes("/drafts")) {
+        return jsonResponse({ items: [], total: 0, page: 1, pageSize: 100 });
+      }
       return jsonResponse({
         status: "ok",
         db: "connected",
