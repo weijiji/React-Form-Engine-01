@@ -74,7 +74,7 @@ Two `version` concepts must not be conflated (ADR-0005): `FormTemplate.version` 
 
 ### The client (`client/`)
 
-- Routing via `react-router-dom` `createBrowserRouter` in `client/src/router/index.tsx`. Canonical model is **5 role portals** (`/designer` `/filler` `/approver` `/admin` `/ops`) in a single shared shell (ADR-0008 / ADR-0009); the current `AdminLayout` / `UserLayout` are stale and will be merged into that shell. The full route map (~40 routes) lives in `docs/sitemap-form-engine.md`.
+- Routing via `react-router-dom` `createBrowserRouter` in `client/src/router/index.tsx`. Canonical model is **5 role portals** (`/designer` `/filler` `/approver` `/admin` `/ops`) in a single shared `Shell` component (ADR-0008 / ADR-0009). The shared `Shell` (`client/src/layouts/Shell.tsx`) replaced the old `AdminLayout`/`UserLayout` (ticket 15); the router still uses the two pre-split portals (`/admin` and `/`) pending the 5-portal routing refactor (ticket 16). The full route map (~40 routes) lives in `docs/sitemap-form-engine.md`.
 - API access goes through `apiClient<T>` in `client/src/config/api.ts`, which injects the CSRF token for mutating requests and parses the error envelope into `ApiError`. New endpoints should consume the generated types from `shared/src/api.ts` rather than hand-written generics (ADR-0007).
 
 ### Spec-first API contract

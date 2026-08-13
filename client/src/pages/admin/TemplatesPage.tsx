@@ -22,7 +22,7 @@ export const TemplatesPage: React.FC = () => {
   return (
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>模板管理</h1>
-      <p style={{ color: "var(--color-text-secondary)", marginBottom: 24 }}>
+      <p style={{ color: "var(--text-2)", marginBottom: 24 }}>
         创建和管理表单模板。拖拽字段到画布，配置属性和审批链，发布后即可使用。
       </p>
 
@@ -31,7 +31,7 @@ export const TemplatesPage: React.FC = () => {
         style={{
           background: "#fff",
           borderRadius: 8,
-          border: "1px solid var(--color-border)",
+          border: "1px solid var(--border)",
           padding: 20,
           marginBottom: 24,
         }}
@@ -40,34 +40,34 @@ export const TemplatesPage: React.FC = () => {
           系统状态
         </h3>
         {error ? (
-          <p style={{ color: "var(--color-danger)" }}>
+          <p style={{ color: "var(--danger)" }}>
             无法连接后端服务: {error}
           </p>
         ) : health ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, fontSize: 13 }}>
             <div>
-              <span style={{ color: "var(--color-text-secondary)" }}>状态: </span>
-              <span style={{ color: health.status === "ok" ? "var(--color-success)" : "var(--color-danger)", fontWeight: 600 }}>
+              <span style={{ color: "var(--text-2)" }}>状态: </span>
+              <span style={{ color: health.status === "ok" ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
                 {health.status === "ok" ? "正常" : "异常"}
               </span>
             </div>
             <div>
-              <span style={{ color: "var(--color-text-secondary)" }}>数据库: </span>
-              <span style={{ color: health.db === "connected" ? "var(--color-success)" : "var(--color-danger)", fontWeight: 600 }}>
+              <span style={{ color: "var(--text-2)" }}>数据库: </span>
+              <span style={{ color: health.db === "connected" ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
                 {health.db === "connected" ? "已连接" : "未连接"}
               </span>
             </div>
             <div>
-              <span style={{ color: "var(--color-text-secondary)" }}>环境: </span>
+              <span style={{ color: "var(--text-2)" }}>环境: </span>
               <span>{health.env}</span>
             </div>
             <div>
-              <span style={{ color: "var(--color-text-secondary)" }}>运行时间: </span>
+              <span style={{ color: "var(--text-2)" }}>运行时间: </span>
               <span>{Math.floor(health.uptime)}s</span>
             </div>
           </div>
         ) : (
-          <p style={{ color: "var(--color-text-secondary)" }}>加载中...</p>
+          <p style={{ color: "var(--text-2)" }}>加载中...</p>
         )}
       </div>
 
@@ -76,10 +76,10 @@ export const TemplatesPage: React.FC = () => {
         style={{
           background: "#fff",
           borderRadius: 8,
-          border: "1px solid var(--color-border)",
+          border: "1px solid var(--border)",
           padding: 40,
           textAlign: "center",
-          color: "var(--color-text-secondary)",
+          color: "var(--text-2)",
         }}
       >
         <p style={{ fontSize: 16, marginBottom: 8 }}>暂无模板</p>

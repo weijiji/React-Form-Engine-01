@@ -8,7 +8,7 @@ export const HomePage: React.FC = () => {
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>
           动态表单引擎
         </h1>
-        <p style={{ color: "var(--color-text-secondary)", fontSize: 16, marginBottom: 32 }}>
+        <p style={{ color: "var(--text-2)", fontSize: 16, marginBottom: 32 }}>
           配置驱动的表单构建与审批工作流系统
         </p>
         <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
@@ -17,7 +17,7 @@ export const HomePage: React.FC = () => {
             style={{
               display: "inline-block",
               padding: "10px 24px",
-              background: "var(--color-primary)",
+              background: "var(--brand)",
               color: "#fff",
               borderRadius: 6,
               fontWeight: 500,
@@ -31,9 +31,9 @@ export const HomePage: React.FC = () => {
               display: "inline-block",
               padding: "10px 24px",
               background: "#fff",
-              color: "var(--color-primary)",
+              color: "var(--brand)",
               borderRadius: 6,
-              border: "1px solid var(--color-primary)",
+              border: "1px solid var(--brand)",
               fontWeight: 500,
             }}
           >
@@ -75,14 +75,14 @@ export const HomePage: React.FC = () => {
               padding: 24,
               background: "#fff",
               borderRadius: 8,
-              border: "1px solid var(--color-border)",
+              border: "1px solid var(--border)",
               transition: "box-shadow 0.2s",
             }}
           >
             <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
               {card.title}
             </h3>
-            <p style={{ color: "var(--color-text-secondary)", fontSize: 14 }}>
+            <p style={{ color: "var(--text-2)", fontSize: 14 }}>
               {card.desc}
             </p>
           </Link>

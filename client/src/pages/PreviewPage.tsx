@@ -215,7 +215,7 @@ export const PreviewPage: React.FC = () => {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 20px" }}>
       <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>表单渲染器预览</h1>
-      <p style={{ color: "var(--color-text-secondary)", fontSize: 14, marginBottom: 24 }}>
+      <p style={{ color: "var(--text-2)", fontSize: 14, marginBottom: 24 }}>
         工单 03 成果演示：13 种字段组件 + 实时验证 + 可见性联动 + 子表单。此页面为临时预览，接入设计器后删除。
       </p>
 
@@ -230,7 +230,7 @@ export const PreviewPage: React.FC = () => {
           style={{
             marginTop: 24,
             background: "#fff",
-            border: "1px solid var(--color-border)",
+            border: "1px solid var(--border)",
             borderRadius: 8,
             padding: 16,
           }}
