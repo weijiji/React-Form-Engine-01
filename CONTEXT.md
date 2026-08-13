@@ -50,6 +50,26 @@ JSONB Schema 根部的 `schemaVersion` 字段（语义版本号，如 `"1.0.0"`�
 
 ---
 
+## 角色与门户
+
+### 角色（Role）
+
+系统内**固定的五种角色**，决定用户登录后进入哪个门户、拥有哪些能力。角色由系统预定义（MVP 不动态创建）。
+
+枚举：`模板设计者`、`表单填写者`、`审批人`、`系统管理员`、`运维人员`。
+
+_Avoid_: 用户组、权限组、岗位
+
+### 门户（Portal）
+
+按角色分割的独立入口区域。用户登录后按角色路由到对应门户，不同角色看到完全不同的导航结构。
+
+五个门户：`/designer`（模板设计者）、`/filler`（表单填写者）、`/approver`（审批人）、`/admin`（系统管理员）、`/ops`（运维人员）。
+
+_Avoid_: 后台、控制台、管理端
+
+---
+
 ## 核心操作
 
 ### 表单提交（Submit）
@@ -97,6 +117,13 @@ MVP 仅支持单层 AND 条件（平铺条件行，不支持 OR 和嵌套）。�
 ### 事务边界（Transaction Boundary）
 
 数据库事务保护 Instance + Snapshot + ApprovalRecord 的原子写入。事务外（异步）：Notification 持久化 + SSE push。审批人解析在事务内执行——失败回滚整个提交。
+
+---
+
+## 关联文档
+
+- [设计系统](docs/design-system-form-engine.md) —— 设计 token 词汇表与门户壳（chrome）规格（实现细节，不在本词汇表内）
+- [Sitemap](docs/sitemap-form-engine.md) —— 门户路由模型（5 角色门户）
 
 ---
 
