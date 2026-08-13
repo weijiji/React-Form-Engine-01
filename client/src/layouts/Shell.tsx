@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useMatches } from "react-router-dom";
 import "./Shell.css";
 
 export interface NavItem {
@@ -22,12 +22,18 @@ export interface ShellUser {
   role: string;
 }
 
+/** Per-route page metadata, attached to each route's `handle` (see router). */
+export interface ShellHandle {
+  /** Page title shown in the topbar — also the page's single `<h1>`. */
+  title?: string;
+  /** Breadcrumb context shown above the title. */
+  crumb?: string;
+}
+
 export interface ShellProps {
   brandName: string;
   brandSub?: string;
   navGroups: NavGroup[];
-  topbarTitle: string;
-  topbarCrumb?: string;
   user?: ShellUser;
   /** Extra controls rendered in the topbar action area, before the bell. */
   actions?: React.ReactNode;
@@ -37,11 +43,21 @@ export const Shell: React.FC<ShellProps> = ({
   brandName,
   brandSub,
   navGroups,
-  topbarTitle,
-  topbarCrumb,
   user,
   actions,
 }) => {
+  // The page title/crumb live on the leaf route's `handle`, not on the Shell —
+  // one source of truth, per route. Walk the match chain top-down so a deeper
+  // handle overrides a shallower one (index redirects carry no handle).
+  const matches = useMatches();
+  let title: string | undefined;
+  let crumb: string | undefined;
+  for (const match of matches) {
+    const handle = match.handle as ShellHandle | undefined;
+    if (handle?.title) title = handle.title;
+    if (handle?.crumb) crumb = handle.crumb;
+  }
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -113,8 +129,8 @@ export const Shell: React.FC<ShellProps> = ({
       <div className="main">
         <header className="topbar">
           <div>
-            {topbarCrumb && <div className="tb-crumb">{topbarCrumb}</div>}
-            <div className="tb-title">{topbarTitle}</div>
+            {crumb && <div className="tb-crumb">{crumb}</div>}
+            {title && <h1 className="tb-title">{title}</h1>}
           </div>
           <div className="tb-actions">
             {actions}

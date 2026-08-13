@@ -3,7 +3,7 @@ import {
   Navigate,
   type RouteObject,
 } from "react-router-dom";
-import { Shell, type NavGroup, type ShellUser } from "../layouts/Shell";
+import { Shell, type NavGroup, type ShellHandle, type ShellUser } from "../layouts/Shell";
 import {
   ArchiveIcon,
   BarChartIcon,
@@ -144,16 +144,26 @@ export const routes: RouteObject[] = [
         brandName="动态表单引擎"
         brandSub="模板设计者门户"
         navGroups={designerNav}
-        topbarCrumb="模板设计者门户"
-        topbarTitle="我的模板"
         user={designerUser}
       />
     ),
     children: [
       { index: true, element: <Navigate to="/designer/templates" replace /> },
-      { path: "templates", element: <TemplatesPage /> },
-      { path: "create", element: <PlaceholderPage title="创建表单" /> },
-      { path: "drafts", element: <PlaceholderPage title="草稿模板" /> },
+      {
+        path: "templates",
+        element: <TemplatesPage />,
+        handle: { title: "我的模板", crumb: "模板设计者门户" } satisfies ShellHandle,
+      },
+      {
+        path: "create",
+        element: <PlaceholderPage />,
+        handle: { title: "创建表单", crumb: "模板设计者门户" } satisfies ShellHandle,
+      },
+      {
+        path: "drafts",
+        element: <PlaceholderPage />,
+        handle: { title: "草稿模板", crumb: "模板设计者门户" } satisfies ShellHandle,
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
@@ -166,16 +176,26 @@ export const routes: RouteObject[] = [
         brandName="动态表单引擎"
         brandSub="表单填写者门户"
         navGroups={fillerNav}
-        topbarCrumb="表单填写者门户"
-        topbarTitle="表单中心"
         user={fillerUser}
       />
     ),
     children: [
       { index: true, element: <Navigate to="/filler/forms" replace /> },
-      { path: "forms", element: <PlaceholderPage title="表单中心" /> },
-      { path: "drafts", element: <PlaceholderPage title="我的草稿" /> },
-      { path: "submissions", element: <PlaceholderPage title="我的提交" /> },
+      {
+        path: "forms",
+        element: <PlaceholderPage />,
+        handle: { title: "表单中心", crumb: "表单填写者门户" } satisfies ShellHandle,
+      },
+      {
+        path: "drafts",
+        element: <PlaceholderPage />,
+        handle: { title: "我的草稿", crumb: "表单填写者门户" } satisfies ShellHandle,
+      },
+      {
+        path: "submissions",
+        element: <PlaceholderPage />,
+        handle: { title: "我的提交", crumb: "表单填写者门户" } satisfies ShellHandle,
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
@@ -188,15 +208,21 @@ export const routes: RouteObject[] = [
         brandName="动态表单引擎"
         brandSub="审批人门户"
         navGroups={approverNav}
-        topbarCrumb="审批人门户"
-        topbarTitle="待审批"
         user={approverUser}
       />
     ),
     children: [
       { index: true, element: <Navigate to="/approver/pending" replace /> },
-      { path: "pending", element: <PlaceholderPage title="待审批" /> },
-      { path: "history", element: <PlaceholderPage title="已审批" /> },
+      {
+        path: "pending",
+        element: <PlaceholderPage />,
+        handle: { title: "待审批", crumb: "审批人门户" } satisfies ShellHandle,
+      },
+      {
+        path: "history",
+        element: <PlaceholderPage />,
+        handle: { title: "已审批", crumb: "审批人门户" } satisfies ShellHandle,
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
@@ -209,18 +235,36 @@ export const routes: RouteObject[] = [
         brandName="动态表单引擎"
         brandSub="系统管理员门户"
         navGroups={adminNav}
-        topbarCrumb="系统管理员门户"
-        topbarTitle="用户管理"
         user={adminUser}
       />
     ),
     children: [
       { index: true, element: <Navigate to="/admin/users" replace /> },
-      { path: "users", element: <PlaceholderPage title="用户管理" /> },
-      { path: "roles", element: <PlaceholderPage title="角色管理" /> },
-      { path: "data", element: <PlaceholderPage title="数据管理" /> },
-      { path: "statistics", element: <PlaceholderPage title="统计看板" /> },
-      { path: "templates", element: <PlaceholderPage title="模板管理" /> },
+      {
+        path: "users",
+        element: <PlaceholderPage />,
+        handle: { title: "用户管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+      },
+      {
+        path: "roles",
+        element: <PlaceholderPage />,
+        handle: { title: "角色管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+      },
+      {
+        path: "data",
+        element: <PlaceholderPage />,
+        handle: { title: "数据管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+      },
+      {
+        path: "statistics",
+        element: <PlaceholderPage />,
+        handle: { title: "统计看板", crumb: "系统管理员门户" } satisfies ShellHandle,
+      },
+      {
+        path: "templates",
+        element: <PlaceholderPage />,
+        handle: { title: "模板管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
@@ -233,16 +277,26 @@ export const routes: RouteObject[] = [
         brandName="动态表单引擎"
         brandSub="运维人员门户"
         navGroups={opsNav}
-        topbarCrumb="运维人员门户"
-        topbarTitle="导入配置"
         user={opsUser}
       />
     ),
     children: [
       { index: true, element: <Navigate to="/ops/import" replace /> },
-      { path: "import", element: <PlaceholderPage title="导入配置" /> },
-      { path: "migrations", element: <PlaceholderPage title="迁移记录" /> },
-      { path: "templates", element: <PlaceholderPage title="模板查看" /> },
+      {
+        path: "import",
+        element: <PlaceholderPage />,
+        handle: { title: "导入配置", crumb: "运维人员门户" } satisfies ShellHandle,
+      },
+      {
+        path: "migrations",
+        element: <PlaceholderPage />,
+        handle: { title: "迁移记录", crumb: "运维人员门户" } satisfies ShellHandle,
+      },
+      {
+        path: "templates",
+        element: <PlaceholderPage />,
+        handle: { title: "模板查看", crumb: "运维人员门户" } satisfies ShellHandle,
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

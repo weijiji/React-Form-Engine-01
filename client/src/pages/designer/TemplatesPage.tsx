@@ -21,7 +21,6 @@ export const TemplatesPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>我的模板</h1>
       <p style={{ color: "var(--text-2)", marginBottom: 24 }}>
         创建和管理表单模板。拖拽字段到画布，配置属性和审批链，发布后即可使用。
       </p>
