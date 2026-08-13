@@ -135,6 +135,10 @@ export const routes: RouteObject[] = [
   // ── Public pages (sitemap §2, no Shell) ──
   { path: "/notifications", element: <PlaceholderPage title="通知中心" /> },
 
+  // ── Full-screen designer workbench (no Shell — mirrors the prototype's
+  //    designer-edit.html, which is a standalone editor without sidebar/topbar) ──
+  { path: "/designer/templates/:id", element: <DesignerPage /> },
+
   // ── Root: pre-auth default → designer (issue 09 → role-based) ──
   { path: "/", element: <Navigate to="/designer" replace /> },
 
@@ -155,11 +159,6 @@ export const routes: RouteObject[] = [
         path: "templates",
         element: <TemplatesPage />,
         handle: { title: "我的模板", crumb: "模板设计者门户" } satisfies ShellHandle,
-      },
-      {
-        path: "templates/:id",
-        element: <DesignerPage />,
-        handle: { title: "表单设计器", crumb: "模板设计者门户" } satisfies ShellHandle,
       },
       {
         path: "create",

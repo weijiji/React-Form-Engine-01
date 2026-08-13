@@ -142,6 +142,14 @@ describe("five-portal routing (issue 16)", () => {
     expect(screen.getByText("已签出 · 正在编辑")).toBeInTheDocument();
   });
 
+  it("renders the designer workbench full-screen (no Shell sidebar/topbar)", async () => {
+    renderAt("/designer/templates/tpl-1");
+    await screen.findByRole("heading", { name: "测试模板" });
+    expect(document.querySelector(".editor")).toBeInTheDocument();
+    expect(document.querySelector(".shell")).not.toBeInTheDocument();
+    expect(document.querySelector(".sidebar")).not.toBeInTheDocument();
+  });
+
   it("no longer treats /admin as the designer portal", async () => {
     renderAt("/admin");
     await expectBrandSub("系统管理员门户");
