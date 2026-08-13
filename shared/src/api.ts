@@ -24,6 +24,191 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current user
+         * @description Resolves the acting user. The pre-auth MVP takes identity from the
+         *     `X-User-Id` header and falls back to the seeded designer (张三).
+         */
+        get: operations["getCurrentUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List templates
+         * @description Offset-paginated list with optional category/status/search filters.
+         */
+        get: operations["listTemplates"];
+        put?: never;
+        /**
+         * Create a template
+         * @description Creates a new draft template and auto-checks it out to the creator.
+         *     The creator becomes the lock holder until they check in or an admin force-unlocks.
+         */
+        post: operations["createTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get template detail
+         * @description Returns the full template including schema and approval_chain.
+         */
+        get: operations["getTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save template schema
+         * @description Persists the form schema (and optional approval chain). Requires the caller
+         *     to be the current lock holder (checked out); otherwise 409 TEMPLATE_LOCKED.
+         */
+        put: operations["saveTemplateSchema"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check out a template
+         * @description Acquires the exclusive edit lock. Idempotent for the current holder.
+         */
+        post: operations["checkoutTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check in a template
+         * @description Releases the edit lock. Only the holder (or an admin) may check in.
+         */
+        post: operations["checkinTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a template
+         * @description Transitions a draft template to published (atomic status update; clears the lock).
+         */
+        post: operations["publishTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/force-unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Force-unlock a template
+         * @description Admin-only: clears the edit lock regardless of the current holder. Role enforcement lands with auth (issue 09).
+         */
+        post: operations["forceUnlockTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -70,12 +255,48 @@ export interface components {
             locked_by?: string | null;
             /** Format: date-time */
             locked_at?: string | null;
+            /** @description Display name of the current lock holder (resolved for the designer's checkout badge). */
+            locked_by_name?: string | null;
             /** Format: uuid */
             created_by: string;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        CreateTemplateRequest: {
+            /** @description Display name (required). */
+            name: string;
+            description?: string | null;
+            category?: string | null;
+            /** @description Initial form structure (JSONB). Defaults to an empty schema. */
+            schema?: {
+                [key: string]: unknown;
+            };
+            /** @description Initial approval chain (JSONB). */
+            approval_chain?: Record<string, never> | null;
+        };
+        SaveSchemaRequest: {
+            /** @description Form structure (JSONB). Root must contain schemaVersion. */
+            schema: {
+                [key: string]: unknown;
+            };
+            /** @description Approval chain (JSONB). Replaces the stored chain when present. */
+            approval_chain?: Record<string, never> | null;
+        };
+        TemplateListResponse: {
+            items: components["schemas"]["FormTemplate"][];
+            /** @description Total number of templates matching the filters (ignoring pagination). */
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        User: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: email */
+            email: string;
         };
         /** @description A filled form submission at runtime. Mirrors the form_instances table. */
         FormInstance: {
@@ -176,6 +397,8 @@ export interface components {
         IdempotencyKey: string;
         /** @description CSRF token required for mutating methods; read from the xsrf-token cookie. */
         CsrfToken: string;
+        /** @description Form template UUID. */
+        TemplateId: string;
     };
     requestBodies: never;
     headers: never;
@@ -208,6 +431,318 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    getCurrentUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The resolved current user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    listTemplates: {
+        parameters: {
+            query?: {
+                category?: string;
+                status?: "draft" | "published" | "archived";
+                /** @description Case-insensitive substring match on template name. */
+                search?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated template list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateListResponse"];
+                };
+            };
+        };
+    };
+    createTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Template created and checked out to the creator */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Missing or invalid `name` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    saveTemplateSchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSchemaRequest"];
+            };
+        };
+        responses: {
+            /** @description Schema saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template locked by someone else or not checked out */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkoutTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Checked out (or already held by caller) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template already locked by another user */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkinTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lock released */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template locked by another user */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publishTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template published */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template is not in draft status */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    forceUnlockTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lock cleared */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };

@@ -15,6 +15,8 @@ export interface FormRendererProps {
   schema: ParsedSchema;
   state: FormState;
   dispatch: Dispatch<FormAction>;
+  /** Render every field disabled (used by the designer's read-only preview). */
+  readOnly?: boolean;
 }
 
 /**
@@ -23,7 +25,12 @@ export interface FormRendererProps {
  * by rewriting their top-level array and dispatching SET_VALUE on the top-level
  * field, which keeps the engine's targeted revalidation intact.
  */
-export function FormRenderer({ schema, state, dispatch }: FormRendererProps) {
+export function FormRenderer({
+  schema,
+  state,
+  dispatch,
+  readOnly = false,
+}: FormRendererProps) {
   const renderField = useCallback(
     (field: FieldSchema, path: string): React.ReactNode => {
       // Visibility is per *definition* (no row index), unlike errors/values.
@@ -39,7 +46,7 @@ export function FormRenderer({ schema, state, dispatch }: FormRendererProps) {
           id={path}
           value={value}
           error={state.errors[path]}
-          disabled={state.disabled[path] === true}
+          disabled={readOnly || state.disabled[path] === true}
           onChange={(next) => {
             const values = setValueAtPath(state.values, path, next);
             dispatch({ type: "SET_VALUE", fieldId: rootId, value: values[rootId] });
@@ -48,7 +55,7 @@ export function FormRenderer({ schema, state, dispatch }: FormRendererProps) {
         />
       );
     },
-    [state, dispatch],
+    [state, dispatch, readOnly],
   );
 
   const contextValue = useMemo(

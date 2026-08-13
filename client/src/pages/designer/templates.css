@@ -1,0 +1,211 @@
+/* Template list + create pages (work order 04). */
+
+.templates-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.templates-search input {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  width: 260px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.templates-search input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.templates-toolbar button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--brand);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.templates-toolbar button:hover {
+  background: var(--brand-strong);
+}
+
+.templates-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.templates-table th,
+.templates-table td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.templates-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  background: var(--bg-subtle);
+}
+
+.templates-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.templates-table tbody tr:hover {
+  background: var(--bg-subtle);
+}
+
+.tpl-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tpl-status {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
+.tpl-status--draft {
+  background: #eef0f4;
+  color: var(--text-2);
+}
+
+.tpl-status--published {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.tpl-status--archived {
+  background: #eef0f4;
+  color: var(--text-3);
+}
+
+.templates-total {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.templates-empty,
+.templates-error {
+  color: var(--text-2);
+}
+
+.templates-error {
+  color: var(--danger);
+}
+
+/* ── Create page ───────────────────────────────────────────────────────── */
+
+.create-template {
+  max-width: 560px;
+}
+
+.create-title {
+  margin: 0 0 18px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 22px;
+}
+
+.create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-field > span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.create-field input,
+.create-field textarea {
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.create-field input:focus,
+.create-field textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.create-field textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.create-error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.create-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.create-actions button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.create-actions button[type="submit"] {
+  color: #fff;
+  background: var(--brand);
+  border: none;
+}
+
+.create-actions button[type="submit"]:hover:not(:disabled) {
+  background: var(--brand-strong);
+}
+
+.create-actions button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-actions button[type="button"] {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}

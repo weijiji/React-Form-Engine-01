@@ -3,6 +3,7 @@
  */
 
 export * from "./types";
+export * from "./api";
 export * from "./schemaParser";
 export * from "./conditionEvaluator";
 export * from "./validationEngine";

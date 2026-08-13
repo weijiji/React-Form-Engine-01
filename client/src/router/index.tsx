@@ -23,6 +23,8 @@ import {
 } from "../layouts/icons";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { TemplatesPage } from "../pages/designer/TemplatesPage";
+import { CreateTemplatePage } from "../pages/designer/CreateTemplatePage";
+import { DesignerPage } from "../pages/designer/DesignerPage";
 import { PreviewPage } from "../pages/PreviewPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
@@ -155,8 +157,13 @@ export const routes: RouteObject[] = [
         handle: { title: "我的模板", crumb: "模板设计者门户" } satisfies ShellHandle,
       },
       {
+        path: "templates/:id",
+        element: <DesignerPage />,
+        handle: { title: "表单设计器", crumb: "模板设计者门户" } satisfies ShellHandle,
+      },
+      {
         path: "create",
-        element: <PlaceholderPage />,
+        element: <CreateTemplatePage />,
         handle: { title: "创建表单", crumb: "模板设计者门户" } satisfies ShellHandle,
       },
       {

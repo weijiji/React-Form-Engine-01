@@ -45,11 +45,15 @@ class TestRequest {
   }
 }
 
-// TemplatesPage fetches /health on mount; stub fetch so the designer portal
-// tests don't hit the network.
+// The designer pages (TemplatesPage/DesignerPage) fetch from the API on mount;
+// stub fetch so portal tests don't hit the network.
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   return render(<RouterProvider router={router} />);
+}
+
+function jsonResponse(body: unknown) {
+  return { ok: true, status: 200, json: async () => body };
 }
 
 // The portal's brand-sub is rendered in the sidebar (and duplicated in the
@@ -64,16 +68,39 @@ beforeEach(() => {
   vi.stubGlobal("Request", TestRequest);
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/me")) {
+        return jsonResponse({
+          id: "u-zhangsan",
+          name: "张三",
+          email: "zhangsan@example.com",
+        });
+      }
+      if (/\/templates\/[^/?]+$/.test(url)) {
+        return jsonResponse({
+          id: "tpl-1",
+          name: "测试模板",
+          status: "draft",
+          version: 1,
+          locked_by: "u-zhangsan",
+          locked_by_name: "张三",
+          created_by: "u-zhangsan",
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+          schema: { schemaVersion: "1.0.0", sections: [] },
+        });
+      }
+      if (url.includes("/templates")) {
+        return jsonResponse({ items: [], total: 0, page: 1, pageSize: 50 });
+      }
+      return jsonResponse({
         status: "ok",
         db: "connected",
         timestamp: "test",
         uptime: 0,
         env: "test",
-      }),
+      });
     }),
   );
 });
@@ -104,7 +131,13 @@ describe("five-portal routing (issue 16)", () => {
 
   it("renders /designer/templates (designer landing)", async () => {
     renderAt("/designer/templates");
-    expect(await screen.findByText("系统状态")).toBeInTheDocument();
+    expect(await screen.findByText(/暂无模板/)).toBeInTheDocument();
+  });
+
+  it("renders /designer/templates/:id (designer workbench)", async () => {
+    renderAt("/designer/templates/tpl-1");
+    expect(await screen.findByText("测试模板")).toBeInTheDocument();
+    expect(screen.getByText("编辑中")).toBeInTheDocument();
   });
 
   it("no longer treats /admin as the designer portal", async () => {

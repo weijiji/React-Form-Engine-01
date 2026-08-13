@@ -7,6 +7,8 @@ import { corsMiddleware } from "./middleware/cors";
 import { csrfMiddleware } from "./middleware/csrf";
 import { errorHandlerMiddleware } from "./middleware/errorHandler";
 import healthRouter from "./routes/health";
+import meRouter from "./routes/me";
+import templatesRouter from "./routes/templates";
 
 /**
  * Create and configure the Express application.
@@ -38,6 +40,8 @@ export function createApp(): express.Application {
 
   // ── Routes ────────────────────────────────────────────────
   app.use(healthRouter);
+  app.use(meRouter);
+  app.use("/api/v1/templates", templatesRouter);
 
   // ── 404 catch-all ─────────────────────────────────────────
   app.use((_req, res) => {

@@ -1,91 +1,100 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../../config/api";
+import type { TemplateListResponse } from "../../designer/types";
+import "./templates.css";
 
-interface HealthResponse {
-  status: string;
-  db: string;
-  timestamp: string;
-  uptime: number;
-  env: string;
-}
+const STATUS_LABEL: Record<string, string> = {
+  draft: "草稿",
+  published: "已发布",
+  archived: "已归档",
+};
 
 export const TemplatesPage: React.FC = () => {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [data, setData] = useState<TemplateListResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiClient<HealthResponse>("/health")
-      .then(setHealth)
-      .catch((err) => setError(err.message));
-  }, []);
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams({ page: "1", pageSize: "50" });
+    if (search.trim()) params.set("search", search.trim());
+    apiClient<TemplateListResponse>(`/templates?${params.toString()}`)
+      .then(setData)
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : "加载失败"),
+      )
+      .finally(() => setLoading(false));
+  }, [search]);
 
   return (
-    <div>
-      <p style={{ color: "var(--text-2)", marginBottom: 24 }}>
-        创建和管理表单模板。拖拽字段到画布，配置属性和审批链，发布后即可使用。
-      </p>
-
-      {/* Health check card */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
-          系统状态
-        </h3>
-        {error ? (
-          <p style={{ color: "var(--danger)" }}>
-            无法连接后端服务: {error}
-          </p>
-        ) : health ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, fontSize: 13 }}>
-            <div>
-              <span style={{ color: "var(--text-2)" }}>状态: </span>
-              <span style={{ color: health.status === "ok" ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
-                {health.status === "ok" ? "正常" : "异常"}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: "var(--text-2)" }}>数据库: </span>
-              <span style={{ color: health.db === "connected" ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
-                {health.db === "connected" ? "已连接" : "未连接"}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: "var(--text-2)" }}>环境: </span>
-              <span>{health.env}</span>
-            </div>
-            <div>
-              <span style={{ color: "var(--text-2)" }}>运行时间: </span>
-              <span>{Math.floor(health.uptime)}s</span>
-            </div>
-          </div>
-        ) : (
-          <p style={{ color: "var(--text-2)" }}>加载中...</p>
-        )}
+    <div className="templates">
+      <div className="templates-toolbar">
+        <div className="templates-search">
+          <input
+            value={search}
+            placeholder="搜索模板名称"
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <button type="button" onClick={() => navigate("/designer/create")}>
+          + 新建模板
+        </button>
       </div>
 
-      {/* Placeholder for template list */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 8,
-          border: "1px solid var(--border)",
-          padding: 40,
-          textAlign: "center",
-          color: "var(--text-2)",
-        }}
-      >
-        <p style={{ fontSize: 16, marginBottom: 8 }}>暂无模板</p>
-        <p style={{ fontSize: 13 }}>
-          点击"新建模板"开始创建您的第一个表单模板
-        </p>
-      </div>
+      {error ? (
+        <p className="templates-error">加载模板失败：{error}</p>
+      ) : loading ? (
+        <p className="templates-empty">加载中…</p>
+      ) : !data || data.items.length === 0 ? (
+        <p className="templates-empty">暂无模板，点击“新建模板”开始</p>
+      ) : (
+        <>
+          <table className="templates-table">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>分类</th>
+                <th>状态</th>
+                <th>锁定者</th>
+                <th>版本</th>
+                <th>更新时间</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((tpl) => (
+                <tr key={tpl.id}>
+                  <td className="tpl-name">{tpl.name}</td>
+                  <td>{tpl.category ?? "—"}</td>
+                  <td>
+                    <span className={`tpl-status tpl-status--${tpl.status}`}>
+                      {STATUS_LABEL[tpl.status] ?? tpl.status}
+                    </span>
+                  </td>
+                  <td>{tpl.locked_by_name ?? (tpl.locked_by ? "—" : "未锁定")}</td>
+                  <td>v{tpl.version}</td>
+                  <td>{formatDate(tpl.updated_at)}</td>
+                  <td>
+                    <Link to={`/designer/templates/${tpl.id}`}>进入设计</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="templates-total">共 {data.total} 个模板</p>
+        </>
+      )}
     </div>
   );
 };
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString("zh-CN", { hour12: false });
+}

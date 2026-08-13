@@ -19,6 +19,8 @@ servers:
 tags:
   - name: system
     description: Operational endpoints (health, diagnostics)
+  - name: templates
+    description: Form template CRUD, checkout/checkin locking, and publishing
 
 paths:
   /api/v1/health:
@@ -40,6 +42,252 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+
+  /api/v1/me:
+    get:
+      tags: [system]
+      summary: Current user
+      description: |
+        Resolves the acting user. The pre-auth MVP takes identity from the
+        `X-User-Id` header and falls back to the seeded designer (张三).
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: The resolved current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /api/v1/templates:
+    post:
+      tags: [templates]
+      summary: Create a template
+      description: |
+        Creates a new draft template and auto-checks it out to the creator.
+        The creator becomes the lock holder until they check in or an admin force-unlocks.
+      operationId: createTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplateRequest"
+      responses:
+        "201":
+          description: Template created and checked out to the creator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "422":
+          description: Missing or invalid `name`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    get:
+      tags: [templates]
+      summary: List templates
+      description: Offset-paginated list with optional category/status/search filters.
+      operationId: listTemplates
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, archived]
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match on template name.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated template list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateListResponse"
+
+  /api/v1/templates/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    get:
+      tags: [templates]
+      summary: Get template detail
+      description: Returns the full template including schema and approval_chain.
+      operationId: getTemplate
+      responses:
+        "200":
+          description: Template found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/templates/{id}/schema:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    put:
+      tags: [templates]
+      summary: Save template schema
+      description: |
+        Persists the form schema (and optional approval chain). Requires the caller
+        to be the current lock holder (checked out); otherwise 409 TEMPLATE_LOCKED.
+      operationId: saveTemplateSchema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveSchemaRequest"
+      responses:
+        "200":
+          description: Schema saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Template locked by someone else or not checked out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/templates/{id}/checkout:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    post:
+      tags: [templates]
+      summary: Check out a template
+      description: Acquires the exclusive edit lock. Idempotent for the current holder.
+      operationId: checkoutTemplate
+      responses:
+        "200":
+          description: Checked out (or already held by caller)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Template already locked by another user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/templates/{id}/checkin:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    post:
+      tags: [templates]
+      summary: Check in a template
+      description: Releases the edit lock. Only the current holder may check in (admin override lands with auth, issue 09).
+      operationId: checkinTemplate
+      responses:
+        "200":
+          description: Lock released
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Template locked by another user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/templates/{id}/publish:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    post:
+      tags: [templates]
+      summary: Publish a template
+      description: Transitions a draft template to published (atomic status update; clears the lock).
+      operationId: publishTemplate
+      responses:
+        "200":
+          description: Template published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "400":
+          description: Template is not in draft status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/templates/{id}/force-unlock:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    post:
+      tags: [templates]
+      summary: Force-unlock a template
+      description: "Admin-only: clears the edit lock regardless of the current holder. Role enforcement lands with auth (issue 09)."
+      operationId: forceUnlockTemplate
+      responses:
+        "200":
+          description: Lock cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
 components:
   schemas:
@@ -112,6 +360,9 @@ components:
         locked_at:
           type: [string, "null"]
           format: date-time
+        locked_by_name:
+          type: [string, "null"]
+          description: Display name of the current lock holder (resolved for the designer's checkout badge).
         created_by:
           type: string
           format: uuid
@@ -121,6 +372,66 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    CreateTemplateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Display name (required).
+        description:
+          type: [string, "null"]
+        category:
+          type: [string, "null"]
+        schema:
+          type: object
+          additionalProperties: true
+          description: Initial form structure (JSONB). Defaults to an empty schema.
+        approval_chain:
+          type: [object, "null"]
+          description: Initial approval chain (JSONB).
+
+    SaveSchemaRequest:
+      type: object
+      required: [schema]
+      properties:
+        schema:
+          type: object
+          additionalProperties: true
+          description: Form structure (JSONB). Root must contain schemaVersion.
+        approval_chain:
+          type: [object, "null"]
+          description: Approval chain (JSONB). Replaces the stored chain when present.
+
+    TemplateListResponse:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormTemplate"
+        total:
+          type: integer
+          description: Total number of templates matching the filters (ignoring pagination).
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    User:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
 
     FormInstance:
       type: object
@@ -282,3 +593,11 @@ components:
       description: CSRF token required for mutating methods; read from the xsrf-token cookie.
       schema:
         type: string
+    TemplateId:
+      name: id
+      in: path
+      required: true
+      description: Form template UUID.
+      schema:
+        type: string
+        format: uuid

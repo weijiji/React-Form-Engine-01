@@ -50,6 +50,8 @@ export interface FormProps {
   onSubmit?: (values: FormValues) => void | Promise<void>;
   orgDataSource?: OrgDataSource | null;
   submitLabel?: string;
+  /** Read-only preview — disables every field and hides the submit button. */
+  readOnly?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ export function Form({
   onSubmit,
   orgDataSource = null,
   submitLabel = "提交",
+  readOnly = false,
 }: FormProps) {
   const { state, dispatch, setSubmitting } = useForm(schema, initialValues);
   const [attempted, setAttempted] = useState(false);
@@ -100,7 +103,13 @@ export function Form({
   return (
     <FormEngineContext.Provider value={{ orgDataSource }}>
       <form className="form-engine" noValidate>
-        <FormRenderer schema={schema} state={state} dispatch={dispatch} />
+        <FormRenderer
+          schema={schema}
+          state={state}
+          dispatch={dispatch}
+          readOnly={readOnly}
+        />
+        {readOnly ? null : (
         <div className="form-actions">
           <button
             type="button"
@@ -118,6 +127,7 @@ export function Form({
             <p className="form-submit-hint">请先完成所有必填项</p>
           )}
         </div>
+        )}
       </form>
     </FormEngineContext.Provider>
   );
