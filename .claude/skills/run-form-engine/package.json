@@ -1,0 +1,10 @@
+{
+  "name": "run-form-engine-driver",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Driver harness for the form-engine run skill — drives the web app with system Chrome via Playwright.",
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}
