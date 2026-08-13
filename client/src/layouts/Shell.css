@@ -81,8 +81,16 @@
   color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
   margin-bottom: 2px;
   transition: all 0.14s;
+}
+
+.nav-item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-3);
+  flex: none;
 }
 
 .nav-item:hover {
@@ -94,6 +102,10 @@
   background: var(--brand-soft);
   color: var(--brand);
   font-weight: 600;
+}
+
+.nav-item.active svg {
+  color: var(--brand);
 }
 
 .nav-item .count {
@@ -109,6 +121,11 @@
 .nav-item.active .count {
   background: var(--brand-line);
   color: var(--brand);
+}
+
+.nav-item .count.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .sidebar-foot {

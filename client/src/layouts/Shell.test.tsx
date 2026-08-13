@@ -7,8 +7,15 @@ const navGroups: NavGroup[] = [
   {
     label: "设计工作台",
     items: [
-      { to: "/admin/templates", label: "模板管理", count: 7 },
-      { to: "/admin/roles", label: "角色管理" },
+      { to: "/admin/templates", label: "模板管理", icon: <svg />, count: 7 },
+      { to: "/admin/roles", label: "角色管理", icon: <svg /> },
+      {
+        to: "/notifications",
+        label: "通知中心",
+        icon: <svg />,
+        count: 2,
+        countTone: "danger",
+      },
     ],
   },
 ];
@@ -73,5 +80,17 @@ describe("Shell — shared portal chrome", () => {
     expect(screen.getByText("角色管理").closest("a")).toHaveClass("active");
     expect(screen.getByText("模板管理").closest("a")).not.toHaveClass("active");
     expect(screen.getByText("roles content")).toBeInTheDocument();
+  });
+
+  it("renders nav icons and count badges, tinting danger counts", () => {
+    const { container } = renderShell();
+
+    const template = screen.getByText("模板管理").closest("a")!;
+    expect(template.querySelector("svg")).toBeInTheDocument();
+    expect(template.querySelector(".count")).toHaveTextContent("7");
+    expect(template.querySelector(".count")).not.toHaveClass("danger");
+
+    const danger = container.querySelector(".count.danger");
+    expect(danger).toHaveTextContent("2");
   });
 });

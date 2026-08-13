@@ -3,19 +3,40 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Shell, type NavGroup, type ShellUser } from "../layouts/Shell";
+import {
+  BellIcon,
+  DraftIcon,
+  FileIcon,
+  PlusIcon,
+} from "../layouts/icons";
 import { HomePage } from "../pages/HomePage";
 import { TemplatesPage } from "../pages/admin/TemplatesPage";
 import { PreviewPage } from "../pages/PreviewPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
 // Per-portal nav configuration (ADR-0008). The shell is shared; only the nav
-// differs. Full five-portal split lands in work order 16.
+// differs. Full five-portal split lands in work order 16. The designer nav
+// mirrors the prototype's designer portal (我的模板 / 创建表单 / 草稿模板 +
+// 通用 / 通知中心); 创建表单 and 草稿模板 pages land with later work orders.
 const designerNav: NavGroup[] = [
   {
     label: "设计工作台",
     items: [
-      { to: "/admin/templates", label: "模板管理" },
-      { to: "/admin/roles", label: "角色管理" },
+      { to: "/admin/templates", label: "我的模板", icon: <FileIcon />, count: 7 },
+      { to: "/admin/templates/new", label: "创建表单", icon: <PlusIcon /> },
+      { to: "/admin/drafts", label: "草稿模板", icon: <DraftIcon />, count: 3 },
+    ],
+  },
+  {
+    label: "通用",
+    items: [
+      {
+        to: "/notifications",
+        label: "通知中心",
+        icon: <BellIcon />,
+        count: 2,
+        countTone: "danger",
+      },
     ],
   },
 ];

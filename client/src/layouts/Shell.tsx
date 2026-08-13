@@ -5,7 +5,11 @@ import "./Shell.css";
 export interface NavItem {
   to: string;
   label: string;
+  /** Feather icon rendered before the label (18×18, tinted by active state). */
+  icon?: React.ReactNode;
   count?: number;
+  /** Style the count badge as a danger alert (e.g. 通知中心). */
+  countTone?: "danger";
 }
 
 export interface NavGroup {
@@ -74,9 +78,16 @@ export const Shell: React.FC<ShellProps> = ({
                     isActive ? "nav-item active" : "nav-item"
                   }
                 >
+                  {item.icon}
                   {item.label}
                   {item.count !== undefined && (
-                    <span className="count">{item.count}</span>
+                    <span
+                      className={
+                        item.countTone === "danger" ? "count danger" : "count"
+                      }
+                    >
+                      {item.count}
+                    </span>
                   )}
                 </NavLink>
               ))}
