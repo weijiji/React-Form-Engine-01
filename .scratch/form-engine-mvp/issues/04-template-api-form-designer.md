@@ -16,9 +16,10 @@
   - `POST /api/v1/templates/:id/publish` — 发布（draft → published，原子：UPDATE status + 清缓存）
   - `POST /api/v1/templates/:id/force-unlock` — 强制解锁（管理员）
 - [ ] **设计器 UI**：
-  - 三栏 flex 布局：左侧 ComponentPalette（240px）+ 中间 DesignCanvas（flex:1）+ 右侧面板（360px，属性/审批链/预览三个 Tab）
-  - 拖拽支持：Palette → Canvas（HTML5 DnD），Canvas 内字段排序（拖拽手柄）
+  - 三栏 flex 布局：左侧 ComponentPalette（240px）+ 中间 DesignCanvas（flex:1，内嵌DesignerCanvasInner，1，内嵌DesignerCanvasInner maxwidth=960px）+ 右侧面板（360px，属性/审批链/预览三个 Tab）
+  - 拖拽支持：Palette → Canvas（HTML5 DnD），Canvas 内字段自由排序（鼠标长按拖拽移动）
   - 属性面板：按 fieldType 动态渲染配置表单（基本属性 + 验证规则 + 选项编辑器）
   - 预览面板：嵌只读 FormEngine，Schema 变更时 < 1s 同步渲染
   - 签出状态徽标（"编辑中"/"已锁定 - 张三"）
+- 最终效果必须与`/prototype/designer-edit.html`完美对齐，注意不需要 shell>sidebar + shell>main>topbar 
 - [ ] 集成测试：创建模板 → 签出 → 编辑 → 签入 → 发布全流程；他人签出已锁模板 → 409；强制解锁

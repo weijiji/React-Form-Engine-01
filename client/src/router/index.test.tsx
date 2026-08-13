@@ -136,8 +136,10 @@ describe("five-portal routing (issue 16)", () => {
 
   it("renders /designer/templates/:id (designer workbench)", async () => {
     renderAt("/designer/templates/tpl-1");
-    expect(await screen.findByText("测试模板")).toBeInTheDocument();
-    expect(screen.getByText("编辑中")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "测试模板" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("已签出 · 正在编辑")).toBeInTheDocument();
   });
 
   it("no longer treats /admin as the designer portal", async () => {

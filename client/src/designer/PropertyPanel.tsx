@@ -2,71 +2,105 @@ import { useState } from "react";
 import type {
   ApprovalChain,
   ApprovalNode,
+  ApproverRule,
   FieldSchema,
-  InfoTextStyle,
   SelectOption,
   ValidationRuleType,
 } from "form-engine-core";
-import { Form } from "../form/Form";
 import { removeRule, setRule, type DesignerSchema } from "./schemaModel";
+import { CloseIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from "./icons";
+import { StructureTree } from "./StructureTree";
 
-type TabKey = "props" | "approval" | "preview";
+type TabKey = "tree" | "props" | "chain";
 
 export interface PropertyPanelProps {
   schema: DesignerSchema;
-  /** The selected field (with its owning section) or null when nothing is selected. */
+  selectedId: string | null;
+  /** The selected field (with its owning section) or null when nothing/only a section is selected. */
   selected: { sectionId: string; field: FieldSchema } | null;
-  approvalChain?: ApprovalChain;
+  chain: ApprovalChain;
   onChangeField: (
     sectionId: string,
     fieldId: string,
     patch: Partial<FieldSchema>,
   ) => void;
+  onSelect: (id: string | null) => void;
+  // Structure tree
+  onAddFieldToSection: (sectionId: string) => void;
+  onRemoveSection: (sectionId: string) => void;
+  onRemoveField: (sectionId: string, fieldId: string) => void;
+  onMoveField: (sectionId: string, fieldId: string, delta: -1 | 1) => void;
+  onReorderField: (sectionId: string, fieldId: string, targetIndex: number) => void;
+  // Approval chain
+  onAddChainNode: () => void;
+  onRemoveChainNode: (id: string) => void;
+  onMoveChainNode: (id: string, delta: -1 | 1) => void;
+  onChangeChainNode: (id: string, patch: Partial<ApprovalNode>) => void;
 }
 
 /**
- * Right panel — three tabs: 属性 (dynamic field config by fieldType), 审批链
- * (read-only approval chain for the MVP, which publishes without approval), and
- * 预览 (read-only FormEngine rendered from the current schema).
+ * Right panel — 结构树 / 属性 / 审批链 (prototype's side-panel tabs). The
+ * center canvas is the live preview, so there is no separate 预览 tab here.
  */
-export const PropertyPanel: React.FC<PropertyPanelProps> = ({
-  schema,
-  selected,
-  approvalChain,
-  onChangeField,
-}) => {
-  const [tab, setTab] = useState<TabKey>("props");
+export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
+  const [tab, setTab] = useState<TabKey>("tree");
 
   const tabs: { key: TabKey; label: string }[] = [
+    { key: "tree", label: "结构树" },
     { key: "props", label: "属性" },
-    { key: "approval", label: "审批链" },
-    { key: "preview", label: "预览" },
+    { key: "chain", label: "审批链" },
   ];
 
   return (
-    <div className="panel">
-      <div className="panel-tabs" role="tablist">
+    <aside className="side-panel">
+      <div className="side-tabs" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
             role="tab"
             aria-selected={tab === t.key}
-            className={tab === t.key ? "panel-tab active" : "panel-tab"}
+            className={tab === t.key ? "side-tab active" : "side-tab"}
             onClick={() => setTab(t.key)}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <div className="panel-body">
-        {tab === "props" && (
-          <PropsTab selected={selected} onChangeField={onChangeField} />
+
+      <div className="side-body">
+        {tab === "tree" && (
+          <div className="side-pane active">
+            <StructureTree
+              schema={props.schema}
+              selectedId={props.selectedId}
+              onSelect={props.onSelect}
+              onAddFieldToSection={props.onAddFieldToSection}
+              onRemoveSection={props.onRemoveSection}
+              onRemoveField={props.onRemoveField}
+              onMoveField={props.onMoveField}
+              onReorderField={props.onReorderField}
+            />
+          </div>
         )}
-        {tab === "approval" && <ApprovalTab approvalChain={approvalChain} />}
-        {tab === "preview" && <PreviewTab schema={schema} />}
+        {tab === "props" && (
+          <div className="side-pane active">
+            <PropsTab selected={props.selected} onChangeField={props.onChangeField} />
+          </div>
+        )}
+        {tab === "chain" && (
+          <div className="side-pane active">
+            <ChainTab
+              chain={props.chain}
+              onAdd={props.onAddChainNode}
+              onRemove={props.onRemoveChainNode}
+              onMove={props.onMoveChainNode}
+              onChange={props.onChangeChainNode}
+            />
+          </div>
+        )}
       </div>
-    </div>
+    </aside>
   );
 };
 
@@ -80,50 +114,96 @@ function PropsTab({
   onChangeField: PropertyPanelProps["onChangeField"];
 }) {
   if (!selected) {
-    return <p className="panel-empty">请选择一个字段以编辑属性</p>;
+    return (
+      <div className="props">
+        <div className="props-empty">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M9 9h6M9 13h6M9 17h3" />
+          </svg>
+          <div>
+            在画布或结构树中<b>选择一个字段</b>以编辑属性
+          </div>
+        </div>
+      </div>
+    );
   }
+
   const { sectionId, field } = selected;
   const update = (patch: Partial<FieldSchema>) =>
     onChangeField(sectionId, field.id, patch);
 
-  return (
-    <div className="props-editor">
-      <h3 className="props-title">{field.type}</h3>
+  const showPlaceholder = ["text", "textarea", "number"].includes(field.type);
+  const showDefault = ["text", "textarea", "number"].includes(field.type);
+  const showHelp = ["text", "textarea", "number", "user-picker"].includes(field.type);
 
-      <label className="prop-field">
-        <span>标签</span>
+  return (
+    <div className="props">
+      <div className="prop-group-title">基本</div>
+
+      <div className="prop-row">
+        <label className="label">字段标签</label>
         <input
+          className="input"
           value={field.label}
           onChange={(e) => update({ label: e.target.value })}
         />
-      </label>
+      </div>
 
-      <label className="prop-field">
-        <span>占位提示</span>
-        <input
-          value={field.placeholder ?? ""}
-          placeholder="占位提示"
-          onChange={(e) => update({ placeholder: e.target.value })}
-        />
-      </label>
+      {showPlaceholder && (
+        <div className="prop-row">
+          <label className="label">占位提示</label>
+          <input
+            className="input"
+            value={field.placeholder ?? ""}
+            onChange={(e) => update({ placeholder: e.target.value })}
+          />
+        </div>
+      )}
 
-      <label className="prop-field">
-        <span>帮助文本</span>
-        <input
-          value={field.helpText ?? ""}
-          placeholder="帮助文本"
-          onChange={(e) => update({ helpText: e.target.value })}
-        />
-      </label>
+      {showDefault && (
+        <div className="prop-row">
+          <label className="label">默认值</label>
+          <input
+            className="input"
+            value={field.defaultValue == null ? "" : String(field.defaultValue)}
+            onChange={(e) => update({ defaultValue: e.target.value })}
+          />
+        </div>
+      )}
 
-      <label className="prop-check">
-        <input
-          type="checkbox"
-          checked={field.required}
-          onChange={(e) => update({ required: e.target.checked })}
-        />
-        <span>必填</span>
-      </label>
+      {showHelp && (
+        <div className="prop-row">
+          <label className="label">帮助文本</label>
+          <textarea
+            className="textarea"
+            value={field.helpText ?? ""}
+            onChange={(e) => update({ helpText: e.target.value })}
+          />
+        </div>
+      )}
+
+      <div className="prop-row prop-switch">
+        <div>
+          <div className="ps-label">必填</div>
+          <div className="ps-hint">填写者必须填写此字段</div>
+        </div>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={field.required}
+            onChange={(e) => update({ required: e.target.checked })}
+          />
+          <span className="track" />
+        </label>
+      </div>
 
       {(field.type === "select" ||
         field.type === "radio" ||
@@ -131,99 +211,13 @@ function PropsTab({
         <OptionsEditor options={field.options ?? []} onChange={update} />
       )}
 
-      {(field.type === "text" || field.type === "textarea") && (
-        <RuleEditor
-          rules={[
-            { type: "minLength", label: "最小长度", numeric: true },
-            { type: "maxLength", label: "最大长度", numeric: true },
-            { type: "regex", label: "正则表达式", numeric: false },
-          ]}
-          field={field}
-          onChange={update}
-        />
+      {(field.type === "text" ||
+        field.type === "textarea" ||
+        field.type === "number") && (
+        <ValidationEditor field={field} onChange={update} />
       )}
 
-      {field.type === "number" && (
-        <RuleEditor
-          rules={[
-            { type: "min", label: "最小值", numeric: true },
-            { type: "max", label: "最大值", numeric: true },
-          ]}
-          field={field}
-          onChange={update}
-        />
-      )}
-
-      {field.type === "file" && (
-        <>
-          <label className="prop-field">
-            <span>允许类型（逗号分隔）</span>
-            <input
-              value={(field.allowTypes ?? []).join(",")}
-              onChange={(e) =>
-                update({
-                  allowTypes: e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                })
-              }
-            />
-          </label>
-          <label className="prop-field">
-            <span>最大大小（MB）</span>
-            <input
-              type="number"
-              value={field.maxSizeMB ?? ""}
-              onChange={(e) => update({ maxSizeMB: Number(e.target.value) })}
-            />
-          </label>
-          <label className="prop-field">
-            <span>最大数量</span>
-            <input
-              type="number"
-              value={field.maxCount ?? ""}
-              onChange={(e) => update({ maxCount: Number(e.target.value) })}
-            />
-          </label>
-        </>
-      )}
-
-      {field.type === "user-picker" && (
-        <label className="prop-check">
-          <input
-            type="checkbox"
-            checked={field.multiple ?? false}
-            onChange={(e) => update({ multiple: e.target.checked })}
-          />
-          <span>允许多选</span>
-        </label>
-      )}
-
-      {field.type === "info-text" && (
-        <>
-          <label className="prop-field">
-            <span>说明文字</span>
-            <textarea
-              value={field.text ?? ""}
-              onChange={(e) => update({ text: e.target.value })}
-            />
-          </label>
-          <label className="prop-field">
-            <span>样式</span>
-            <select
-              value={field.styleType ?? "info"}
-              onChange={(e) =>
-                update({ styleType: e.target.value as InfoTextStyle })
-              }
-            >
-              <option value="info">信息</option>
-              <option value="warning">警告</option>
-              <option value="danger">危险</option>
-            </select>
-          </label>
-        </>
-      )}
+      {field.type === "file" && <FileEditor field={field} onChange={update} />}
     </div>
   );
 }
@@ -235,128 +229,340 @@ function OptionsEditor({
   options: SelectOption[];
   onChange: (patch: Partial<FieldSchema>) => void;
 }) {
-  const setOption = (index: number, patch: Partial<SelectOption>) => {
-    const next = options.map((o, i) => (i === index ? { ...o, ...patch } : o));
-    onChange({ options: next });
-  };
+  const setLabel = (index: number, label: string) =>
+    onChange({
+      options: options.map((o, i) => (i === index ? { ...o, label } : o)),
+    });
+  const remove = (index: number) =>
+    onChange({ options: options.filter((_, i) => i !== index) });
+  const add = () =>
+    onChange({
+      options: [
+        ...options,
+        { label: "新选项", value: `option${options.length + 1}` },
+      ],
+    });
 
   return (
-    <div className="options-editor">
-      <span className="prop-label">选项</span>
+    <>
+      <div className="prop-group-title">选项</div>
       {options.map((option, index) => (
-        <div className="option-row" key={index}>
+        <div className="prop-row flex gap-8" key={index}>
           <input
-            aria-label={`选项${index + 1}标签`}
+            className="input"
+            aria-label={`选项${index + 1}`}
             value={option.label}
-            onChange={(e) => setOption(index, { label: e.target.value })}
+            onChange={(e) => setLabel(index, e.target.value)}
           />
-          <input
-            aria-label={`选项${index + 1}值`}
-            value={option.value}
-            onChange={(e) => setOption(index, { value: e.target.value })}
-          />
-          <button
-            type="button"
-            aria-label={`删除选项${index + 1}`}
-            onClick={() => onChange({ options: options.filter((_, i) => i !== index) })}
-          >
-            ✕
+          <button type="button" className="icon-btn danger" onClick={() => remove(index)}>
+            <CloseIcon />
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        className="options-add"
-        onClick={() =>
-          onChange({
-            options: [...options, { label: "新选项", value: `option${options.length + 1}` }],
-          })
-        }
-      >
-        + 添加选项
+      <button type="button" className="chip-add" onClick={add}>
+        <PlusIcon />
+        添加选项
       </button>
-    </div>
+    </>
   );
 }
 
-function RuleEditor({
-  rules,
+function ValidationEditor({
   field,
   onChange,
 }: {
-  rules: { type: ValidationRuleType; label: string; numeric: boolean }[];
   field: FieldSchema;
   onChange: (patch: Partial<FieldSchema>) => void;
 }) {
+  const isNumber = field.type === "number";
+
+  const ruleValue = (type: ValidationRuleType): string => {
+    const rule = field.validation?.rules.find((r) => r.type === type);
+    return rule?.value == null ? "" : String(rule.value);
+  };
+  const ruleMessage = (): string => {
+    const rule = field.validation?.rules.find((r) => r.type === "regex");
+    return rule?.message ?? "";
+  };
+
+  const setNumberRule = (type: ValidationRuleType, raw: string) => {
+    if (raw === "") {
+      onChange({ validation: removeRule(field, type).validation });
+      return;
+    }
+    onChange({ validation: setRule(field, type, { value: Number(raw) }).validation });
+  };
+  const setRegex = (patch: { value?: string; message?: string }) => {
+    const next = setRule(field, "regex", patch);
+    onChange({ validation: next.validation });
+  };
+
   return (
-    <div className="rules-editor">
-      <span className="prop-label">验证规则</span>
-      {rules.map(({ type, label, numeric }) => {
-        const rule = field.validation?.rules.find((r) => r.type === type);
-        const raw = rule?.value;
-        const value = raw == null ? "" : String(raw);
-        return (
-          <label className="prop-field" key={type}>
-            <span>{label}</span>
+    <>
+      <div className="prop-group-title">验证</div>
+
+      {isNumber ? (
+        <div className="prop-row">
+          <label className="label">数值范围</label>
+          <div className="field-group">
             <input
-              type={numeric ? "number" : "text"}
-              value={value}
-              placeholder="留空表示不校验"
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "") {
-                  onChange({ validation: removeRule(field, type).validation });
-                  return;
-                }
-                const next = setRule(field, type, {
-                  value: numeric ? Number(v) : v,
-                });
-                onChange({ validation: next.validation });
-              }}
+              className="input"
+              type="number"
+              placeholder="最小"
+              value={ruleValue("min")}
+              onChange={(e) => setNumberRule("min", e.target.value)}
             />
-          </label>
-        );
-      })}
-    </div>
+            <input
+              className="input"
+              type="number"
+              placeholder="最大"
+              value={ruleValue("max")}
+              onChange={(e) => setNumberRule("max", e.target.value)}
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="prop-row">
+            <label className="label">长度限制</label>
+            <div className="field-group">
+              <input
+                className="input"
+                type="number"
+                placeholder="最小"
+                value={ruleValue("minLength")}
+                onChange={(e) => setNumberRule("minLength", e.target.value)}
+              />
+              <input
+                className="input"
+                type="number"
+                placeholder="最大"
+                value={ruleValue("maxLength")}
+                onChange={(e) => setNumberRule("maxLength", e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="prop-row">
+            <label className="label">正则表达式</label>
+            <input
+              className="input mono"
+              placeholder="例如 ^1\\d{10}$"
+              value={ruleValue("regex")}
+              onChange={(e) => setRegex({ value: e.target.value })}
+            />
+            <div className="hint">
+              不匹配时提示：
+              <input
+                className="input"
+                style={{ marginTop: 6 }}
+                placeholder="自定义提示（可选）"
+                value={ruleMessage()}
+                onChange={(e) => setRegex({ message: e.target.value })}
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function FileEditor({
+  field,
+  onChange,
+}: {
+  field: FieldSchema;
+  onChange: (patch: Partial<FieldSchema>) => void;
+}) {
+  const allowTypes = field.allowTypes ?? [];
+  const typeLabel =
+    allowTypes.length === 0 || allowTypes.includes("pdf")
+      ? "图片/文档"
+      : allowTypes.includes("png") && allowTypes.includes("doc")
+        ? "图片/文档"
+        : allowTypes.includes("png")
+          ? "仅图片"
+          : "仅文档";
+
+  return (
+    <>
+      <div className="prop-group-title">文件限制</div>
+      <div className="prop-row">
+        <label className="label">允许类型</label>
+        <select
+          className="select"
+          value={typeLabel}
+          onChange={(e) => {
+            const v = e.target.value;
+            const map: Record<string, string[]> = {
+              "图片/文档": ["pdf", "png", "jpg", "doc", "docx"],
+              "仅图片": ["png", "jpg"],
+              "仅文档": ["pdf", "doc", "docx"],
+            };
+            onChange({ allowTypes: map[v] });
+          }}
+        >
+          <option>图片/文档</option>
+          <option>仅图片</option>
+          <option>仅文档</option>
+        </select>
+      </div>
+      <div className="prop-row">
+        <label className="label">最大大小</label>
+        <select
+          className="select"
+          value={`${field.maxSizeMB ?? 10}MB`}
+          onChange={(e) => onChange({ maxSizeMB: Number(e.target.value.replace("MB", "")) })}
+        >
+          {["5MB", "10MB", "20MB", "50MB"].map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+    </>
   );
 }
 
 // ── 审批链 tab ──────────────────────────────────────────────────────────────
 
-function describeRule(node: ApprovalNode): string {
-  const rule = node.approverRule;
-  if (rule.type === "specific") return `指定人员：${rule.userId}`;
-  if (rule.type === "role") return `角色：${rule.roleId}`;
-  return rule.relation === "direct_manager" ? "直属上级" : "部门主管";
+const RULE_TYPE_OPTIONS: { key: ApproverRule["type"]; label: string }[] = [
+  { key: "org_structure", label: "组织架构" },
+  { key: "role", label: "指定角色" },
+  { key: "specific", label: "指定人员" },
+];
+
+const RULE_VALUE_OPTIONS: Record<ApproverRule["type"], { key: string; label: string }[]> = {
+  org_structure: [
+    { key: "direct_manager", label: "直属上级" },
+    { key: "department_manager", label: "部门负责人" },
+  ],
+  role: [
+    { key: "it-manager", label: "IT 负责人" },
+    { key: "finance", label: "财务审批人" },
+    { key: "hr", label: "HR 负责人" },
+  ],
+  specific: [
+    { key: "zhangsan", label: "张三" },
+    { key: "lisi", label: "李四" },
+  ],
+};
+
+function ruleValueKey(rule: ApproverRule): string {
+  if (rule.type === "org_structure") return rule.relation;
+  if (rule.type === "role") return rule.roleId;
+  return rule.userId;
 }
 
-function ApprovalTab({ approvalChain }: { approvalChain?: ApprovalChain }) {
-  const nodes = approvalChain?.nodes ?? [];
-  if (nodes.length === 0) {
-    return <p className="panel-empty">无审批链（模板可直接发布）</p>;
-  }
+function ChainTab({
+  chain,
+  onAdd,
+  onRemove,
+  onMove,
+  onChange,
+}: {
+  chain: ApprovalChain;
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+  onMove: (id: string, delta: -1 | 1) => void;
+  onChange: (id: string, patch: Partial<ApprovalNode>) => void;
+}) {
+  const nodes = chain.nodes;
   return (
-    <ol className="approval-list">
-      {nodes.map((node) => (
-        <li className="approval-node" key={node.id}>
-          <span className="approval-order">{node.order + 1}</span>
-          <span className="approval-label">{node.label ?? "审批节点"}</span>
-          <span className="approval-rule">{describeRule(node)}</span>
-        </li>
+    <div className="chain">
+      {nodes.map((node, i) => (
+        <div className="chain-node" key={node.id}>
+          <div className="cn-rail">
+            <span className="cn-dot">{i + 1}</span>
+            <span className="cn-line" />
+          </div>
+          <div className="chain-card">
+            <div className="cc-head">
+              <span className="cc-title">{node.label ?? "审批节点"}</span>
+              <span className="cc-tools">
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="上移"
+                  disabled={i === 0}
+                  onClick={() => onMove(node.id, -1)}
+                >
+                  <UpIcon />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="下移"
+                  disabled={i === nodes.length - 1}
+                  onClick={() => onMove(node.id, 1)}
+                >
+                  <DownIcon />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn danger"
+                  title="删除节点"
+                  onClick={() => onRemove(node.id)}
+                >
+                  <TrashIcon />
+                </button>
+              </span>
+            </div>
+            <div className="rule-select-row">
+              <select
+                className="select"
+                value={node.approverRule.type}
+                onChange={(e) => {
+                  const type = e.target.value as ApproverRule["type"];
+                  const value = RULE_VALUE_OPTIONS[type][0].key;
+                  onChange(node.id, {
+                    approverRule: buildRule(type, value),
+                  });
+                }}
+              >
+                {RULE_TYPE_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="select"
+                value={ruleValueKey(node.approverRule)}
+                onChange={(e) =>
+                  onChange(node.id, {
+                    approverRule: buildRule(node.approverRule.type, e.target.value),
+                  })
+                }
+              >
+                {RULE_VALUE_OPTIONS[node.approverRule.type].map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
       ))}
-    </ol>
-  );
-}
 
-// ── 预览 tab ────────────────────────────────────────────────────────────────
-
-function PreviewTab({ schema }: { schema: DesignerSchema }) {
-  if (schema.sections.length === 0) {
-    return <p className="panel-empty">暂无字段可预览</p>;
-  }
-  return (
-    <div className="preview">
-      <Form schema={schema} readOnly />
+      <button type="button" className="chain-add" onClick={onAdd}>
+        <PlusIcon />
+        添加审批节点
+      </button>
+      <div className="xsmall" style={{ color: "var(--text-3)", marginTop: 12, lineHeight: 1.7 }}>
+        审批人规则将在表单提交时动态解析（组织架构 / 指定角色 / 指定人员）。节点按顺序依次审批。
+      </div>
     </div>
   );
+}
+
+function buildRule(type: ApproverRule["type"], value: string): ApproverRule {
+  if (type === "org_structure") {
+    return {
+      type,
+      relation: value as "direct_manager" | "department_manager",
+    };
+  }
+  if (type === "role") return { type, roleId: value };
+  return { type, userId: value };
 }

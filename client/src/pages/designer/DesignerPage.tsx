@@ -1,23 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { ApprovalChain, FieldSchema, FieldType } from "form-engine-core";
+import type {
+  ApprovalChain,
+  ApprovalNode,
+  ApproverRule,
+  FieldSchema,
+  FieldType,
+} from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
 import { PropertyPanel } from "../../designer/PropertyPanel";
+import { BackIcon, SaveIcon, SendIcon } from "../../designer/icons";
 import {
   addField,
   addSection,
   createEmptySchema,
   createField,
   createSection,
+  duplicateField,
   ensureSection,
   findField,
   moveField,
+  newId,
   removeField,
+  removeSection,
   reorderField,
   updateField,
-  updateSection,
   type DesignerSchema,
 } from "../../designer/schemaModel";
 import type { FormTemplate, User } from "../../designer/types";
@@ -35,6 +44,40 @@ function toDesignerSchema(raw: unknown): DesignerSchema {
   return createEmptySchema();
 }
 
+function toRule(rule: unknown): ApproverRule {
+  if (rule && typeof rule === "object") {
+    const r = rule as ApproverRule;
+    if (r.type === "org_structure" || r.type === "role" || r.type === "specific") {
+      return r;
+    }
+  }
+  return { type: "specific", userId: "zhangsan" };
+}
+
+/** Normalize a stored `approval_chain` JSONB into an ApprovalChain (safe on miss). */
+function toChain(raw: unknown): ApprovalChain {
+  if (raw && typeof raw === "object" && Array.isArray((raw as ApprovalChain).nodes)) {
+    return {
+      nodes: (raw as ApprovalChain).nodes.map((n, i) => ({
+        id: n.id ?? newId("c"),
+        order: n.order ?? i,
+        label: n.label,
+        approverRule: toRule(n.approverRule),
+      })),
+    };
+  }
+  return { nodes: [] };
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 export const DesignerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -42,7 +85,9 @@ export const DesignerPage: React.FC = () => {
   const [template, setTemplate] = useState<FormTemplate | null>(null);
   const [me, setMe] = useState<User | null>(null);
   const [schema, setSchema] = useState<DesignerSchema>(createEmptySchema());
-  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [chain, setChain] = useState<ApprovalChain>({ nodes: [] });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"static" | "test">("static");
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -60,6 +105,7 @@ export const DesignerPage: React.FC = () => {
         setMe(user);
         setTemplate(tpl);
         setSchema(toDesignerSchema(tpl.schema));
+        setChain(toChain(tpl.approval_chain));
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "加载失败");
@@ -76,31 +122,49 @@ export const DesignerPage: React.FC = () => {
     [template, me],
   );
 
-  const badge = useMemo(() => {
-    if (!template) return null;
-    if (isHolder) return { label: "编辑中", tone: "editing" as const };
-    if (template.locked_by)
-      return {
-        label: `已锁定 - ${template.locked_by_name ?? "他人"}`,
-        tone: "locked" as const,
-      };
-    return { label: "未签出", tone: "free" as const };
+  const statusText = useMemo(() => {
+    if (isHolder) return "已签出 · 正在编辑";
+    if (template?.locked_by) return `已锁定 · ${template.locked_by_name ?? "他人"}`;
+    return "未签出";
   }, [template, isHolder]);
 
   const selected = useMemo(() => {
-    if (!selectedFieldId) return null;
-    const found = findField(schema, selectedFieldId);
-    return found ?? null;
-  }, [schema, selectedFieldId]);
+    if (!selectedId) return null;
+    return findField(schema, selectedId) ?? null;
+  }, [schema, selectedId]);
 
   // ── schema mutations ──
 
-  const handleAddField = useCallback((type: FieldType) => {
-    setSchema((prev) => {
-      const withSection = ensureSection(prev);
-      const target = withSection.sections[withSection.sections.length - 1].id;
-      return addField(withSection, target, createField(type));
-    });
+  const handleAddField = useCallback(
+    (type: FieldType) => {
+      if (type === "section") {
+        handleAddSection();
+        return;
+      }
+      const field = createField(type);
+      setSchema((prev) => {
+        const withSection = ensureSection(prev);
+        const target = withSection.sections[withSection.sections.length - 1].id;
+        return addField(withSection, target, field);
+      });
+      setSelectedId(field.id);
+      setDirty(true);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const handleAddFieldToSection = useCallback((sectionId: string) => {
+    const field = createField("text");
+    setSchema((prev) => addField(prev, sectionId, field));
+    setSelectedId(field.id);
+    setDirty(true);
+  }, []);
+
+  const handleAddSection = useCallback(() => {
+    const section = createSection();
+    setSchema((prev) => addSection(prev, section));
+    setSelectedId(section.id);
     setDirty(true);
   }, []);
 
@@ -122,26 +186,72 @@ export const DesignerPage: React.FC = () => {
 
   const handleRemoveField = useCallback((sectionId: string, fieldId: string) => {
     setSchema((prev) => removeField(prev, sectionId, fieldId));
-    setSelectedFieldId((cur) => (cur === fieldId ? null : cur));
+    setSelectedId((cur) => (cur === fieldId ? null : cur));
     setDirty(true);
   }, []);
 
-  const handleAddSection = useCallback(() => {
-    setSchema((prev) => addSection(prev, createSection()));
+  const handleDuplicateField = useCallback((sectionId: string, fieldId: string) => {
+    setSchema((prev) => duplicateField(prev, sectionId, fieldId));
     setDirty(true);
   }, []);
 
-  const handleUpdateSectionTitle = useCallback(
-    (sectionId: string, title: string) => {
-      setSchema((prev) => updateSection(prev, sectionId, { title }));
+  const handleRemoveSection = useCallback((sectionId: string) => {
+    setSchema((prev) => removeSection(prev, sectionId));
+    setSelectedId((cur) => (cur === sectionId ? null : cur));
+    setDirty(true);
+  }, []);
+
+  const handleChangeField = useCallback(
+    (sectionId: string, fieldId: string, patch: Partial<FieldSchema>) => {
+      setSchema((prev) => updateField(prev, sectionId, fieldId, patch));
       setDirty(true);
     },
     [],
   );
 
-  const handleChangeField = useCallback(
-    (sectionId: string, fieldId: string, patch: Partial<FieldSchema>) => {
-      setSchema((prev) => updateField(prev, sectionId, fieldId, patch));
+  // ── chain mutations ──
+
+  const handleAddChainNode = useCallback(() => {
+    setChain((prev) => ({
+      nodes: [
+        ...prev.nodes,
+        {
+          id: newId("c"),
+          order: prev.nodes.length,
+          label: "新增审批节点",
+          approverRule: { type: "specific", userId: "zhangsan" },
+        },
+      ],
+    }));
+    setDirty(true);
+  }, []);
+
+  const handleRemoveChainNode = useCallback((id: string) => {
+    setChain((prev) => ({
+      nodes: prev.nodes
+        .filter((n) => n.id !== id)
+        .map((n, i) => ({ ...n, order: i })),
+    }));
+    setDirty(true);
+  }, []);
+
+  const handleMoveChainNode = useCallback((id: string, delta: -1 | 1) => {
+    setChain((prev) => {
+      const nodes = [...prev.nodes];
+      const i = nodes.findIndex((n) => n.id === id);
+      const t = i + delta;
+      if (i < 0 || t < 0 || t >= nodes.length) return prev;
+      [nodes[i], nodes[t]] = [nodes[t], nodes[i]];
+      return { nodes: nodes.map((n, idx) => ({ ...n, order: idx })) };
+    });
+    setDirty(true);
+  }, []);
+
+  const handleChangeChainNode = useCallback(
+    (id: string, patch: Partial<ApprovalNode>) => {
+      setChain((prev) => ({
+        nodes: prev.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+      }));
       setDirty(true);
     },
     [],
@@ -180,35 +290,33 @@ export const DesignerPage: React.FC = () => {
       () =>
         apiClient<FormTemplate>(`/templates/${id}/schema`, {
           method: "PUT",
-          body: JSON.stringify({ schema }),
+          body: JSON.stringify({ schema, approval_chain: chain }),
         }),
-      "已保存",
+      "草稿已保存",
     ).then((updated) => updated && setDirty(false));
-  };
-
-  const handleCheckin = () => {
-    if (!id) return;
-    void runAction(
-      () => apiClient<FormTemplate>(`/templates/${id}/checkin`, { method: "POST" }),
-      "已签入，锁定已释放",
-    );
   };
 
   const handlePublish = () => {
     if (!id) return;
     void runAction(
       () => apiClient<FormTemplate>(`/templates/${id}/publish`, { method: "POST" }),
-      "已发布",
+      "模板已发布",
     );
   };
 
-  const handleForceUnlock = () => {
-    if (!id) return;
-    void runAction(
-      () =>
-        apiClient<FormTemplate>(`/templates/${id}/force-unlock`, { method: "POST" }),
-      "已强制解锁",
-    );
+  const handleBack = () => {
+    if (isHolder) {
+      const ok = window.confirm("签入并离开？离开后其他设计者可以开始编辑该模板。");
+      if (ok) {
+        void runAction(
+          () =>
+            apiClient<FormTemplate>(`/templates/${id}/checkin`, { method: "POST" }),
+          "已签入，锁定已释放",
+        ).then(() => navigate("/designer/templates"));
+      }
+      return;
+    }
+    navigate("/designer/templates");
   };
 
   if (loading) {
@@ -226,64 +334,102 @@ export const DesignerPage: React.FC = () => {
     );
   }
 
-  const statusLabel =
-    template.status === "published"
-      ? "已发布"
-      : template.status === "archived"
-        ? "已归档"
-        : "草稿";
-
   return (
-    <div className="designer">
-      <header className="designer-header">
-        <div className="designer-title">
-          <h1 className="designer-name">{template.name}</h1>
-          {badge && <span className={`badge badge--${badge.tone}`}>{badge.label}</span>}
-          <span className="badge badge--status">{statusLabel}</span>
-          {dirty && <span className="designer-dirty">未保存</span>}
+    <div className="editor">
+      <header className="editor-top">
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          title="返回我的模板"
+          onClick={handleBack}
+        >
+          <BackIcon className="icon" />
+        </button>
+
+        <div>
+          <div className="et-name">{template.name}</div>
+          <div className="et-sub">
+            创建于 {formatDate(template.created_at)} · v{template.version}
+            {isHolder ? "（编辑中）" : ""}
+            {dirty ? " · 未保存" : ""}
+          </div>
         </div>
-        <div className="designer-actions">
-          <button type="button" disabled={!isHolder || busy} onClick={handleSave}>
-            保存
-          </button>
-          <button type="button" disabled={!isHolder || busy} onClick={handleCheckin}>
-            签入
+
+        <span className="et-status">
+          <span className={isHolder ? "et-dot" : "et-dot gray"} />
+          {statusText}
+        </span>
+
+        <div className="et-actions">
+          <div className="seg">
+            <button
+              type="button"
+              className={mode === "static" ? "active" : ""}
+              onClick={() => setMode("static")}
+            >
+              静态预览
+            </button>
+            <button
+              type="button"
+              className={mode === "test" ? "active" : ""}
+              onClick={() => setMode("test")}
+            >
+              交互测试
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn"
+            disabled={!isHolder || busy}
+            onClick={handleSave}
+          >
+            <SaveIcon className="icon" />
+            保存草稿
           </button>
           <button
             type="button"
+            className="btn btn-primary"
             disabled={template.status !== "draft" || busy}
             onClick={handlePublish}
           >
+            <SendIcon className="icon" />
             发布
           </button>
-          {template.locked_by && !isHolder && (
-            <button type="button" className="designer-unlock" disabled={busy} onClick={handleForceUnlock}>
-              强制解锁
-            </button>
-          )}
         </div>
       </header>
 
       {notice && <p className="designer-notice">{notice}</p>}
 
-      <div className="designer-body">
+      <div className="editor-body">
         <ComponentPalette onAddField={handleAddField} />
         <DesignCanvas
           schema={schema}
-          selectedFieldId={selectedFieldId}
+          templateName={template.name}
+          selectedId={selectedId}
+          mode={mode}
+          onSelect={setSelectedId}
           onDropField={handleAddField}
-          onSelectField={setSelectedFieldId}
-          onMoveField={handleMoveField}
-          onReorderField={handleReorderField}
           onRemoveField={handleRemoveField}
+          onDuplicateField={handleDuplicateField}
+          onRemoveSection={handleRemoveSection}
           onAddSection={handleAddSection}
-          onUpdateSectionTitle={handleUpdateSectionTitle}
         />
         <PropertyPanel
           schema={schema}
+          selectedId={selectedId}
           selected={selected}
-          approvalChain={template.approval_chain as unknown as ApprovalChain | undefined}
+          chain={chain}
           onChangeField={handleChangeField}
+          onSelect={setSelectedId}
+          onAddFieldToSection={handleAddFieldToSection}
+          onRemoveSection={handleRemoveSection}
+          onRemoveField={handleRemoveField}
+          onMoveField={handleMoveField}
+          onReorderField={handleReorderField}
+          onAddChainNode={handleAddChainNode}
+          onRemoveChainNode={handleRemoveChainNode}
+          onMoveChainNode={handleMoveChainNode}
+          onChangeChainNode={handleChangeChainNode}
         />
       </div>
     </div>

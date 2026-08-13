@@ -5,12 +5,14 @@ import {
   addSection,
   createEmptySchema,
   createField,
+  duplicateField,
   ensureSection,
   findField,
   moveField,
-  reorderField,
   removeField,
   removeRule,
+  removeSection,
+  reorderField,
   setRule,
   updateField,
   updateSection,
@@ -46,9 +48,9 @@ describe("createEmptySchema / ensureSection", () => {
 
 describe("createField", () => {
   it("assigns type-specific defaults", () => {
-    expect(createField("select").options?.length).toBe(2);
-    expect(createField("radio").options?.length).toBe(2);
-    expect(createField("checkbox").options?.length).toBe(2);
+    expect(createField("select").options?.length).toBe(3);
+    expect(createField("radio").options?.length).toBe(3);
+    expect(createField("checkbox").options?.length).toBe(3);
     expect(createField("subform").subSchema).toEqual({ fields: [] });
     expect(createField("info-text").styleType).toBe("info");
     expect(createField("text").options).toBeUndefined();
@@ -111,6 +113,29 @@ describe("field CRUD within a section", () => {
       section("s2"),
     );
     expect(next.sections.map((s) => s.id)).toEqual(["s1", "s2"]);
+  });
+
+  it("removeSection removes the section and its fields", () => {
+    const schema = {
+      schemaVersion: "1.0.0",
+      sections: [section("s1", [textField("f1")]), section("s2")],
+    };
+    const next = removeSection(schema, "s1");
+    expect(next.sections.map((s) => s.id)).toEqual(["s2"]);
+  });
+
+  it("duplicateField clones after the original with a new id and （副本） suffix", () => {
+    const schema = {
+      schemaVersion: "1.0.0",
+      sections: [section("s1", [textField("f1"), textField("f2")])],
+    };
+    const next = duplicateField(schema, "s1", "f1");
+    const fields = next.sections[0].fields;
+    expect(fields.map((f) => f.id)).toHaveLength(3);
+    expect(fields[0].id).toBe("f1");
+    expect(fields[1].id).not.toBe("f1");
+    expect(fields[1].label).toBe("字段 f1（副本）");
+    expect(fields[2].id).toBe("f2");
   });
 });
 
