@@ -1,47 +1,246 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../config/api";
-import type { TemplateListResponse } from "../../designer/types";
+import type { FormTemplate, TemplateListResponse } from "../../designer/types";
+import {
+  DocIcon,
+  EditIcon,
+  EyeIcon,
+  MoreIcon,
+  PlusIcon,
+  SearchIcon,
+} from "../../designer/icons";
 import "./templates.css";
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "草稿",
-  published: "已发布",
-  archived: "已归档",
+type StatusFilter = "all" | "published" | "draft";
+
+const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
+  { key: "all", label: "全部" },
+  { key: "published", label: "已发布" },
+  { key: "draft", label: "草稿" },
+];
+
+/** Category → card icon tint, mirroring the prototype's `.t-icon.cat-*` set. */
+const CATEGORY_TONES: Record<string, string> = {
+  人力资源: "cat-hr",
+  采购: "cat-ps",
+  财务: "cat-fn",
+  行政: "cat-xz",
+  IT: "cat-it",
+  通用: "cat-tg",
+};
+
+/** Count fields across every section of a stored `schema` JSONB (0 on miss). */
+function fieldCount(schema: unknown): number {
+  const s = schema as { sections?: Array<{ fields?: unknown[] }> } | undefined;
+  if (!s || !Array.isArray(s.sections)) return 0;
+  return s.sections.reduce(
+    (n, sec) => n + (Array.isArray(sec.fields) ? sec.fields.length : 0),
+    0,
+  );
+}
+
+/** `YYYY-MM-DD` for the card's "更新于 …" meta. */
+function formatUpdated(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function statusBadge(status: string): React.ReactNode {
+  if (status === "published") {
+    return (
+      <span className="badge badge-green">
+        <span className="dot" />
+        已发布
+      </span>
+    );
+  }
+  if (status === "draft") {
+    return (
+      <span className="badge badge-amber">
+        <span className="dot" />
+        草稿
+      </span>
+    );
+  }
+  return (
+    <span className="badge badge-gray">
+      <span className="dot" />
+      已归档
+    </span>
+  );
+}
+
+interface TemplateCardProps {
+  template: FormTemplate;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onOpen: () => void;
+}
+
+const TemplateCard: React.FC<TemplateCardProps> = ({
+  template,
+  menuOpen,
+  onToggleMenu,
+  onOpen,
+}) => {
+  const tone = CATEGORY_TONES[template.category ?? ""] ?? "cat-tg";
+  return (
+    <div
+      className="tpl-card"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <div className="t-head">
+        <span className={`t-icon ${tone}`} aria-hidden="true">
+          <DocIcon />
+        </span>
+        <div className="t-head-right">
+          {statusBadge(template.status)}
+          <span className="menu-wrap">
+            <button
+              type="button"
+              className={`icon-btn menu-trigger${menuOpen ? " active" : ""}`}
+              title="更多操作"
+              aria-label="更多操作"
+              aria-expanded={menuOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleMenu();
+              }}
+            >
+              <MoreIcon />
+            </button>
+            {menuOpen && (
+              <div className="tpl-menu">
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen();
+                  }}
+                >
+                  <EditIcon />
+                  编辑
+                </button>
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen();
+                  }}
+                >
+                  <EyeIcon />
+                  查看详情
+                </button>
+              </div>
+            )}
+          </span>
+        </div>
+      </div>
+      <h3>{template.name}</h3>
+      <p className="t-desc">{template.description || "暂无描述"}</p>
+      <div className="t-meta">
+        <span>
+          {template.category ?? "未分类"} · {fieldCount(template.schema)} 个字段
+        </span>
+        <span>更新于 {formatUpdated(template.updated_at)}</span>
+      </div>
+    </div>
+  );
 };
 
 export const TemplatesPage: React.FC = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
   const [data, setData] = useState<TemplateListResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams({ page: "1", pageSize: "50" });
-    if (search.trim()) params.set("search", search.trim());
-    apiClient<TemplateListResponse>(`/templates?${params.toString()}`)
-      .then(setData)
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "加载失败"),
-      )
-      .finally(() => setLoading(false));
-  }, [search]);
+    // Debounce the keystroke-driven search so the API isn't hit per character.
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams({ page: "1", pageSize: "50" });
+      if (status !== "all") params.set("status", status);
+      if (search.trim()) params.set("search", search.trim());
+      apiClient<TemplateListResponse>(`/templates?${params.toString()}`)
+        .then(setData)
+        .catch((err: unknown) =>
+          setError(err instanceof Error ? err.message : "加载失败"),
+        )
+        .finally(() => setLoading(false));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search, status]);
+
+  // Collapse the open "more" menu on outside click / Escape.
+  useEffect(() => {
+    if (openMenuId == null) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!(e.target as Element).closest(".menu-wrap")) setOpenMenuId(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenMenuId(null);
+    };
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [openMenuId]);
+
+  const items = data?.items ?? [];
 
   return (
     <div className="templates">
-      <div className="templates-toolbar">
-        <div className="templates-search">
+      <div className="toolbar">
+        <div className="seg" role="group" aria-label="状态筛选">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={status === f.key}
+              className={status === f.key ? "active" : ""}
+              onClick={() => setStatus(f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="input-wrap tb-search">
+          <SearchIcon className="icon" />
           <input
+            className="input input-sm"
             value={search}
-            placeholder="搜索模板名称"
+            placeholder="搜索模板名称…"
+            aria-label="搜索模板名称"
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button type="button" onClick={() => navigate("/designer/create")}>
-          + 新建模板
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => navigate("/designer/create")}
+        >
+          <PlusIcon className="icon" />
+          新建表单
         </button>
       </div>
 
@@ -49,52 +248,36 @@ export const TemplatesPage: React.FC = () => {
         <p className="templates-error">加载模板失败：{error}</p>
       ) : loading ? (
         <p className="templates-empty">加载中…</p>
-      ) : !data || data.items.length === 0 ? (
-        <p className="templates-empty">暂无模板，点击“新建模板”开始</p>
+      ) : items.length === 0 ? (
+        <div className="empty">
+          <div className="empty-ico">
+            <DocIcon />
+          </div>
+          <h3>没有匹配的模板</h3>
+          <p>调整筛选条件，或创建一个新的表单模板。</p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate("/designer/create")}
+          >
+            新建表单
+          </button>
+        </div>
       ) : (
-        <>
-          <table className="templates-table">
-            <thead>
-              <tr>
-                <th>名称</th>
-                <th>分类</th>
-                <th>状态</th>
-                <th>锁定者</th>
-                <th>版本</th>
-                <th>更新时间</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((tpl) => (
-                <tr key={tpl.id}>
-                  <td className="tpl-name">{tpl.name}</td>
-                  <td>{tpl.category ?? "—"}</td>
-                  <td>
-                    <span className={`tpl-status tpl-status--${tpl.status}`}>
-                      {STATUS_LABEL[tpl.status] ?? tpl.status}
-                    </span>
-                  </td>
-                  <td>{tpl.locked_by_name ?? (tpl.locked_by ? "—" : "未锁定")}</td>
-                  <td>v{tpl.version}</td>
-                  <td>{formatDate(tpl.updated_at)}</td>
-                  <td>
-                    <Link to={`/designer/templates/${tpl.id}`}>进入设计</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="templates-total">共 {data.total} 个模板</p>
-        </>
+        <div className="tpl-grid">
+          {items.map((tpl) => (
+            <TemplateCard
+              key={tpl.id}
+              template={tpl}
+              menuOpen={openMenuId === tpl.id}
+              onToggleMenu={() =>
+                setOpenMenuId((cur) => (cur === tpl.id ? null : tpl.id))
+              }
+              onOpen={() => navigate(`/designer/templates/${tpl.id}`)}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 };
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? iso
-    : d.toLocaleString("zh-CN", { hour12: false });
-}

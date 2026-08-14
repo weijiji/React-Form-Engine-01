@@ -170,6 +170,11 @@ export const routes: RouteObject[] = [
         handle: { title: "创建表单", crumb: "模板设计者门户" } satisfies ShellHandle,
       },
       {
+        path: "create/nl",
+        element: <PlaceholderPage />,
+        handle: { title: "自然语言创建", crumb: "创建表单" } satisfies ShellHandle,
+      },
+      {
         path: "drafts",
         element: <PlaceholderPage />,
         handle: { title: "草稿模板", crumb: "模板设计者门户" } satisfies ShellHandle,

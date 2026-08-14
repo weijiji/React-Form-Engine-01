@@ -136,7 +136,14 @@ describe("five-portal routing (issue 16)", () => {
 
   it("renders /designer/templates (designer landing)", async () => {
     renderAt("/designer/templates");
-    expect(await screen.findByText(/暂无模板/)).toBeInTheDocument();
+    expect(await screen.findByText(/没有匹配的模板/)).toBeInTheDocument();
+  });
+
+  it("renders /designer/create (entry chooser)", async () => {
+    renderAt("/designer/create");
+    expect(await screen.findByText("选择一种方式开始设计")).toBeInTheDocument();
+    expect(screen.getByText("自然语言创建")).toBeInTheDocument();
+    expect(screen.getByText("空白模板")).toBeInTheDocument();
   });
 
   it("renders /designer/templates/:id (designer workbench)", async () => {
