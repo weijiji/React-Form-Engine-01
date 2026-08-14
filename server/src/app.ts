@@ -12,12 +12,21 @@ import templatesRouter from "./routes/templates";
 import formsRouter from "./routes/forms";
 import instancesRouter from "./routes/instances";
 import draftsRouter from "./routes/drafts";
+import authRouter from "./routes/auth";
+import rolesRouter from "./routes/roles";
+import permissionsRouter from "./routes/permissions";
+import usersRouter from "./routes/users";
 
 /**
  * Create and configure the Express application.
  */
 export function createApp(): express.Application {
   const app = express();
+
+  // Trust the first proxy hop so `req.ip` honours X-Forwarded-For (used to key
+  // the login rate limiter per client IP). Dev-only posture; a real deployment
+  // would pin this to a known proxy.
+  app.set("trust proxy", true);
 
   // ── Middleware chain (order matters) ──────────────────────
   // 1. TraceId — must be first so all subsequent handlers have req.traceId
@@ -44,6 +53,10 @@ export function createApp(): express.Application {
   // ── Routes ────────────────────────────────────────────────
   app.use(healthRouter);
   app.use(meRouter);
+  app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/roles", rolesRouter);
+  app.use("/api/v1/permissions", permissionsRouter);
+  app.use("/api/v1/users", usersRouter);
   app.use("/api/v1/templates", templatesRouter);
   app.use("/api/v1/forms", formsRouter);
   app.use("/api/v1/instances", instancesRouter);

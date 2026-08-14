@@ -31,6 +31,8 @@ import { FormCenter } from "../pages/filler/FormCenter";
 import { FormFillPage } from "../pages/filler/FormFillPage";
 import { MyDrafts } from "../pages/filler/MyDrafts";
 import { MySubmissions } from "../pages/filler/MySubmissions";
+import { RolesPage } from "../pages/admin/RolesPage";
+import { UsersPage } from "../pages/admin/UsersPage";
 
 // Per-portal nav configuration (ADR-0008 / ADR-0009). One shared Shell, five
 // portals, only the nav differs. Nav labels and items follow sitemap-form-engine.md;
@@ -262,12 +264,12 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/admin/users" replace /> },
       {
         path: "users",
-        element: <PlaceholderPage />,
+        element: <UsersPage />,
         handle: { title: "用户管理", crumb: "系统管理员门户" } satisfies ShellHandle,
       },
       {
         path: "roles",
-        element: <PlaceholderPage />,
+        element: <RolesPage />,
         handle: { title: "角色管理", crumb: "系统管理员门户" } satisfies ShellHandle,
       },
       {

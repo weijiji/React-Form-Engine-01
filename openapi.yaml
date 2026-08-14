@@ -27,6 +27,14 @@ tags:
     description: Form instance lifecycle — create, autosave, submit, withdraw
   - name: drafts
     description: Lightweight unsaved drafts with template version-mismatch migration
+  - name: auth
+    description: JWT login/refresh/logout and the current-user endpoint
+  - name: roles
+    description: Role CRUD with permission-code assignment
+  - name: permissions
+    description: The predefined permission-code catalog
+  - name: users
+    description: User administration and role assignment
 
 paths:
   /api/v1/health:
@@ -685,6 +693,262 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Log in
+      description: |
+        Verifies email + password, then issues a httpOnly JWT (`access_token`,
+        Secure + SameSite=Strict) and a JS-readable CSRF token (`xsrf-token`).
+        Rate-limited to 5 requests per minute per client IP.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated; returns the user with roles + permissions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Wrong credentials (uniform, no user enumeration)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Missing email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh the session (sliding expiration)
+      description: Exchanges the current token for a fresh 7-day token.
+      operationId: refresh
+      responses:
+        "200":
+          description: New token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: No valid session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Log out
+      description: Clears the access_token and xsrf-token cookies.
+      operationId: logout
+      responses:
+        "204":
+          description: Cookies cleared
+
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      summary: Current user
+      description: The authenticated user with their roles and permission codes.
+      operationId: getAuthMe
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/roles:
+    get:
+      tags: [roles]
+      summary: List roles
+      description: All roles with their permission codes. Requires admin:manage_roles.
+      operationId: listRoles
+      responses:
+        "200":
+          description: Role list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+        "403":
+          description: Missing admin:manage_roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      tags: [roles]
+      summary: Create a role
+      description: Creates a role with at least one permission code.
+      operationId: createRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleRequest"
+      responses:
+        "201":
+          description: Role created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "403":
+          description: Missing admin:manage_roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Invalid name or permission codes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/roles/{id}:
+    parameters:
+      - $ref: "#/components/parameters/RoleId"
+    put:
+      tags: [roles]
+      summary: Update a role
+      description: Replaces name/description and optionally the permission codes.
+      operationId: updateRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleRequest"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "404":
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      tags: [roles]
+      summary: Delete a role
+      description: Deletes the role and cascades its user/permission assignments.
+      operationId: deleteRole
+      responses:
+        "204":
+          description: Role deleted
+        "404":
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/permissions:
+    get:
+      tags: [permissions]
+      summary: List permission codes
+      description: The 20 predefined permission codes, grouped by category.
+      operationId: listPermissions
+      responses:
+        "200":
+          description: Permission catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionListResponse"
+
+  /api/v1/users:
+    get:
+      tags: [users]
+      summary: List users
+      description: Users with their assigned roles. Requires admin:manage_users.
+      operationId: listUsers
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /api/v1/users/{id}/roles:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [users]
+      summary: Get a user's roles
+      operationId: getUserRoles
+      responses:
+        "200":
+          description: The user's roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      tags: [users]
+      summary: Replace a user's roles
+      description: Replaces the user's role set (capabilities are the union).
+      operationId: setUserRoles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleAssignmentRequest"
+      responses:
+        "200":
+          description: The user's new roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     ErrorEnvelope:
@@ -828,6 +1092,158 @@ components:
         email:
           type: string
           format: email
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      description: The authenticated user with roles, permission codes, and (on login/refresh) the CSRF token.
+      required: [id, name, email, roles, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleSummary"
+        permissions:
+          type: array
+          description: Union of permission codes across the user's roles.
+          items:
+            type: string
+        csrfToken:
+          type: string
+          description: Fresh CSRF token echoed in the body (also set as the xsrf-token cookie).
+
+    RoleSummary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+
+    Role:
+      type: object
+      required: [id, name, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        permissions:
+          type: array
+          description: Permission codes assigned to this role.
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    RoleRequest:
+      type: object
+      required: [name, permissionCodes]
+      properties:
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        permissionCodes:
+          type: array
+          description: At least one permission code is required on create.
+          items:
+            type: string
+
+    RoleListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+
+    Permission:
+      type: object
+      required: [id, code, name, category]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+
+    PermissionListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+
+    AdminUser:
+      type: object
+      required: [id, name, email, is_active, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        is_active:
+          type: boolean
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleSummary"
+
+    UserListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUser"
+
+    RoleAssignmentRequest:
+      type: object
+      required: [roleIds]
+      properties:
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
 
     FormInstance:
       type: object
@@ -1234,6 +1650,22 @@ components:
       in: path
       required: true
       description: Draft UUID.
+      schema:
+        type: string
+        format: uuid
+    RoleId:
+      name: id
+      in: path
+      required: true
+      description: Role UUID.
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: User UUID.
       schema:
         type: string
         format: uuid

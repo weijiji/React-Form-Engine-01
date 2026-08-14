@@ -1,0 +1,465 @@
+/* Admin portal (work order 09) — roles & user role-assignment pages.
+   Tokens from global.css (ADR-0008). Mirrors the shared .btn/.input/.badge
+   controls from designer/templates.css, keeping each page's stylesheet
+   self-contained (existing convention). */
+
+/* ── 通用控件（与 templates.css 保持一致） ───────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.btn-primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.btn[disabled] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.icon-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.input::placeholder {
+  color: var(--text-3);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.badge-indigo {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.badge-gray {
+  background: #eef0f4;
+  color: var(--text-2);
+}
+
+.muted {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* ── 页面骨架 ──────────────────────────────────────────────────────────── */
+
+.rbac {
+  max-width: 980px;
+}
+
+.rbac-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.rbac-title {
+  font-size: 19px;
+  margin: 0;
+}
+
+.rbac-empty {
+  color: var(--text-2);
+}
+
+.rbac-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+/* ── 空状态 ────────────────────────────────────────────────────────────── */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 56px 24px;
+  color: var(--text-3);
+}
+
+.empty .empty-ico {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  color: var(--text-3);
+}
+
+.empty .empty-ico svg {
+  width: 26px;
+  height: 26px;
+}
+
+.empty h3 {
+  font-size: 15px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 13px;
+  max-width: 360px;
+}
+
+/* ── 角色卡片列表 ──────────────────────────────────────────────────────── */
+
+.role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.role-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.role-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.role-card-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.role-card-name svg {
+  width: 20px;
+  height: 20px;
+  color: var(--brand);
+  margin-top: 2px;
+  flex: none;
+}
+
+.role-card-name h3 {
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0;
+}
+
+.role-card-name p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.role-card-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.role-card-perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.perm-tag {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+/* ── 编辑器弹层 ────────────────────────────────────────────────────────── */
+
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(24, 28, 45, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+.editor-panel {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-head h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.editor-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editor-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* ── 权限码勾选 ────────────────────────────────────────────────────────── */
+
+.perm-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.perm-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.perm-group-label {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.perm-checkboxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+
+.perm-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.perm-check input {
+  accent-color: var(--brand);
+  flex: none;
+}
+
+.perm-check-code {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  flex: none;
+}
+
+.perm-check-name {
+  color: var(--text-3);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── 用户表 ────────────────────────────────────────────────────────────── */
+
+.user-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.user-table th,
+.user-table td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.user-table thead th {
+  background: var(--bg-subtle);
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.user-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.col-actions {
+  width: 120px;
+  text-align: right;
+}
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 650;
+  flex: none;
+}
+
+.user-name {
+  font-weight: 600;
+}
+
+.role-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

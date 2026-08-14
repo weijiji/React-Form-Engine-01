@@ -12,8 +12,11 @@ const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
  * The CSRF cookie is set by the client (readable via non-httpOnly cookie)
  * and sent back in the X-CSRF-Token header.
  *
- * MVP implementation: validates token presence and cookie presence.
- * Full implementation would set the cookie server-side on login.
+ * The CSRF cookie is set on login (see services/cookies.ts) and read by the
+ * client via `document.cookie` to echo back in the header. Requests that carry
+ * no CSRF cookie at all (e.g. the pre-auth legacy X-User-Id routes, or the
+ * login request itself) are still allowed, preserving backward compatibility
+ * with the pre-issue-09 surface; once a cookie is present the header must match.
  */
 export function csrfMiddleware(
   req: Request,

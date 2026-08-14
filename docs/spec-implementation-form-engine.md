@@ -186,6 +186,10 @@ React Testing Library + 模拟 FormEngine：
 VALIDATION_ERROR          → 422  字段值校验失败
 NOT_FOUND                 → 404  资源不存在
 FORBIDDEN                 → 403  无权限操作（非资源所有者）
+UNAUTHORIZED              → 401  未登录或登录已过期
+INVALID_CREDENTIALS       → 401  邮箱或密码错误
+CSRF_TOKEN_MISSING        → 403  缺少 CSRF Token
+CSRF_TOKEN_MISMATCH       → 403  CSRF Token 不匹配
 VERSION_CONFLICT          → 409  乐观锁冲突
 IDEMPOTENCY_CONFLICT      → 409  幂等键重复（不同请求体）
 TEMPLATE_LOCKED           → 409  模板已被他人签出
