@@ -47,13 +47,66 @@ class TestRequest {
 }
 
 // The authenticated user reported by GET /auth/me. `null` = unauthenticated.
+// Portal access is driven by `permissions` (work order 18); `roles` only feed
+// the user-chip display.
 interface TestUser {
   name: string;
   email: string;
   roles: string[];
+  permissions: string[];
 }
 
-const DESIGNER: TestUser = { name: "设计员", email: "designer@example.com", roles: ["设计者"] };
+// The five seed roles' permission-code sets (server/src/db/seeds/001_seed_data.ts).
+const ALL_PERMS = [
+  "template:create", "template:edit", "template:delete", "template:publish",
+  "template:export", "template:import", "template:force_unlock",
+  "form:fill", "form:submit", "form:withdraw",
+  "approval:view_pending", "approval:approve", "approval:reject",
+  "approval:return", "approval:transfer",
+  "data:view", "data:export", "data:view_stats",
+  "admin:manage_roles", "admin:manage_users",
+];
+const DESIGNER_PERMS = [
+  "template:create", "template:edit", "template:delete", "template:publish",
+  "template:export", "template:import", "template:force_unlock",
+];
+const FILLER_PERMS = ["form:fill", "form:submit", "form:withdraw"];
+const APPROVER_PERMS = [
+  "approval:view_pending", "approval:approve", "approval:reject",
+  "approval:return", "approval:transfer",
+];
+const OPS_PERMS = ["template:import", "template:export", "data:view", "data:view_stats"];
+
+const DESIGNER: TestUser = {
+  name: "设计员",
+  email: "designer@example.com",
+  roles: ["设计者"],
+  permissions: DESIGNER_PERMS,
+};
+const ADMIN: TestUser = {
+  name: "系统管理员",
+  email: "admin@example.com",
+  roles: ["管理员"],
+  permissions: ALL_PERMS,
+};
+const FILLER: TestUser = {
+  name: "李四",
+  email: "lisi@example.com",
+  roles: ["填写者"],
+  permissions: FILLER_PERMS,
+};
+const APPROVER: TestUser = {
+  name: "张三",
+  email: "zhangsan@example.com",
+  roles: ["审批者"],
+  permissions: APPROVER_PERMS,
+};
+const OPS: TestUser = {
+  name: "运维人员",
+  email: "ops@example.com",
+  roles: ["运维"],
+  permissions: OPS_PERMS,
+};
 
 let currentUser: TestUser | null;
 
@@ -63,7 +116,7 @@ function authBody(u: TestUser) {
     name: u.name,
     email: u.email,
     roles: u.roles.map((r) => ({ id: `role-${r}`, name: r, description: null })),
-    permissions: [],
+    permissions: u.permissions,
   };
 }
 
@@ -80,7 +133,7 @@ function renderAt(path: string) {
   );
 }
 
-/** Render a route as a user holding the given roles (designer by default). */
+/** Render a route as a user holding the given permissions (designer by default). */
 function renderAs(path: string, user: TestUser = DESIGNER) {
   currentUser = user;
   return renderAt(path);
@@ -161,14 +214,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("five-portal routing (issue 16, wired to auth in work order 17)", () => {
+describe("five-portal routing (issue 16, permission-gated in work order 18)", () => {
   it("redirects the root to the user's primary portal", async () => {
     renderAs("/");
     await expectBrandSub("模板设计者门户");
   });
 
-  it("redirects the root by role (admin → system-admin portal)", async () => {
-    renderAs("/", { name: "系统管理员", email: "admin@example.com", roles: ["管理员"] });
+  it("redirects the root by permission (admin → system-admin portal)", async () => {
+    renderAs("/", ADMIN);
     await expectBrandSub("系统管理员门户");
   });
 
@@ -178,23 +231,36 @@ describe("five-portal routing (issue 16, wired to auth in work order 17)", () =>
     expect(await screen.findByRole("button", { name: "登录" })).toBeInTheDocument();
   });
 
-  it("forbids a portal the user's role does not unlock (403)", async () => {
-    renderAs("/admin", { name: "李四", email: "lisi@example.com", roles: ["填写者"] });
+  it("forbids a portal the user's permissions do not unlock (403)", async () => {
+    renderAs("/admin", FILLER);
     expect(await screen.findByText("您没有权限访问该门户")).toBeInTheDocument();
   });
 
-  it.each([
+  it("forbids ops users from the designer portal despite template:import/export", async () => {
+    renderAs("/designer", OPS);
+    expect(await screen.findByText("您没有权限访问该门户")).toBeInTheDocument();
+  });
+
+  it.each<[string, string, string, TestUser]>([
     ["/designer", "模板设计者门户", "创建表单", DESIGNER],
-    ["/filler", "表单填写者门户", "表单中心", { name: "李四", email: "lisi@example.com", roles: ["填写者"] } as TestUser],
-    ["/approver", "审批人门户", "已审批", { name: "张三", email: "zhangsan@example.com", roles: ["审批者"] } as TestUser],
-    ["/admin", "系统管理员门户", "用户管理", { name: "系统管理员", email: "admin@example.com", roles: ["管理员"] } as TestUser],
-    ["/ops", "运维人员门户", "导入配置", { name: "运维人员", email: "ops@example.com", roles: ["运维"] } as TestUser],
-  ] as const)("%s renders its own shell + nav", async (path, brandSub, navItem, user) => {
-    renderAs(path, user as unknown as TestUser);
+    ["/filler", "表单填写者门户", "表单中心", FILLER],
+    ["/approver", "审批人门户", "已审批", APPROVER],
+    ["/admin", "系统管理员门户", "用户管理", ADMIN],
+    ["/ops", "运维人员门户", "导入配置", OPS],
+  ])("%s renders its own shell + nav", async (path, brandSub, navItem, user) => {
+    renderAs(path, user);
     await expectBrandSub(brandSub);
     expect(
       screen.getByRole("link", { name: new RegExp(navItem) }),
     ).toBeInTheDocument();
+  });
+
+  it("a user with all permission codes can switch to every portal", async () => {
+    renderAs("/admin", ADMIN);
+    await expectBrandSub("系统管理员门户");
+    await waitFor(() => {
+      expect(document.querySelectorAll(".portal-link")).toHaveLength(5);
+    });
   });
 
   it("renders /designer/templates (designer landing)", async () => {
@@ -226,7 +292,7 @@ describe("five-portal routing (issue 16, wired to auth in work order 17)", () =>
   });
 
   it("no longer treats /admin as the designer portal", async () => {
-    renderAs("/admin", { name: "系统管理员", email: "admin@example.com", roles: ["管理员"] });
+    renderAs("/admin", ADMIN);
     await expectBrandSub("系统管理员门户");
     expect(
       screen.getByRole("link", { name: /用户管理/ }),

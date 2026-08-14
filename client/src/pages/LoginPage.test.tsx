@@ -79,7 +79,16 @@ describe("LoginPage (work order 17)", () => {
             name: "设计员",
             email: "designer@example.com",
             roles: [{ id: "r-designer", name: "设计者", description: null }],
-            permissions: [],
+            // 设计者权限码 → primaryPortal 落到 /designer（work order 18）。
+            permissions: [
+              "template:create",
+              "template:edit",
+              "template:delete",
+              "template:publish",
+              "template:export",
+              "template:import",
+              "template:force_unlock",
+            ],
             csrfToken: "csrf-123",
           });
         }

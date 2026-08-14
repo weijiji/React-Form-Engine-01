@@ -1,13 +1,15 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { hasAnyRole, primaryPortal } from "./roles";
+import { canAccessAny, primaryPortal } from "form-engine-core";
 
 /**
- * Route guards (work order 17). `RequireAuth` is the outer authenticated
- * boundary (redirects to /login, carrying the intended destination);
- * `RequireRole` gates a portal on role membership (redirects to /403);
- * `HomeRedirect` turns the root `/` into a role-based landing page.
+ * Route guards (work order 17; permission-driven since work order 18).
+ * `RequireAuth` is the outer authenticated boundary (redirects to /login,
+ * carrying the intended destination); `RequirePermission` gates a portal on
+ * the user's permission codes (redirects to /403); `HomeRedirect` turns the
+ * root `/` into a permission-based landing page. A user's portal access is
+ * decided by `user.permissions`, never by role name.
  */
 
 function Loading(): React.ReactElement {
@@ -24,10 +26,6 @@ function Loading(): React.ReactElement {
       加载中…
     </div>
   );
-}
-
-function roleNames(user: { roles: { name: string }[] }): string[] {
-  return user.roles.map((r) => r.name);
 }
 
 /** Authenticated boundary — signed-out users are sent to /login. */
@@ -48,8 +46,15 @@ export function RequireAuth(): React.ReactElement {
   return <Outlet />;
 }
 
-/** Role boundary — users missing every allowed role are sent to /403. */
-export function RequireRole({ roles }: { roles: string[] }): React.ReactElement {
+/**
+ * Permission boundary — users holding none of the portal's unlock codes are
+ * sent to /403. OR semantics: any one code grants access.
+ */
+export function RequirePermission({
+  codes,
+}: {
+  codes: string[];
+}): React.ReactElement {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -63,7 +68,7 @@ export function RequireRole({ roles }: { roles: string[] }): React.ReactElement 
       />
     );
   }
-  if (!hasAnyRole(roleNames(user), roles)) {
+  if (!canAccessAny(codes, user.permissions)) {
     return <Navigate to="/403" replace />;
   }
   return <Outlet />;
@@ -75,5 +80,5 @@ export function HomeRedirect(): React.ReactElement {
 
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={primaryPortal(roleNames(user))} replace />;
+  return <Navigate to={primaryPortal(user.permissions)} replace />;
 }

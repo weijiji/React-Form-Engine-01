@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink, Outlet, useMatches } from "react-router-dom";
+import { canAccessAny } from "form-engine-core";
 import { LogoutIcon } from "./icons";
 import "./Shell.css";
 
@@ -11,6 +12,8 @@ export interface NavItem {
   count?: number;
   /** Style the count badge as a danger alert (e.g. 通知中心). */
   countTone?: "danger";
+  /** Permission codes that unlock this item (OR). Omit to always show. */
+  codes?: string[];
 }
 
 export interface NavGroup {
@@ -23,7 +26,7 @@ export interface ShellUser {
   role: string;
 }
 
-/** A portal the signed-in user can switch to (rendered in the sidebar footer). */
+/** A portal the signed-in user can switch to (rendered in the topbar). */
 export interface ShellPortal {
   to: string;
   label: string;
@@ -48,6 +51,24 @@ export interface ShellProps {
   onLogout?: () => void;
   /** Portals the user can switch between — shown when more than one is present. */
   portals?: ShellPortal[];
+}
+
+/**
+ * Drop nav items whose permission codes (OR) the user holds none of, then drop
+ * groups that end up empty. Items without `codes` are always shown.
+ */
+export function filterNavGroups(
+  navGroups: NavGroup[],
+  permissions: string[],
+): NavGroup[] {
+  return navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.codes || canAccessAny(item.codes, permissions),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 export const Shell: React.FC<ShellProps> = ({
@@ -146,6 +167,18 @@ export const Shell: React.FC<ShellProps> = ({
                 </button>
               )}
             </div>
+          </div>
+        )}
+      </aside>
+
+      <div className="main">
+        <header className="topbar">
+          <div>
+            {crumb && <div className="tb-crumb">{crumb}</div>}
+            {title && <h1 className="tb-title">{title}</h1>}
+          </div>
+          <div className="tb-actions">
+            {actions}
             {portals && portals.length > 1 && (
               <div className="portal-switcher">
                 <span className="portal-switcher-label">切换门户</span>
@@ -162,18 +195,6 @@ export const Shell: React.FC<ShellProps> = ({
                 ))}
               </div>
             )}
-          </div>
-        )}
-      </aside>
-
-      <div className="main">
-        <header className="topbar">
-          <div>
-            {crumb && <div className="tb-crumb">{crumb}</div>}
-            {title && <h1 className="tb-title">{title}</h1>}
-          </div>
-          <div className="tb-actions">
-            {actions}
             <button className="bell" aria-label="通知" type="button">
               <svg
                 viewBox="0 0 24 24"

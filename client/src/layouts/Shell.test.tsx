@@ -1,7 +1,12 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Shell, type NavGroup, type ShellUser } from "./Shell";
+import {
+  Shell,
+  filterNavGroups,
+  type NavGroup,
+  type ShellUser,
+} from "./Shell";
 
 // react-router's data router (createMemoryRouter) builds a `Request` for every
 // navigation. jsdom's AbortController yields an AbortSignal that Node's native
@@ -158,5 +163,40 @@ describe("Shell — shared portal chrome", () => {
 
     const danger = container.querySelector(".count.danger");
     expect(danger).toHaveTextContent("2");
+  });
+});
+
+describe("filterNavGroups — permission-based nav filtering (work order 18)", () => {
+  const groups: NavGroup[] = [
+    {
+      label: "设计工作台",
+      items: [
+        { to: "/designer/create", label: "创建表单", codes: ["template:create"] },
+        { to: "/notifications", label: "通知中心" }, // no codes → always shown
+      ],
+    },
+    {
+      label: "运维",
+      items: [{ to: "/ops/import", label: "导入配置", codes: ["template:import"] }],
+    },
+  ];
+
+  it("keeps code-less items and items whose code the user holds", () => {
+    const filtered = filterNavGroups(groups, ["template:import"]);
+    expect(filtered.map((g) => g.label)).toEqual(["设计工作台", "运维"]);
+    expect(filtered[0].items.map((i) => i.to)).toEqual(["/notifications"]);
+    expect(filtered[1].items.map((i) => i.to)).toEqual(["/ops/import"]);
+  });
+
+  it("drops a whole group when every item is filtered out", () => {
+    const filtered = filterNavGroups(groups, ["data:view"]);
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].items.map((i) => i.to)).toEqual(["/notifications"]);
+  });
+
+  it("does not mutate the input nav groups", () => {
+    filterNavGroups(groups, []);
+    expect(groups).toHaveLength(2);
+    expect(groups[0].items).toHaveLength(2);
   });
 });

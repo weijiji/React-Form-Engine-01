@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { primaryPortal } from "../auth/roles";
+import { primaryPortal } from "form-engine-core";
 import "./login.css";
 
 /**
- * 登录页 (work order 17). Public route. On success, sends the user to the
- * portal they were trying to reach (`location.state.from`) or their primary
- * role's portal. Mirrors the Canvas Workbench tokens (indigo brand card).
+ * 登录页 (work order 17; permission-driven since work order 18). Public route.
+ * On success, sends the user to the portal they were trying to reach
+ * (`location.state.from`) or their primary permission-based portal. Mirrors the
+ * Canvas Workbench tokens (indigo brand card).
  */
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -27,7 +28,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
     try {
       const user = await login(email.trim(), password);
-      const target = from || primaryPortal(user.roles.map((r) => r.name));
+      const target = from || primaryPortal(user.permissions);
       navigate(target, { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "登录失败");

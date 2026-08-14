@@ -21,7 +21,8 @@ import {
   UploadIcon,
   UsersIcon,
 } from "../layouts/icons";
-import { HomeRedirect, RequireAuth, RequireRole } from "../auth/guards";
+import { HomeRedirect, RequireAuth, RequirePermission } from "../auth/guards";
+import { PORTALS } from "form-engine-core";
 import { PortalShell } from "../auth/PortalShell";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { LoginPage } from "../pages/LoginPage";
@@ -47,9 +48,9 @@ const designerNav: NavGroup[] = [
   {
     label: "设计工作台",
     items: [
-      { to: "/designer/templates", label: "我的模板", icon: <FileIcon />, count: 7 },
-      { to: "/designer/create", label: "创建表单", icon: <PlusIcon /> },
-      { to: "/designer/drafts", label: "草稿模板", icon: <DraftIcon />, count: 3 },
+      { to: "/designer/templates", label: "我的模板", icon: <FileIcon />, count: 7, codes: ["template:edit"] },
+      { to: "/designer/create", label: "创建表单", icon: <PlusIcon />, codes: ["template:create"] },
+      { to: "/designer/drafts", label: "草稿模板", icon: <DraftIcon />, count: 3, codes: ["template:edit"] },
     ],
   },
   {
@@ -77,9 +78,9 @@ const fillerNav: NavGroup[] = [
   {
     label: "表单",
     items: [
-      { to: "/filler/forms", label: "表单中心", icon: <LayoutIcon /> },
-      { to: "/filler/drafts", label: "我的草稿", icon: <DraftIcon /> },
-      { to: "/filler/submissions", label: "我的提交", icon: <SendIcon /> },
+      { to: "/filler/forms", label: "表单中心", icon: <LayoutIcon />, codes: ["form:fill"] },
+      { to: "/filler/drafts", label: "我的草稿", icon: <DraftIcon />, codes: ["form:fill"] },
+      { to: "/filler/submissions", label: "我的提交", icon: <SendIcon />, codes: ["form:submit"] },
     ],
   },
   commonNav,
@@ -90,8 +91,8 @@ const approverNav: NavGroup[] = [
   {
     label: "审批",
     items: [
-      { to: "/approver/pending", label: "待审批", icon: <ClockIcon /> },
-      { to: "/approver/history", label: "已审批", icon: <CheckCircleIcon /> },
+      { to: "/approver/pending", label: "待审批", icon: <ClockIcon />, codes: ["approval:view_pending"] },
+      { to: "/approver/history", label: "已审批", icon: <CheckCircleIcon />, codes: ["approval:view_pending"] },
     ],
   },
   commonNav,
@@ -102,11 +103,11 @@ const adminNav: NavGroup[] = [
   {
     label: "系统管理",
     items: [
-      { to: "/admin/users", label: "用户管理", icon: <UsersIcon /> },
-      { to: "/admin/roles", label: "角色管理", icon: <ShieldIcon /> },
-      { to: "/admin/data", label: "数据管理", icon: <DatabaseIcon /> },
-      { to: "/admin/statistics", label: "统计看板", icon: <BarChartIcon /> },
-      { to: "/admin/templates", label: "模板管理", icon: <FileIcon /> },
+      { to: "/admin/users", label: "用户管理", icon: <UsersIcon />, codes: ["admin:manage_users"] },
+      { to: "/admin/roles", label: "角色管理", icon: <ShieldIcon />, codes: ["admin:manage_roles"] },
+      { to: "/admin/data", label: "数据管理", icon: <DatabaseIcon />, codes: ["data:view"] },
+      { to: "/admin/statistics", label: "统计看板", icon: <BarChartIcon />, codes: ["data:view_stats"] },
+      { to: "/admin/templates", label: "模板管理", icon: <FileIcon />, codes: ["template:publish"] },
     ],
   },
   commonNav,
@@ -117,20 +118,28 @@ const opsNav: NavGroup[] = [
   {
     label: "运维",
     items: [
-      { to: "/ops/import", label: "导入配置", icon: <UploadIcon /> },
-      { to: "/ops/migrations", label: "迁移记录", icon: <ArchiveIcon /> },
-      { to: "/ops/templates", label: "模板查看", icon: <EyeIcon /> },
+      { to: "/ops/import", label: "导入配置", icon: <UploadIcon />, codes: ["template:import"] },
+      { to: "/ops/migrations", label: "迁移记录", icon: <ArchiveIcon />, codes: ["data:view"] },
+      { to: "/ops/templates", label: "模板查看", icon: <EyeIcon />, codes: ["data:view"] },
     ],
   },
   commonNav,
 ];
 
+// Portal unlock codes keyed by portal path — single source of truth is the
+// shared `PORTALS` catalog (work order 18). The portal guards read these codes,
+// not role names.
+const PORTAL_CODES: Record<string, string[]> = Object.fromEntries(
+  PORTALS.map((p) => [p.path, p.codes]),
+);
+
 /**
- * The five-portal route map (ADR-0009). Work order 17 wires authentication:
- * `RequireAuth` is the outer boundary, each portal is gated by `RequireRole`
- * (its fixed role), and the root `/` redirects to the signed-in user's primary
- * portal via `HomeRedirect`. Unimplemented detail pages render `PlaceholderPage`
- * until their own work orders fill them in.
+ * The five-portal route map (ADR-0009). Work order 17 wires authentication;
+ * work order 18 gates each portal on the user's permission codes
+ * (`RequirePermission` — holding any one unlock code grants access) instead of
+ * hardcoded role names. The root `/` redirects to the signed-in user's primary
+ * portal via `HomeRedirect`. Unimplemented detail pages render
+ * `PlaceholderPage` until their own work orders fill them in.
  */
 export const routes: RouteObject[] = [
   // ── Temporary demo route (work order 03) ──
@@ -145,12 +154,12 @@ export const routes: RouteObject[] = [
   {
     element: <RequireAuth />,
     children: [
-      // Root: role-based landing page
+      // Root: permission-based landing page
       { path: "/", element: <HomeRedirect /> },
 
       // ── 模板设计者门户 ──
       {
-        element: <RequireRole roles={["设计者"]} />,
+        element: <RequirePermission codes={PORTAL_CODES["/designer"]!} />,
         children: [
           // Full-screen designer workbench (no Shell — mirrors the prototype's
           // designer-edit.html, a standalone editor without sidebar/topbar).
@@ -190,7 +199,7 @@ export const routes: RouteObject[] = [
 
       // ── 表单填写者门户 ──
       {
-        element: <RequireRole roles={["填写者"]} />,
+        element: <RequirePermission codes={PORTAL_CODES["/filler"]!} />,
         children: [
           {
             path: "/filler",
@@ -227,7 +236,7 @@ export const routes: RouteObject[] = [
 
       // ── 审批人门户 ──
       {
-        element: <RequireRole roles={["审批者"]} />,
+        element: <RequirePermission codes={PORTAL_CODES["/approver"]!} />,
         children: [
           {
             path: "/approver",
@@ -254,7 +263,7 @@ export const routes: RouteObject[] = [
 
       // ── 系统管理员门户 ──
       {
-        element: <RequireRole roles={["管理员"]} />,
+        element: <RequirePermission codes={PORTAL_CODES["/admin"]!} />,
         children: [
           {
             path: "/admin",
@@ -296,7 +305,7 @@ export const routes: RouteObject[] = [
 
       // ── 运维人员门户 ──
       {
-        element: <RequireRole roles={["运维"]} />,
+        element: <RequirePermission codes={PORTAL_CODES["/ops"]!} />,
         children: [
           {
             path: "/ops",
