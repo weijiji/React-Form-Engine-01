@@ -70,18 +70,18 @@ export const UsersPage: React.FC = () => {
                       <span className="avatar">{user.name.slice(0, 1)}</span>
                       <div>
                         <div className="user-name">{user.name}</div>
-                        {!user.is_active && <span className="badge badge-gray">已停用</span>}
+                        {!user.is_active && <span className="rbac-badge rbac-badge-gray">已停用</span>}
                       </div>
                     </div>
                   </td>
-                  <td className="muted">{user.email}</td>
+                  <td className="rbac-muted">{user.email}</td>
                   <td>
                     {user.roles.length === 0 ? (
-                      <span className="muted">无角色</span>
+                      <span className="rbac-muted">无角色</span>
                     ) : (
                       <div className="role-badges">
                         {user.roles.map((r) => (
-                          <span key={r.id} className="badge badge-indigo">{r.name}</span>
+                          <span key={r.id} className="rbac-badge rbac-badge-indigo">{r.name}</span>
                         ))}
                       </div>
                     )}
@@ -89,7 +89,7 @@ export const UsersPage: React.FC = () => {
                   <td className="col-actions">
                     <button
                       type="button"
-                      className="btn"
+                      className="rbac-btn"
                       onClick={() => setAssigning(user)}
                     >
                       分配角色
@@ -161,18 +161,18 @@ const RoleAssignEditor: React.FC<RoleAssignEditorProps> = ({
   }
 
   return (
-    <div className="editor-overlay" role="dialog" aria-label="分配角色">
-      <div className="editor-panel">
-        <div className="editor-head">
+    <div className="rbac-editor-overlay" role="dialog" aria-label="分配角色">
+      <div className="rbac-editor-panel">
+        <div className="rbac-editor-head">
           <h3>
-            为 <span className="muted">{user.name}</span> 分配角色
+            为 <span className="rbac-muted">{user.name}</span> 分配角色
           </h3>
-          <button type="button" className="icon-btn" aria-label="关闭" onClick={onCancel}>
+          <button type="button" className="rbac-icon-btn" aria-label="关闭" onClick={onCancel}>
             ×
           </button>
         </div>
 
-        <div className="editor-body">
+        <div className="rbac-editor-body">
           <div className="role-picker">
             {roles.map((role) => (
               <label key={role.id} className="perm-check">
@@ -189,20 +189,20 @@ const RoleAssignEditor: React.FC<RoleAssignEditorProps> = ({
             ))}
           </div>
           {roles.length === 0 && (
-            <p className="muted">
+            <p className="rbac-muted">
               <UsersIcon /> 暂无角色，请先在「角色管理」中创建。
             </p>
           )}
           {formError && <p className="rbac-error">{formError}</p>}
         </div>
 
-        <div className="editor-foot">
-          <button type="button" className="btn" onClick={onCancel}>
+        <div className="rbac-editor-foot">
+          <button type="button" className="rbac-btn" onClick={onCancel}>
             取消
           </button>
           <button
             type="button"
-            className="btn btn-primary"
+            className="rbac-btn rbac-btn-primary"
             disabled={saving}
             onClick={submit}
           >

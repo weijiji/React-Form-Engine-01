@@ -73,7 +73,7 @@ export const RolesPage: React.FC = () => {
         <h2 className="rbac-title">角色管理</h2>
         <button
           type="button"
-          className="btn btn-primary"
+          className="rbac-btn rbac-btn-primary"
           onClick={() => setEditor({ mode: "create", role: null })}
         >
           新建角色
@@ -85,8 +85,8 @@ export const RolesPage: React.FC = () => {
       ) : loading ? (
         <p className="rbac-empty">加载中…</p>
       ) : roles.length === 0 ? (
-        <div className="empty">
-          <div className="empty-ico">
+        <div className="rbac-empty-state">
+          <div className="rbac-empty-state-ico">
             <ShieldIcon />
           </div>
           <h3>还没有角色</h3>
@@ -154,12 +154,12 @@ const RoleCard: React.FC<RoleCardProps> = ({ role, onEdit, onDeleted }) => {
           </div>
         </div>
         <div className="role-card-actions">
-          <button type="button" className="btn" onClick={onEdit}>
+          <button type="button" className="rbac-btn" onClick={onEdit}>
             编辑
           </button>
           <button
             type="button"
-            className="btn btn-danger"
+            className="rbac-btn rbac-btn-danger"
             disabled={deleting}
             onClick={remove}
           >
@@ -169,7 +169,7 @@ const RoleCard: React.FC<RoleCardProps> = ({ role, onEdit, onDeleted }) => {
       </div>
       <div className="role-card-perms">
         {role.permissions.length === 0 ? (
-          <span className="muted">无权限</span>
+          <span className="rbac-muted">无权限</span>
         ) : (
           role.permissions.map((code) => <span key={code} className="perm-tag">{code}</span>)
         )}
@@ -240,39 +240,39 @@ const RoleEditor: React.FC<RoleEditorProps> = ({
   }
 
   return (
-    <div className="editor-overlay" role="dialog" aria-label="角色编辑">
-      <div className="editor-panel">
-        <div className="editor-head">
+    <div className="rbac-editor-overlay" role="dialog" aria-label="角色编辑">
+      <div className="rbac-editor-panel">
+        <div className="rbac-editor-head">
           <h3>{mode === "create" ? "新建角色" : "编辑角色"}</h3>
-          <button type="button" className="icon-btn" aria-label="关闭" onClick={onCancel}>
+          <button type="button" className="rbac-icon-btn" aria-label="关闭" onClick={onCancel}>
             ×
           </button>
         </div>
 
-        <div className="editor-body">
-          <label className="field">
-            <span className="field-label">角色名称</span>
+        <div className="rbac-editor-body">
+          <label className="rbac-field">
+            <span className="rbac-field-label">角色名称</span>
             <input
-              className="input"
+              className="rbac-input"
               value={name}
               placeholder="如：数据专员"
               onChange={(e) => setName(e.target.value)}
             />
           </label>
 
-          <label className="field">
-            <span className="field-label">描述（可选）</span>
+          <label className="rbac-field">
+            <span className="rbac-field-label">描述（可选）</span>
             <input
-              className="input"
+              className="rbac-input"
               value={description}
               placeholder="该角色的职责说明"
               onChange={(e) => setDescription(e.target.value)}
             />
           </label>
 
-          <div className="field">
-            <span className="field-label">
-              权限码 <span className="muted">（至少勾选 1 项）</span>
+          <div className="rbac-field">
+            <span className="rbac-field-label">
+              权限码 <span className="rbac-muted">（至少勾选 1 项）</span>
             </span>
             <div className="perm-groups">
               {groups.map((group) => (
@@ -299,13 +299,13 @@ const RoleEditor: React.FC<RoleEditorProps> = ({
           {formError && <p className="rbac-error">{formError}</p>}
         </div>
 
-        <div className="editor-foot">
-          <button type="button" className="btn" onClick={onCancel}>
+        <div className="rbac-editor-foot">
+          <button type="button" className="rbac-btn" onClick={onCancel}>
             取消
           </button>
           <button
             type="button"
-            className="btn btn-primary"
+            className="rbac-btn rbac-btn-primary"
             disabled={!canSave}
             onClick={submit}
           >
