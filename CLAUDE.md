@@ -100,3 +100,7 @@ The implementation spec (`docs/spec-implementation-form-engine.md`) defines four
 ## Workflow Conventions
 
 Implementation is driven by numbered work orders in `.scratch/form-engine-mvp/issues/` (TDD → code review → commit per order). The intent is one work order per clean context window. When implementing, follow the spec-first contract (update `openapi.yaml` then regenerate types) and keep domain terminology aligned with `CONTEXT.md`.
+
+
+## Others
+AI should always communicate with users in Chinese.
