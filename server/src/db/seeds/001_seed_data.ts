@@ -33,7 +33,7 @@ export async function seed(knex: Knex): Promise<void> {
     ])
     .returning("id");
 
-  // 设计者 — 独立账号，用于设计者门户（work order 17）
+  // 设计者 — 独立账号，用于模板设计域（work order 17）
   const [designer] = await knex("users")
     .insert([
       {
@@ -47,7 +47,7 @@ export async function seed(knex: Knex): Promise<void> {
     ])
     .returning("id");
 
-  // 运维人员 — 独立账号，用于运维门户（work order 17）
+  // 运维人员 — 独立账号，用于运维域（work order 17）
   const [ops] = await knex("users")
     .insert([
       {
@@ -131,9 +131,9 @@ export async function seed(knex: Knex): Promise<void> {
   await knex("permissions").insert(permissionCodes);
 
   // ── Roles ───────────────────────────────────────────────────
-  // 5 roles ↔ 5 portals (ADR-0009). The seed splits the former single
-  // "普通用户" role into 填写者 + 审批者 so a user is no longer both a filler
-  // and an approver by default (work order 17).
+  // 5 roles with distinct permission-code sets. The seed splits the former
+  // single "普通用户" role into 填写者 + 审批者 so a user is no longer both a
+  // filler and an approver by default (work order 17).
   const [adminRole] = await knex("roles")
     .insert([{ name: "管理员", description: "系统管理员，拥有全部权限" }])
     .returning("id");

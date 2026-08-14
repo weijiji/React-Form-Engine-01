@@ -1,12 +1,12 @@
-/* Admin portal (work order 09) — roles & user role-assignment pages.
+/* Admin pages (work order 09) — roles & user role-assignment pages.
    Tokens from global.css (ADR-0008). Mirrors the shared .btn/.input/.badge
    controls from designer/templates.css, keeping each page's stylesheet
    self-contained (existing convention).
 
    Generic controls carry a .rbac-* prefix on purpose: every page's CSS is
    loaded globally (no code splitting), so an unprefixed copy that drifts from
-   the canonical values would silently override the other portals. Keep the
-   .rbac-* control values aligned with templates.css. */
+   the canonical values would silently override the other pages' controls. Keep
+   the .rbac-* control values aligned with templates.css. */
 
 /* ── 通用控件（与 templates.css 保持一致） ───────────────────────────────── */
 

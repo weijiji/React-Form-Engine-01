@@ -15,7 +15,7 @@ Monorepo with three packages plus docs. There is **no npm workspaces config** �
 - **`client/`** — React frontend. Vite dev server on port 5173, proxies `/api` → `localhost:3001`.
 - **`server/`** — Express API server (port 3001). Knex migrations/seeds, Pino logging.
 - **`shared/`** — package `form-engine-core`: the pure-logic engine. **Zero runtime dependencies.** It compiles to `dist/` (`npm run build:shared`); its `package.json` `exports` points at `./dist/index.js`. The **client** consumes the TypeScript source directly via a Vite alias to `../shared/src/index.ts`, while the **server** imports the compiled `dist` through a `file:../shared` dependency.
-- **`docs/`** — product/design/UX specs, `design-system-form-engine.md` (design tokens + shared shell, ADR-0008), `adr/` (9 ADRs), and `spec-implementation-form-engine.md` (the implementation spec, contains the canonical test seams and error-code table).
+- **`docs/`** — product/design/UX specs, `design-system-form-engine.md` (design tokens + shared shell, ADR-0008), `adr/` (10 ADRs), and `spec-implementation-form-engine.md` (the implementation spec, contains the canonical test seams and error-code table).
 - **`.scratch/form-engine-mvp/issues/`** — the 13 work orders (工单) that drive implementation. `13 个工单：执行顺序.md` maps their dependency graph and execution order.
 - **`CONTEXT.md`** — the domain glossary (Chinese). The semantic authority for all terms: `FormTemplate`, `FormInstance`, `ApprovalRecord`, `Draft`, `OrgDataSource`, `schemaVersion`, etc. Read it before introducing or renaming domain concepts.
 
@@ -74,7 +74,7 @@ Two `version` concepts must not be conflated (ADR-0005): `FormTemplate.version` 
 
 ### The client (`client/`)
 
-- Routing via `react-router-dom` `createBrowserRouter` in `client/src/router/index.tsx`. Canonical model is **5 role portals** (`/designer` `/filler` `/approver` `/admin` `/ops`) in a single shared `Shell` component (ADR-0008 / ADR-0009). The shared `Shell` (`client/src/layouts/Shell.tsx`) replaced the old `AdminLayout`/`UserLayout` (ticket 15); the router still uses the two pre-split portals (`/admin` and `/`) pending the 5-portal routing refactor (ticket 16). The full route map (~40 routes) lives in `docs/sitemap-form-engine.md`.
+- Routing via `react-router-dom` `createBrowserRouter` in `client/src/router/index.tsx`. **5 path-prefix areas** (`/designer` `/filler` `/approver` `/admin` `/ops`) are pure URL organization, NOT a portal concept (ADR-0010, supersedes ADR-0009). Every authenticated page renders inside one shared `Shell` (`client/src/layouts/Shell.tsx`) with a unified sidebar filtered by permission codes (`APP_NAV` + `filterNavGroups`); each page is gated on its own codes via the `ROUTE_CODES` map shared by nav items and route guards. The root `/` lands on the first nav item the user's codes unlock (`HomeRedirect`). The full route map (~40 routes) lives in `docs/sitemap-form-engine.md`.
 - API access goes through `apiClient<T>` in `client/src/config/api.ts`, which injects the CSRF token for mutating requests and parses the error envelope into `ApiError`. New endpoints should consume the generated types from `shared/src/api.ts` rather than hand-written generics (ADR-0007).
 
 ### Spec-first API contract
@@ -91,7 +91,7 @@ Two `version` concepts must not be conflated (ADR-0005): `FormTemplate.version` 
 - **ADR-0006** — MVP condition editor is flat AND only; data format has an upgrade path to nested AST.
 - **ADR-0007** — spec-first OpenAPI + `openapi-typescript` codegen (see above).
 - **ADR-0008** — design system source of truth: prototype「Canvas Workbench」tokens (indigo) + one shared shell; antd palette retired.
-- **ADR-0009** — 5 role portals; `/designer` is the designer portal, `/admin` is the system-admin portal.
+- **ADR-0010** — permission-driven access model (supersedes ADR-0009): no portals; permission codes are the single source of truth, each page gates on its own codes via the shared `ROUTE_CODES` map, `/` lands on the first unlocked nav item.
 
 ## Testing Approach
 

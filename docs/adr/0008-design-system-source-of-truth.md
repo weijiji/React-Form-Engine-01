@@ -16,12 +16,12 @@
 | `client/src/styles/global.css` | `--color-primary:#1677ff`（antd 蓝） | Ant Design 默认色板，非设计选择 |
 | `client/src/form/form.css` | 混合硬编码 antd 色 | 与上面两套都不同 |
 
-门户壳同理：原型是浅色侧栏（236px）+ 顶栏（60px）+ indigo 品牌；代码 `AdminLayout` 是 antd 深色侧栏 `#001529`（240px/56px），`UserLayout` 只有顶栏无侧栏。问：以哪一套为唯一权威，其余全部对齐。
+门户壳同理：原型是浅色侧栏（236px）+ 顶栏（60px）+ indigo 品牌；代码 `AdminLayout` 是 antd 深色侧栏 `#001529`（240px/56px），`UserLayout` 只有顶栏无侧栏。问：以哪一套为唯一权威，其余全部对齐。（此后 5 个角色门户合并为一套共享 shell，导航按权限码过滤——见 ADR-0010。）
 
 ## 决策
 
 1. **设计 token 以原型 `prototype/assets/app.css` 为唯一权威**。设计系统名为「画布工作台 Canvas Workbench」。antd 蓝全部弃用；命名一并采纳原型方案（`--brand`、`--text-2`、`--r-lg`…，而非 `--color-primary`、`--color-text-secondary`）。
-2. **门户壳为一套共享 shell**：浅色侧栏 236px + 顶栏 60px + indigo 品牌，5 个角色门户复用同一 shell、仅导航项不同；`designer-edit` 保留独立的 `.editor` 三栏全屏工作台。
+2. **壳为一套共享 shell**：浅色侧栏 236px + 顶栏 60px + indigo 品牌，所有已登录页面复用同一 shell，导航项按用户权限码过滤（ADR-0010），不再是按角色门户区分；`designer-edit` 保留独立的 `.editor` 三栏全屏工作台。
 
 ## 替代方案
 

@@ -47,8 +47,8 @@ class TestRequest {
 }
 
 // The authenticated user reported by GET /auth/me. `null` = unauthenticated.
-// Portal access is driven by `permissions` (work order 18); `roles` only feed
-// the user-chip display.
+// Portal access is driven by `permissions` (ADR-0010); `roles` only feed the
+// user-chip display.
 interface TestUser {
   name: string;
   email: string;
@@ -139,14 +139,6 @@ function renderAs(path: string, user: TestUser = DESIGNER) {
   return renderAt(path);
 }
 
-// The portal's brand-sub is rendered in the sidebar (and duplicated in the
-// topbar crumb, matching the prototype), so assert it via the `.brand-sub` node.
-async function expectBrandSub(text: string) {
-  await waitFor(() => {
-    expect(document.querySelector(".brand-sub")?.textContent).toBe(text);
-  });
-}
-
 beforeEach(() => {
   currentUser = DESIGNER;
   vi.stubGlobal("Request", TestRequest);
@@ -193,6 +185,15 @@ beforeEach(() => {
       if (url.includes("/templates")) {
         return jsonResponse({ items: [], total: 0, page: 1, pageSize: 50 });
       }
+      // Admin pages (work order 09) fetch these on mount; empty lists keep the
+      // nav tests independent of the RBAC pages' own data.
+      if (
+        url.includes("/users") ||
+        url.includes("/roles") ||
+        url.includes("/permissions")
+      ) {
+        return jsonResponse({ items: [], total: 0, page: 1, pageSize: 50 });
+      }
       // Filler pages (work order 05) fetch these on mount; empty lists keep the
       // portal-nav tests independent of the filler's own data.
       if (url.includes("/forms") || url.includes("/instances") || url.includes("/drafts")) {
@@ -214,53 +215,91 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("five-portal routing (issue 16, permission-gated in work order 18)", () => {
-  it("redirects the root to the user's primary portal", async () => {
-    renderAs("/");
-    await expectBrandSub("模板设计者门户");
-  });
-
-  it("redirects the root by permission (admin → system-admin portal)", async () => {
-    renderAs("/", ADMIN);
-    await expectBrandSub("系统管理员门户");
-  });
-
+describe("permission-driven routing (ADR-0010)", () => {
   it("redirects unauthenticated users to /login", async () => {
     currentUser = null;
     renderAt("/designer");
     expect(await screen.findByRole("button", { name: "登录" })).toBeInTheDocument();
   });
 
-  it("forbids a portal the user's permissions do not unlock (403)", async () => {
-    renderAs("/admin", FILLER);
-    expect(await screen.findByText("您没有权限访问该门户")).toBeInTheDocument();
+  // Landing = first unlocked nav item in APP_NAV order. 设计者 holds
+  // template:publish (→ /admin/templates) and 运维 holds data:view (→
+  // /admin/data), so both land on the 系统管理 group before their own domain —
+  // the expected consequence of pure page-level gating with the seed codes.
+  it.each<[TestUser, string, string]>([
+    [ADMIN, "/admin/users", "用户管理"],
+    [DESIGNER, "/admin/templates", "模板管理"],
+    [FILLER, "/filler/forms", "表单中心"],
+    [APPROVER, "/approver/pending", "待审批"],
+    [OPS, "/admin/data", "数据管理"],
+  ])(
+    "root `/` lands on the first nav item the codes unlock",
+    async (user, _target, navLabel) => {
+      renderAs("/", user);
+      await waitFor(() => {
+        expect(screen.getByRole("link", { name: new RegExp(navLabel) })).toHaveClass("active");
+      });
+    },
+  );
+
+  it("admin (all codes) sees one unified sidebar with every nav group", async () => {
+    renderAs("/admin/users", ADMIN);
+    await screen.findByRole("link", { name: /用户管理/ });
+    const labels = [
+      // 系统管理
+      "用户管理", "角色管理", "数据管理", "统计看板", "模板管理",
+      // 设计工作台
+      "我的模板", "创建表单", "草稿模板",
+      // 表单
+      "表单中心", "我的草稿", "我的提交",
+      // 审批
+      "待审批", "已审批",
+      // 运维
+      "导入配置", "迁移记录", "模板查看",
+      // 通用
+      "通知中心",
+    ];
+    for (const label of labels) {
+      expect(screen.getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
+    }
+    // No portal switcher, no portal brand subtitle.
+    expect(document.querySelector(".portal-switcher")).toBeNull();
+    expect(document.querySelector(".brand-sub")).toBeNull();
   });
 
-  it("forbids ops users from the designer portal despite template:import/export", async () => {
-    renderAs("/designer", OPS);
-    expect(await screen.findByText("您没有权限访问该门户")).toBeInTheDocument();
+  it("designer sees exactly the nav items their codes unlock", async () => {
+    renderAs("/designer/templates", DESIGNER);
+    // 模板/通用 之外，设计者还持有 template:publish（→模板管理）与
+    // template:import（→导入配置）；页面级门禁下这是预期结果。
+    await screen.findByRole("link", { name: /我的模板/ });
+    for (const label of [
+      "我的模板", "创建表单", "草稿模板", "模板管理", "导入配置", "通知中心",
+    ]) {
+      expect(screen.getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
+    }
+    for (const label of [
+      "用户管理", "角色管理", "数据管理", "统计看板",
+      "表单中心", "我的草稿", "我的提交",
+      "待审批", "已审批", "迁移记录", "模板查看",
+    ]) {
+      expect(screen.queryByRole("link", { name: new RegExp(label) })).not.toBeInTheDocument();
+    }
   });
 
-  it.each<[string, string, string, TestUser]>([
-    ["/designer", "模板设计者门户", "创建表单", DESIGNER],
-    ["/filler", "表单填写者门户", "表单中心", FILLER],
-    ["/approver", "审批人门户", "已审批", APPROVER],
-    ["/admin", "系统管理员门户", "用户管理", ADMIN],
-    ["/ops", "运维人员门户", "导入配置", OPS],
-  ])("%s renders its own shell + nav", async (path, brandSub, navItem, user) => {
-    renderAs(path, user);
-    await expectBrandSub(brandSub);
-    expect(
-      screen.getByRole("link", { name: new RegExp(navItem) }),
-    ).toBeInTheDocument();
+  // Page-level gating: a page's OWN codes decide access — no area/portal bundle.
+  it("forbids ops users from /designer/create (needs template:create) with 403", async () => {
+    renderAs("/designer/create", OPS);
+    expect(await screen.findByText("您没有权限访问该页面")).toBeInTheDocument();
   });
 
-  it("a user with all permission codes can switch to every portal", async () => {
-    renderAs("/admin", ADMIN);
-    await expectBrandSub("系统管理员门户");
-    await waitFor(() => {
-      expect(document.querySelectorAll(".portal-link")).toHaveLength(5);
-    });
+  it("forbids filler users from /admin/users (needs admin:manage_users) with 403", async () => {
+    renderAs("/admin/users", FILLER);
+    expect(await screen.findByText("您没有权限访问该页面")).toBeInTheDocument();
+  });
+
+  it("detail pages inherit their parent list's codes (ops → 403)", async () => {
+    renderAs("/designer/templates/tpl-1", OPS);
+    expect(await screen.findByText("您没有权限访问该页面")).toBeInTheDocument();
   });
 
   it("renders /designer/templates (designer landing)", async () => {
@@ -289,17 +328,5 @@ describe("five-portal routing (issue 16, permission-gated in work order 18)", ()
     expect(document.querySelector(".editor")).toBeInTheDocument();
     expect(document.querySelector(".shell")).not.toBeInTheDocument();
     expect(document.querySelector(".sidebar")).not.toBeInTheDocument();
-  });
-
-  it("no longer treats /admin as the designer portal", async () => {
-    renderAs("/admin", ADMIN);
-    await expectBrandSub("系统管理员门户");
-    expect(
-      screen.getByRole("link", { name: /用户管理/ }),
-    ).toBeInTheDocument();
-    // The designer's "我的模板" nav must not leak into the admin portal.
-    expect(
-      screen.queryByRole("link", { name: /我的模板/ }),
-    ).not.toBeInTheDocument();
   });
 });

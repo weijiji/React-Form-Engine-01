@@ -1,6 +1,5 @@
 import React from "react";
 import { NavLink, Outlet, useMatches } from "react-router-dom";
-import { canAccessAny } from "form-engine-core";
 import { LogoutIcon } from "./icons";
 import "./Shell.css";
 
@@ -26,12 +25,6 @@ export interface ShellUser {
   role: string;
 }
 
-/** A portal the signed-in user can switch to (rendered in the topbar). */
-export interface ShellPortal {
-  to: string;
-  label: string;
-}
-
 /** Per-route page metadata, attached to each route's `handle` (see router). */
 export interface ShellHandle {
   /** Page title shown in the topbar — also the page's single `<h1>`. */
@@ -42,43 +35,20 @@ export interface ShellHandle {
 
 export interface ShellProps {
   brandName: string;
-  brandSub?: string;
   navGroups: NavGroup[];
   user?: ShellUser;
   /** Extra controls rendered in the topbar action area, before the bell. */
   actions?: React.ReactNode;
   /** Sign-out handler — when set, a logout button appears next to the user chip. */
   onLogout?: () => void;
-  /** Portals the user can switch between — shown when more than one is present. */
-  portals?: ShellPortal[];
-}
-
-/**
- * Drop nav items whose permission codes (OR) the user holds none of, then drop
- * groups that end up empty. Items without `codes` are always shown.
- */
-export function filterNavGroups(
-  navGroups: NavGroup[],
-  permissions: string[],
-): NavGroup[] {
-  return navGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) => !item.codes || canAccessAny(item.codes, permissions),
-      ),
-    }))
-    .filter((group) => group.items.length > 0);
 }
 
 export const Shell: React.FC<ShellProps> = ({
   brandName,
-  brandSub,
   navGroups,
   user,
   actions,
   onLogout,
-  portals,
 }) => {
   // The page title/crumb live on the leaf route's `handle`, not on the Shell —
   // one source of truth, per route. Walk the match chain top-down so a deeper
@@ -112,7 +82,6 @@ export const Shell: React.FC<ShellProps> = ({
           </span>
           <div>
             <div className="brand-name">{brandName}</div>
-            {brandSub && <div className="brand-sub">{brandSub}</div>}
           </div>
         </div>
 
@@ -179,22 +148,6 @@ export const Shell: React.FC<ShellProps> = ({
           </div>
           <div className="tb-actions">
             {actions}
-            {portals && portals.length > 1 && (
-              <div className="portal-switcher">
-                <span className="portal-switcher-label">切换门户</span>
-                {portals.map((portal) => (
-                  <NavLink
-                    key={portal.to}
-                    to={portal.to}
-                    className={({ isActive }) =>
-                      isActive ? "portal-link active" : "portal-link"
-                    }
-                  >
-                    {portal.label}
-                  </NavLink>
-                ))}
-              </div>
-            )}
             <button className="bell" aria-label="通知" type="button">
               <svg
                 viewBox="0 0 24 24"

@@ -1,8 +1,8 @@
 # 设计系统：动态表单引擎
 
 > 设计系统名：画布工作台（Canvas Workbench）
-> 权威来源：[`prototype/assets/app.css`](../prototype/assets/app.css)（v08）是 token 与门户壳的**唯一事实来源**（ADR-0008）
-> 路由模型：见 [`sitemap-form-engine.md`](sitemap-form-engine.md)（ADR-0009）
+> 权威来源：[`prototype/assets/app.css`](../prototype/assets/app.css)（v08）是 token 与共享 shell 的**唯一事实来源**（ADR-0008）
+> 路由模型：见 [`sitemap-form-engine.md`](sitemap-form-engine.md)（ADR-0010）
 > 日期：2026-08-13
 
 本文档是设计系统的唯一权威。代码、原型、其他文档与此处冲突时，以此处为准。token 与壳是实现细节，**不进入 `CONTEXT.md`**（它只做领域词汇表）。
@@ -75,14 +75,14 @@
 
 ---
 
-## 2. 门户壳（共享 shell）
+## 2. 共享 shell
 
-5 个角色门户复用**同一套 shell**（ADR-0008），仅导航项不同。
+所有已登录页面复用**同一套 shell**（ADR-0008），导航项按用户权限码过滤（ADR-0010）。
 
 ```
 .shell                          flex，min-height:100vh
 ├── .sidebar     236px          浅色（--surface），右侧描边，sticky 全高
-│   ├── .brand                   品牌标识（logo 渐变 --brand→#7c3aed + 名称 + 副标题）
+│   ├── .brand                   品牌标识（logo 渐变 --brand→#7c3aed + 名称）
 │   ├── .nav-group / .nav-item  导航（激活态 --brand-soft 底 + --brand 文字）
 │   └── .sidebar-foot            用户 chip（头像 + 姓名 + 角色）
 └── .main        flex:1
@@ -108,11 +108,11 @@
 
 ---
 
-## 3. 门户路由模型
+## 3. 路由模型（权限码驱动）
 
-见 [`sitemap-form-engine.md`](sitemap-form-engine.md)（ADR-0009）。摘要：
+见 [`sitemap-form-engine.md`](sitemap-form-engine.md)（ADR-0010）。摘要：
 
-| 角色 | 门户路径 | 设备 |
+| 角色 | 路由前缀 | 设备 |
 |------|---------|------|
 | 模板设计者 | `/designer` | 桌面端 |
 | 表单填写者 | `/filler` | PC + 移动端 |

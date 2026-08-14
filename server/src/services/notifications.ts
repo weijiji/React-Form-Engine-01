@@ -5,7 +5,7 @@ import { logger } from "../middleware/logger";
  * Best-effort notification persistence, called *after* the submit transaction
  * commits (ADR-0001: notification persist + SSE push are async, post-commit).
  * SSE push lands with work order 07; issue 05 only persists the rows so the
- * approver portal (issue 06) has something to read.
+ * approver area (issue 06) has something to read.
  */
 export async function notifyApprovers(
   instanceId: string,

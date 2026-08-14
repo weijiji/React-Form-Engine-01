@@ -2,8 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 /**
- * 403 (work order 17). Shown when an authenticated user lacks the role for the
- * portal they tried to reach. Mirrors NotFoundPage's inline treatment.
+ * 403 (work order 17; ADR-0010). Shown when an authenticated user lacks the
+ * permission codes a page requires. Mirrors NotFoundPage's inline treatment.
  */
 export const ForbiddenPage: React.FC = () => {
   return (
@@ -19,7 +19,7 @@ export const ForbiddenPage: React.FC = () => {
         403
       </h1>
       <p style={{ fontSize: 16, color: "var(--text-2)", marginBottom: 24 }}>
-        您没有权限访问该门户
+        您没有权限访问该页面
       </p>
       <Link
         to="/"

@@ -22,8 +22,7 @@ import {
   UsersIcon,
 } from "../layouts/icons";
 import { HomeRedirect, RequireAuth, RequirePermission } from "../auth/guards";
-import { PORTALS } from "form-engine-core";
-import { PortalShell } from "../auth/PortalShell";
+import { AuthenticatedShell } from "../auth/AuthenticatedShell";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { LoginPage } from "../pages/LoginPage";
 import { ForbiddenPage } from "../pages/ForbiddenPage";
@@ -39,107 +38,138 @@ import { MySubmissions } from "../pages/filler/MySubmissions";
 import { RolesPage } from "../pages/admin/RolesPage";
 import { UsersPage } from "../pages/admin/UsersPage";
 
-// Per-portal nav configuration (ADR-0008 / ADR-0009). One shared Shell, five
-// portals, only the nav differs. Nav labels and items follow sitemap-form-engine.md;
-// the designer portal mirrors the Canvas Workbench prototype (designer-templates.html).
+// ── Permission codes per page (ADR-0010) ────────────────────────────────────
+// Every page is gated on its own codes; nav items AND route guards read this
+// map, so they can never drift. Detail routes explicitly inherit their parent
+// list's codes (the `:id` entries below). The five seed roles hold these exact
+// code sets (server/src/db/seeds/001_seed_data.ts).
 
-// ── 模板设计者 /designer ────────────────────────────────────────────────────
-const designerNav: NavGroup[] = [
-  {
-    label: "设计工作台",
-    items: [
-      { to: "/designer/templates", label: "我的模板", icon: <FileIcon />, count: 7, codes: ["template:edit"] },
-      { to: "/designer/create", label: "创建表单", icon: <PlusIcon />, codes: ["template:create"] },
-      { to: "/designer/drafts", label: "草稿模板", icon: <DraftIcon />, count: 3, codes: ["template:edit"] },
-    ],
-  },
-  {
-    label: "通用",
-    items: [
-      {
-        to: "/notifications",
-        label: "通知中心",
-        icon: <BellIcon />,
-        count: 2,
-        countTone: "danger",
-      },
-    ],
-  },
-];
+const TEMPLATE_EDIT = ["template:edit"];
+const TEMPLATE_CREATE = ["template:create"];
+const TEMPLATE_PUBLISH = ["template:publish"];
+const TEMPLATE_IMPORT = ["template:import"];
+const FORM_FILL = ["form:fill"];
+const FORM_SUBMIT = ["form:submit"];
+const APPROVAL_PENDING = ["approval:view_pending"];
+const DATA_VIEW = ["data:view"];
+const DATA_STATS = ["data:view_stats"];
+const ADMIN_USERS = ["admin:manage_users"];
+const ADMIN_ROLES = ["admin:manage_roles"];
 
-// 通用 — 每个门户侧栏末尾的通知中心（设计者另有未读计数，故单独定义）。
+export const ROUTE_CODES: Record<string, string[]> = {
+  "/designer/templates": TEMPLATE_EDIT,
+  "/designer/templates/:id": TEMPLATE_EDIT, // workbench inherits the list
+  "/designer/create": TEMPLATE_CREATE,
+  "/designer/create/nl": TEMPLATE_CREATE, // inherits /designer/create
+  "/designer/drafts": TEMPLATE_EDIT,
+  "/filler/forms": FORM_FILL,
+  "/filler/instances/:id": FORM_FILL, // inherits /filler/forms
+  "/filler/drafts": FORM_FILL,
+  "/filler/submissions": FORM_SUBMIT,
+  "/approver/pending": APPROVAL_PENDING,
+  "/approver/history": APPROVAL_PENDING,
+  "/admin/users": ADMIN_USERS,
+  "/admin/roles": ADMIN_ROLES,
+  "/admin/data": DATA_VIEW,
+  "/admin/statistics": DATA_STATS,
+  "/admin/templates": TEMPLATE_PUBLISH,
+  "/ops/import": TEMPLATE_IMPORT,
+  "/ops/migrations": DATA_VIEW,
+  "/ops/templates": DATA_VIEW,
+};
+
+// ── One unified sidebar (ADR-0010) ─────────────────────────────────────────
+// Group order drives both the display and the root landing (first accessible
+// item): 系统管理 → 设计工作台 → 表单 → 审批 → 运维 → 通用. For the five seed
+// roles this resolves to the same landing as before (/admin/users,
+// /designer/templates, /filler/forms, /approver/pending, /ops/import).
+
+const designerNav: NavGroup = {
+  label: "设计工作台",
+  items: [
+    {
+      to: "/designer/templates",
+      label: "我的模板",
+      icon: <FileIcon />,
+      count: 7,
+      codes: ROUTE_CODES["/designer/templates"],
+    },
+    {
+      to: "/designer/create",
+      label: "创建表单",
+      icon: <PlusIcon />,
+      codes: ROUTE_CODES["/designer/create"],
+    },
+    {
+      to: "/designer/drafts",
+      label: "草稿模板",
+      icon: <DraftIcon />,
+      count: 3,
+      codes: ROUTE_CODES["/designer/drafts"],
+    },
+  ],
+};
+
+const fillerNav: NavGroup = {
+  label: "表单",
+  items: [
+    { to: "/filler/forms", label: "表单中心", icon: <LayoutIcon />, codes: ROUTE_CODES["/filler/forms"] },
+    { to: "/filler/drafts", label: "我的草稿", icon: <DraftIcon />, codes: ROUTE_CODES["/filler/drafts"] },
+    { to: "/filler/submissions", label: "我的提交", icon: <SendIcon />, codes: ROUTE_CODES["/filler/submissions"] },
+  ],
+};
+
+const approverNav: NavGroup = {
+  label: "审批",
+  items: [
+    { to: "/approver/pending", label: "待审批", icon: <ClockIcon />, codes: ROUTE_CODES["/approver/pending"] },
+    { to: "/approver/history", label: "已审批", icon: <CheckCircleIcon />, codes: ROUTE_CODES["/approver/history"] },
+  ],
+};
+
+const adminNav: NavGroup = {
+  label: "系统管理",
+  items: [
+    { to: "/admin/users", label: "用户管理", icon: <UsersIcon />, codes: ROUTE_CODES["/admin/users"] },
+    { to: "/admin/roles", label: "角色管理", icon: <ShieldIcon />, codes: ROUTE_CODES["/admin/roles"] },
+    { to: "/admin/data", label: "数据管理", icon: <DatabaseIcon />, codes: ROUTE_CODES["/admin/data"] },
+    { to: "/admin/statistics", label: "统计看板", icon: <BarChartIcon />, codes: ROUTE_CODES["/admin/statistics"] },
+    { to: "/admin/templates", label: "模板管理", icon: <FileIcon />, codes: ROUTE_CODES["/admin/templates"] },
+  ],
+};
+
+const opsNav: NavGroup = {
+  label: "运维",
+  items: [
+    { to: "/ops/import", label: "导入配置", icon: <UploadIcon />, codes: ROUTE_CODES["/ops/import"] },
+    { to: "/ops/migrations", label: "迁移记录", icon: <ArchiveIcon />, codes: ROUTE_CODES["/ops/migrations"] },
+    { to: "/ops/templates", label: "模板查看", icon: <EyeIcon />, codes: ROUTE_CODES["/ops/templates"] },
+  ],
+};
+
+// No codes → always shown and always a valid landing target.
 const commonNav: NavGroup = {
   label: "通用",
   items: [{ to: "/notifications", label: "通知中心", icon: <BellIcon /> }],
 };
 
-// ── 表单填写者 /filler ──────────────────────────────────────────────────────
-const fillerNav: NavGroup[] = [
-  {
-    label: "表单",
-    items: [
-      { to: "/filler/forms", label: "表单中心", icon: <LayoutIcon />, codes: ["form:fill"] },
-      { to: "/filler/drafts", label: "我的草稿", icon: <DraftIcon />, codes: ["form:fill"] },
-      { to: "/filler/submissions", label: "我的提交", icon: <SendIcon />, codes: ["form:submit"] },
-    ],
-  },
+export const APP_NAV: NavGroup[] = [
+  adminNav,
+  designerNav,
+  fillerNav,
+  approverNav,
+  opsNav,
   commonNav,
 ];
-
-// ── 审批人 /approver ────────────────────────────────────────────────────────
-const approverNav: NavGroup[] = [
-  {
-    label: "审批",
-    items: [
-      { to: "/approver/pending", label: "待审批", icon: <ClockIcon />, codes: ["approval:view_pending"] },
-      { to: "/approver/history", label: "已审批", icon: <CheckCircleIcon />, codes: ["approval:view_pending"] },
-    ],
-  },
-  commonNav,
-];
-
-// ── 系统管理员 /admin ───────────────────────────────────────────────────────
-const adminNav: NavGroup[] = [
-  {
-    label: "系统管理",
-    items: [
-      { to: "/admin/users", label: "用户管理", icon: <UsersIcon />, codes: ["admin:manage_users"] },
-      { to: "/admin/roles", label: "角色管理", icon: <ShieldIcon />, codes: ["admin:manage_roles"] },
-      { to: "/admin/data", label: "数据管理", icon: <DatabaseIcon />, codes: ["data:view"] },
-      { to: "/admin/statistics", label: "统计看板", icon: <BarChartIcon />, codes: ["data:view_stats"] },
-      { to: "/admin/templates", label: "模板管理", icon: <FileIcon />, codes: ["template:publish"] },
-    ],
-  },
-  commonNav,
-];
-
-// ── 运维人员 /ops ───────────────────────────────────────────────────────────
-const opsNav: NavGroup[] = [
-  {
-    label: "运维",
-    items: [
-      { to: "/ops/import", label: "导入配置", icon: <UploadIcon />, codes: ["template:import"] },
-      { to: "/ops/migrations", label: "迁移记录", icon: <ArchiveIcon />, codes: ["data:view"] },
-      { to: "/ops/templates", label: "模板查看", icon: <EyeIcon />, codes: ["data:view"] },
-    ],
-  },
-  commonNav,
-];
-
-// Portal unlock codes keyed by portal path — single source of truth is the
-// shared `PORTALS` catalog (work order 18). The portal guards read these codes,
-// not role names.
-const PORTAL_CODES: Record<string, string[]> = Object.fromEntries(
-  PORTALS.map((p) => [p.path, p.codes]),
-);
 
 /**
- * The five-portal route map (ADR-0009). Work order 17 wires authentication;
- * work order 18 gates each portal on the user's permission codes
- * (`RequirePermission` — holding any one unlock code grants access) instead of
- * hardcoded role names. The root `/` redirects to the signed-in user's primary
- * portal via `HomeRedirect`. Unimplemented detail pages render
- * `PlaceholderPage` until their own work orders fill them in.
+ * The route map (ADR-0010). URL prefixes `/designer /filler /approver /admin
+ * /ops` are pure path organization — there is no portal concept. One
+ * `AuthenticatedShell` wraps every shell page with the unified
+ * permission-filtered nav; each page is gated on its own codes via
+ * `RequirePermission`. The root `/` lands on the first nav item the user's
+ * codes unlock. The full-screen designer workbench lives outside the shell.
+ * Unimplemented detail pages render `PlaceholderPage` until their work orders.
  */
 export const routes: RouteObject[] = [
   // ── Temporary demo route (work order 03) ──
@@ -154,184 +184,203 @@ export const routes: RouteObject[] = [
   {
     element: <RequireAuth />,
     children: [
-      // Root: permission-based landing page
-      { path: "/", element: <HomeRedirect /> },
+      // Root: permission-based landing — first unlocked nav item.
+      { path: "/", element: <HomeRedirect groups={APP_NAV} /> },
 
-      // ── 模板设计者门户 ──
+      // Full-screen designer workbench — sibling of the shell subtree (no
+      // sidebar/topbar). Gated on template:edit (inherited from the list).
       {
-        element: <RequirePermission codes={PORTAL_CODES["/designer"]!} />,
-        children: [
-          // Full-screen designer workbench (no Shell — mirrors the prototype's
-          // designer-edit.html, a standalone editor without sidebar/topbar).
-          { path: "/designer/templates/:id", element: <DesignerPage /> },
-          {
-            path: "/designer",
-            element: (
-              <PortalShell brandSub="模板设计者门户" navGroups={designerNav} />
-            ),
-            children: [
-              { index: true, element: <Navigate to="/designer/templates" replace /> },
-              {
-                path: "templates",
-                element: <TemplatesPage />,
-                handle: { title: "我的模板", crumb: "模板设计者门户" } satisfies ShellHandle,
-              },
-              {
-                path: "create",
-                element: <CreateTemplatePage />,
-                handle: { title: "创建表单", crumb: "模板设计者门户" } satisfies ShellHandle,
-              },
-              {
-                path: "create/nl",
-                element: <PlaceholderPage />,
-                handle: { title: "自然语言创建", crumb: "创建表单" } satisfies ShellHandle,
-              },
-              {
-                path: "drafts",
-                element: <PlaceholderPage />,
-                handle: { title: "草稿模板", crumb: "模板设计者门户" } satisfies ShellHandle,
-              },
-              { path: "*", element: <NotFoundPage /> },
-            ],
-          },
-        ],
+        path: "/designer/templates/:id",
+        element: (
+          <RequirePermission codes={ROUTE_CODES["/designer/templates/:id"]!}>
+            <DesignerPage />
+          </RequirePermission>
+        ),
       },
 
-      // ── 表单填写者门户 ──
+      // ONE authenticated shell: one Shell, one unified permission-filtered nav.
       {
-        element: <RequirePermission codes={PORTAL_CODES["/filler"]!} />,
+        element: <AuthenticatedShell navGroups={APP_NAV} />,
         children: [
+          // ── 模板设计者 /designer ──
+          { path: "/designer", element: <Navigate to="/designer/templates" replace /> },
           {
-            path: "/filler",
+            path: "/designer/templates",
             element: (
-              <PortalShell brandSub="表单填写者门户" navGroups={fillerNav} />
+              <RequirePermission codes={ROUTE_CODES["/designer/templates"]!}>
+                <TemplatesPage />
+              </RequirePermission>
             ),
-            children: [
-              { index: true, element: <Navigate to="/filler/forms" replace /> },
-              {
-                path: "forms",
-                element: <FormCenter />,
-                handle: { title: "表单中心", crumb: "表单填写者门户" } satisfies ShellHandle,
-              },
-              {
-                path: "instances/:id",
-                element: <FormFillPage />,
-                handle: { title: "填写表单", crumb: "表单填写者门户" } satisfies ShellHandle,
-              },
-              {
-                path: "drafts",
-                element: <MyDrafts />,
-                handle: { title: "我的草稿", crumb: "表单填写者门户" } satisfies ShellHandle,
-              },
-              {
-                path: "submissions",
-                element: <MySubmissions />,
-                handle: { title: "我的提交", crumb: "表单填写者门户" } satisfies ShellHandle,
-              },
-              { path: "*", element: <NotFoundPage /> },
-            ],
+            handle: { title: "我的模板", crumb: "模板设计" } satisfies ShellHandle,
           },
-        ],
-      },
+          {
+            path: "/designer/create",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/designer/create"]!}>
+                <CreateTemplatePage />
+              </RequirePermission>
+            ),
+            handle: { title: "创建表单", crumb: "模板设计" } satisfies ShellHandle,
+          },
+          {
+            path: "/designer/create/nl",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/designer/create/nl"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "自然语言创建", crumb: "创建表单" } satisfies ShellHandle,
+          },
+          {
+            path: "/designer/drafts",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/designer/drafts"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "草稿模板", crumb: "模板设计" } satisfies ShellHandle,
+          },
 
-      // ── 审批人门户 ──
-      {
-        element: <RequirePermission codes={PORTAL_CODES["/approver"]!} />,
-        children: [
+          // ── 表单填写者 /filler ──
+          { path: "/filler", element: <Navigate to="/filler/forms" replace /> },
           {
-            path: "/approver",
+            path: "/filler/forms",
             element: (
-              <PortalShell brandSub="审批人门户" navGroups={approverNav} />
+              <RequirePermission codes={ROUTE_CODES["/filler/forms"]!}>
+                <FormCenter />
+              </RequirePermission>
             ),
-            children: [
-              { index: true, element: <Navigate to="/approver/pending" replace /> },
-              {
-                path: "pending",
-                element: <PlaceholderPage />,
-                handle: { title: "待审批", crumb: "审批人门户" } satisfies ShellHandle,
-              },
-              {
-                path: "history",
-                element: <PlaceholderPage />,
-                handle: { title: "已审批", crumb: "审批人门户" } satisfies ShellHandle,
-              },
-              { path: "*", element: <NotFoundPage /> },
-            ],
+            handle: { title: "表单中心", crumb: "表单填写" } satisfies ShellHandle,
           },
-        ],
-      },
+          {
+            path: "/filler/instances/:id",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/filler/instances/:id"]!}>
+                <FormFillPage />
+              </RequirePermission>
+            ),
+            handle: { title: "填写表单", crumb: "表单填写" } satisfies ShellHandle,
+          },
+          {
+            path: "/filler/drafts",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/filler/drafts"]!}>
+                <MyDrafts />
+              </RequirePermission>
+            ),
+            handle: { title: "我的草稿", crumb: "表单填写" } satisfies ShellHandle,
+          },
+          {
+            path: "/filler/submissions",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/filler/submissions"]!}>
+                <MySubmissions />
+              </RequirePermission>
+            ),
+            handle: { title: "我的提交", crumb: "表单填写" } satisfies ShellHandle,
+          },
 
-      // ── 系统管理员门户 ──
-      {
-        element: <RequirePermission codes={PORTAL_CODES["/admin"]!} />,
-        children: [
+          // ── 审批人 /approver ──
+          { path: "/approver", element: <Navigate to="/approver/pending" replace /> },
           {
-            path: "/admin",
+            path: "/approver/pending",
             element: (
-              <PortalShell brandSub="系统管理员门户" navGroups={adminNav} />
+              <RequirePermission codes={ROUTE_CODES["/approver/pending"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
             ),
-            children: [
-              { index: true, element: <Navigate to="/admin/users" replace /> },
-              {
-                path: "users",
-                element: <UsersPage />,
-                handle: { title: "用户管理", crumb: "系统管理员门户" } satisfies ShellHandle,
-              },
-              {
-                path: "roles",
-                element: <RolesPage />,
-                handle: { title: "角色管理", crumb: "系统管理员门户" } satisfies ShellHandle,
-              },
-              {
-                path: "data",
-                element: <PlaceholderPage />,
-                handle: { title: "数据管理", crumb: "系统管理员门户" } satisfies ShellHandle,
-              },
-              {
-                path: "statistics",
-                element: <PlaceholderPage />,
-                handle: { title: "统计看板", crumb: "系统管理员门户" } satisfies ShellHandle,
-              },
-              {
-                path: "templates",
-                element: <PlaceholderPage />,
-                handle: { title: "模板管理", crumb: "系统管理员门户" } satisfies ShellHandle,
-              },
-              { path: "*", element: <NotFoundPage /> },
-            ],
+            handle: { title: "待审批", crumb: "审批" } satisfies ShellHandle,
           },
-        ],
-      },
+          {
+            path: "/approver/history",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/approver/history"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "已审批", crumb: "审批" } satisfies ShellHandle,
+          },
 
-      // ── 运维人员门户 ──
-      {
-        element: <RequirePermission codes={PORTAL_CODES["/ops"]!} />,
-        children: [
+          // ── 系统管理员 /admin ──
+          { path: "/admin", element: <Navigate to="/admin/users" replace /> },
           {
-            path: "/ops",
+            path: "/admin/users",
             element: (
-              <PortalShell brandSub="运维人员门户" navGroups={opsNav} />
+              <RequirePermission codes={ROUTE_CODES["/admin/users"]!}>
+                <UsersPage />
+              </RequirePermission>
             ),
-            children: [
-              { index: true, element: <Navigate to="/ops/import" replace /> },
-              {
-                path: "import",
-                element: <PlaceholderPage />,
-                handle: { title: "导入配置", crumb: "运维人员门户" } satisfies ShellHandle,
-              },
-              {
-                path: "migrations",
-                element: <PlaceholderPage />,
-                handle: { title: "迁移记录", crumb: "运维人员门户" } satisfies ShellHandle,
-              },
-              {
-                path: "templates",
-                element: <PlaceholderPage />,
-                handle: { title: "模板查看", crumb: "运维人员门户" } satisfies ShellHandle,
-              },
-              { path: "*", element: <NotFoundPage /> },
-            ],
+            handle: { title: "用户管理", crumb: "系统管理" } satisfies ShellHandle,
           },
+          {
+            path: "/admin/roles",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/admin/roles"]!}>
+                <RolesPage />
+              </RequirePermission>
+            ),
+            handle: { title: "角色管理", crumb: "系统管理" } satisfies ShellHandle,
+          },
+          {
+            path: "/admin/data",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/admin/data"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "数据管理", crumb: "系统管理" } satisfies ShellHandle,
+          },
+          {
+            path: "/admin/statistics",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/admin/statistics"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "统计看板", crumb: "系统管理" } satisfies ShellHandle,
+          },
+          {
+            path: "/admin/templates",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/admin/templates"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "模板管理", crumb: "系统管理" } satisfies ShellHandle,
+          },
+
+          // ── 运维人员 /ops ──
+          { path: "/ops", element: <Navigate to="/ops/import" replace /> },
+          {
+            path: "/ops/import",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/ops/import"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "导入配置", crumb: "运维" } satisfies ShellHandle,
+          },
+          {
+            path: "/ops/migrations",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/ops/migrations"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "迁移记录", crumb: "运维" } satisfies ShellHandle,
+          },
+          {
+            path: "/ops/templates",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/ops/templates"]!}>
+                <PlaceholderPage />
+              </RequirePermission>
+            ),
+            handle: { title: "模板查看", crumb: "运维" } satisfies ShellHandle,
+          },
+
+          // In-shell 404 for any other authenticated path.
+          { path: "*", element: <NotFoundPage /> },
         ],
       },
     ],

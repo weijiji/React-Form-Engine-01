@@ -1,7 +1,7 @@
-/* Filler portal (work order 05) — form center, fill page, drafts, submissions.
+/* Filler pages (work order 05) — form center, fill page, drafts, submissions.
    Tokens from global.css (ADR-0008). */
 
-/* ── Buttons (local to the filler portal; mirrors the designer's .btn) ─────── */
+/* ── Buttons (local to the filler pages; mirrors the designer's .btn) ──────── */
 
 .btn {
   display: inline-flex;

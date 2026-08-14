@@ -47,7 +47,7 @@ export const BellIcon = () => (
   </svg>
 );
 
-// ── Portal nav icons (feather) for the five-role split (issue 16) ──────────
+// ── Nav icons (feather) for the authenticated areas ─────────────────────────
 
 /** 表单中心 — 网格 */
 export const LayoutIcon = () => (

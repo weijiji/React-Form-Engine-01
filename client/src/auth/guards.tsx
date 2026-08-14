@@ -1,15 +1,17 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import type { NavGroup } from "../layouts/Shell";
+import { canAccessAny, firstAccessiblePath } from "./permissions";
 import { useAuth } from "./AuthContext";
-import { canAccessAny, primaryPortal } from "form-engine-core";
 
 /**
- * Route guards (work order 17; permission-driven since work order 18).
+ * Route guards (work orders 17/18; permission-driven since ADR-0010).
  * `RequireAuth` is the outer authenticated boundary (redirects to /login,
- * carrying the intended destination); `RequirePermission` gates a portal on
- * the user's permission codes (redirects to /403); `HomeRedirect` turns the
- * root `/` into a permission-based landing page. A user's portal access is
- * decided by `user.permissions`, never by role name.
+ * carrying the intended destination); `RequirePermission` gates a page on the
+ * permission codes it requires (redirects to /403); `HomeRedirect` turns the
+ * root `/` into a landing page that resolves to the first nav item the user's
+ * codes unlock. Access is decided by `user.permissions`, never by role name or
+ * portal membership.
  */
 
 function Loading(): React.ReactElement {
@@ -47,13 +49,16 @@ export function RequireAuth(): React.ReactElement {
 }
 
 /**
- * Permission boundary — users holding none of the portal's unlock codes are
- * sent to /403. OR semantics: any one code grants access.
+ * Page permission boundary — users holding none of the page's required codes
+ * are sent to /403. OR semantics: any one code grants access. Wraps the page
+ * component directly (page-level gating, ADR-0010); no longer an Outlet layout.
  */
 export function RequirePermission({
   codes,
+  children,
 }: {
   codes: string[];
+  children: React.ReactNode;
 }): React.ReactElement {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -71,14 +76,21 @@ export function RequirePermission({
   if (!canAccessAny(codes, user.permissions)) {
     return <Navigate to="/403" replace />;
   }
-  return <Outlet />;
+  return <>{children}</>;
 }
 
-/** Root landing — redirect to the user's primary portal (or /login). */
-export function HomeRedirect(): React.ReactElement {
+/**
+ * Root landing — redirect to the first nav item the user's permission codes
+ * unlock (or /login). The router passes the unified `APP_NAV` as `groups`.
+ */
+export function HomeRedirect({
+  groups,
+}: {
+  groups: NavGroup[];
+}): React.ReactElement {
   const { user, loading } = useAuth();
 
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={primaryPortal(user.permissions)} replace />;
+  return <Navigate to={firstAccessiblePath(groups, user.permissions) ?? "/403"} replace />;
 }

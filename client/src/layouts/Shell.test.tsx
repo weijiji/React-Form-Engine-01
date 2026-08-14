@@ -1,12 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  Shell,
-  filterNavGroups,
-  type NavGroup,
-  type ShellUser,
-} from "./Shell";
+import { Shell, type NavGroup, type ShellUser } from "./Shell";
 
 // react-router's data router (createMemoryRouter) builds a `Request` for every
 // navigation. jsdom's AbortController yields an AbortSignal that Node's native
@@ -73,23 +68,18 @@ function renderShell(initialEntry = "/admin/templates") {
     [
       {
         element: (
-          <Shell
-            brandName="动态表单引擎"
-            brandSub="模板设计者门户"
-            navGroups={navGroups}
-            user={user}
-          />
+          <Shell brandName="动态表单引擎" navGroups={navGroups} user={user} />
         ),
         children: [
           {
             path: "/admin/templates",
             element: <div>templates content</div>,
-            handle: { title: "模板管理", crumb: "模板设计者" },
+            handle: { title: "模板管理", crumb: "模板设计" },
           },
           {
             path: "/admin/roles",
             element: <div>roles content</div>,
-            handle: { title: "角色管理", crumb: "模板设计者" },
+            handle: { title: "角色管理", crumb: "模板设计" },
           },
         ],
       },
@@ -120,12 +110,9 @@ describe("Shell — shared portal chrome", () => {
     renderShell();
 
     expect(screen.getByText("动态表单引擎")).toBeInTheDocument();
-    expect(document.querySelector(".brand-sub")?.textContent).toBe(
-      "模板设计者门户",
-    );
     expect(screen.getByText("设计工作台")).toBeInTheDocument();
     await expectTitle("模板管理");
-    expect(document.querySelector(".tb-crumb")?.textContent).toBe("模板设计者");
+    expect(document.querySelector(".tb-crumb")?.textContent).toBe("模板设计");
     expect(screen.getByText("张三")).toBeInTheDocument();
     expect(screen.getByText("设计者")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "通知" })).toBeInTheDocument();
@@ -163,40 +150,5 @@ describe("Shell — shared portal chrome", () => {
 
     const danger = container.querySelector(".count.danger");
     expect(danger).toHaveTextContent("2");
-  });
-});
-
-describe("filterNavGroups — permission-based nav filtering (work order 18)", () => {
-  const groups: NavGroup[] = [
-    {
-      label: "设计工作台",
-      items: [
-        { to: "/designer/create", label: "创建表单", codes: ["template:create"] },
-        { to: "/notifications", label: "通知中心" }, // no codes → always shown
-      ],
-    },
-    {
-      label: "运维",
-      items: [{ to: "/ops/import", label: "导入配置", codes: ["template:import"] }],
-    },
-  ];
-
-  it("keeps code-less items and items whose code the user holds", () => {
-    const filtered = filterNavGroups(groups, ["template:import"]);
-    expect(filtered.map((g) => g.label)).toEqual(["设计工作台", "运维"]);
-    expect(filtered[0].items.map((i) => i.to)).toEqual(["/notifications"]);
-    expect(filtered[1].items.map((i) => i.to)).toEqual(["/ops/import"]);
-  });
-
-  it("drops a whole group when every item is filtered out", () => {
-    const filtered = filterNavGroups(groups, ["data:view"]);
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0].items.map((i) => i.to)).toEqual(["/notifications"]);
-  });
-
-  it("does not mutate the input nav groups", () => {
-    filterNavGroups(groups, []);
-    expect(groups).toHaveLength(2);
-    expect(groups[0].items).toHaveLength(2);
   });
 });

@@ -846,15 +846,14 @@ Event:    approval_update → { nodeOrder, status, approverName, comment }
 
 ### 5.1 路由结构
 
-前端采用 **5 角色门户 + 公共页面**（ADR-0009），权威结构见 `sitemap-form-engine.md`：
+前端采用 **5 个路由前缀区域 + 公共页面**（ADR-0010，取代 ADR-0009），权威结构见 `sitemap-form-engine.md`：
 
 ```
-/                                    # 根路径 → 按角色重定向到对应门户
-                                     #（MVP 无鉴权时默认 /designer，issue 09 接入鉴权后按角色）
+/                                    # 根路径 → 重定向到权限解锁的第一个导航项（ADR-0010）
 
 /login  /403  /404  /notifications   # 公共页面（不使用共享 Shell）
 
-/designer                            模板设计者门户（桌面端）
+/designer                            模板设计区域（桌面端）
 ├── /designer/templates              我的模板
 ├── /designer/templates/:id          模板详情（只读）
 ├── /designer/create                 创建表单（入口选择）
@@ -864,7 +863,7 @@ Event:    approval_update → { nodeOrder, status, approverName, comment }
 ├── /designer/drafts                 草稿模板
 └── /designer/export/:templateId     导出配置
 
-/filler                              表单填写者门户（PC + 移动端）
+/filler                              表单填写区域（PC + 移动端）
 ├── /filler/forms                    可用表单
 ├── /filler/forms/:formId            填写表单 ⭐
 ├── /filler/forms/:formId/track      提交追踪
@@ -874,13 +873,13 @@ Event:    approval_update → { nodeOrder, status, approverName, comment }
 ├── /filler/submissions/:id          提交详情
 └── /filler/submissions/:id/resubmit 重新提交
 
-/approver                            审批人门户（移动端优先）
+/approver                            审批区域（移动端优先）
 ├── /approver/pending                待审批 ⭐
 ├── /approver/pending/:taskId        审批详情
 ├── /approver/history                已审批
 └── /approver/history/:taskId        历史审批详情
 
-/admin                               系统管理员门户（桌面端）
+/admin                               系统管理区域（桌面端）
 ├── /admin/users                     用户管理
 ├── /admin/users/:userId             用户详情
 ├── /admin/users/:userId/roles       分配角色
@@ -895,7 +894,7 @@ Event:    approval_update → { nodeOrder, status, approverName, comment }
 ├── /admin/templates                 模板管理
 └── /admin/templates/:id/force-checkin 强制签入
 
-/ops                                 运维人员门户（桌面端）
+/ops                                 运维区域（桌面端）
 ├── /ops/import                      导入配置 ⭐
 ├── /ops/migrations                  迁移记录
 ├── /ops/migrations/:id              迁移详情
@@ -903,7 +902,7 @@ Event:    approval_update → { nodeOrder, status, approverName, comment }
 └── /ops/templates/:id               模板详情
 ```
 
-> **语义翻转（vs 旧版 2 门户）**：`/admin` 现在是**系统管理员**门户，设计者迁移到 `/designer`；填写者从 `/` 迁移到 `/filler`。5 个门户复用同一 `Shell`，仅导航项不同（ADR-0008）。
+> **语义（ADR-0010）**：`/admin` 归系统管理区域，设计者走 `/designer`，填写者走 `/filler`。前缀仅作**纯路径分组**，无门户语义；所有已登录页面复用同一 `Shell`，导航按用户权限码过滤；根路径重定向到权限解锁的第一个导航项。
 
 ### 5.2 组件树（关键页面）
 
