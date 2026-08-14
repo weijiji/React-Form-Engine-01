@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../app";
 import { closeDb, getDb } from "../db/connection";
 import { runMigrations, runSeedIfEmpty } from "../db/migrate";
+import { signAccessToken } from "../services/jwt";
 
 /**
  * Draft API integration tests (work order 05). A draft is a lightweight,
@@ -12,6 +13,12 @@ import { runMigrations, runSeedIfEmpty } from "../db/migrate";
  */
 
 const app = createApp();
+
+const COOKIE = "access_token";
+/** Mint an access token and return it as a Cookie header (work order 17 auth). */
+function authCookie(userId: string): string {
+  return COOKIE + "=" + signAccessToken(userId);
+}
 
 let lisiId: string;
 let publishedTemplateId: string;
@@ -39,7 +46,7 @@ afterAll(async () => {
 function createDraft(fieldValues: Record<string, unknown> = {}) {
   return request(app)
     .post("/api/v1/drafts")
-    .set("X-User-Id", lisiId)
+    .set("Cookie", authCookie(lisiId))
     .send({ template_id: publishedTemplateId, field_values: fieldValues });
 }
 
@@ -55,7 +62,7 @@ describe("draft CRUD", () => {
   it("lists the user's drafts", async () => {
     const res = await request(app)
       .get("/api/v1/drafts")
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(res.status).toBe(200);
     expect(res.body.total).toBeGreaterThanOrEqual(1);
   });
@@ -66,7 +73,7 @@ describe("draft CRUD", () => {
 
     const res = await request(app)
       .get(`/api/v1/drafts/${created.body.id}`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(res.status).toBe(200);
     expect(res.body.version_mismatch).toBe(false);
     expect(res.body.field_values).toEqual({ "fld-001": "李四", "fld-002": "laptop" });
@@ -78,7 +85,7 @@ describe("draft CRUD", () => {
 
     const res = await request(app)
       .put(`/api/v1/drafts/${created.body.id}`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ field_values: { "fld-001": "李四", "fld-003": 3 } });
     expect(res.status).toBe(200);
     expect(res.body.field_values).toEqual({ "fld-001": "李四", "fld-003": 3 });
@@ -90,12 +97,12 @@ describe("draft CRUD", () => {
 
     const del = await request(app)
       .delete(`/api/v1/drafts/${id}`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(del.status).toBe(204);
 
     const reload = await request(app)
       .get(`/api/v1/drafts/${id}`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(reload.status).toBe(404);
   });
 });
@@ -111,7 +118,7 @@ describe("draft/template version-mismatch (ADR-0004)", () => {
 
     const res = await request(app)
       .get(`/api/v1/drafts/${created.body.id}`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(res.status).toBe(200);
     expect(res.body.version_mismatch).toBe(true);
     expect(res.body.field_values).toEqual({ "fld-001": "李四" });

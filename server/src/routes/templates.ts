@@ -1,9 +1,13 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { getDb } from "../db/connection";
-import { resolveCurrentUser } from "../middleware/currentUser";
+import { authenticate } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
 
 const router = Router();
+
+// Identity comes from the JWT cookie (work order 17): every template route
+// requires a logged-in user. Per-route permission gating is a follow-up.
+router.use(authenticate);
 
 /**
  * Template API (work order 04). All routes are mounted at `/api/v1/templates`.
@@ -102,7 +106,7 @@ function clampInt(
 router.post(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const name = req.body?.name;
 
     if (typeof name !== "string" || name.trim() === "") {
@@ -189,7 +193,7 @@ router.get(
 router.put(
   "/:id/schema",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const template = await findTemplate(req.params.id);
 
     if (template.locked_by !== user.id) {
@@ -231,7 +235,7 @@ router.put(
 router.post(
   "/:id/checkout",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const template = await findTemplate(req.params.id);
 
     if (template.locked_by === user.id) {
@@ -260,7 +264,7 @@ router.post(
 router.post(
   "/:id/checkin",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const template = await findTemplate(req.params.id);
 
     if (template.locked_by == null) {

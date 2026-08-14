@@ -7,7 +7,6 @@ import { corsMiddleware } from "./middleware/cors";
 import { csrfMiddleware } from "./middleware/csrf";
 import { errorHandlerMiddleware } from "./middleware/errorHandler";
 import healthRouter from "./routes/health";
-import meRouter from "./routes/me";
 import templatesRouter from "./routes/templates";
 import formsRouter from "./routes/forms";
 import instancesRouter from "./routes/instances";
@@ -52,7 +51,6 @@ export function createApp(): express.Application {
 
   // ── Routes ────────────────────────────────────────────────
   app.use(healthRouter);
-  app.use(meRouter);
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/roles", rolesRouter);
   app.use("/api/v1/permissions", permissionsRouter);

@@ -33,6 +33,34 @@ export async function seed(knex: Knex): Promise<void> {
     ])
     .returning("id");
 
+  // 设计者 — 独立账号，用于设计者门户（work order 17）
+  const [designer] = await knex("users")
+    .insert([
+      {
+        name: "设计员",
+        email: "designer@example.com",
+        password_hash: userPassword,
+        department_id: null,
+        manager_id: null,
+        is_active: true,
+      },
+    ])
+    .returning("id");
+
+  // 运维人员 — 独立账号，用于运维门户（work order 17）
+  const [ops] = await knex("users")
+    .insert([
+      {
+        name: "运维人员",
+        email: "ops@example.com",
+        password_hash: userPassword,
+        department_id: null,
+        manager_id: null,
+        is_active: true,
+      },
+    ])
+    .returning("id");
+
   // Insert Zhang San first (no manager)
   const [zhangsan] = await knex("users")
     .insert([
@@ -48,7 +76,7 @@ export async function seed(knex: Knex): Promise<void> {
     .returning("id");
 
   // Insert Li Si and Wang Wu (both report to Zhang San)
-  const subordinates = await knex("users")
+  const [lisi, wangwu] = await knex("users")
     .insert([
       {
         name: "李四",
@@ -69,8 +97,7 @@ export async function seed(knex: Knex): Promise<void> {
     ])
     .returning("id");
 
-  const users = [zhangsan, ...subordinates];
-  // admin.id, zhangsan.id, lisi.id, wangwu.id
+  // admin.id, designer.id, ops.id, zhangsan.id, lisi.id, wangwu.id
 
   // ── Permissions ─────────────────────────────────────────────
   const permissionCodes = [
@@ -101,74 +128,91 @@ export async function seed(knex: Knex): Promise<void> {
     { code: "admin:manage_users", name: "管理用户", category: "管理" },
   ];
 
-  const permissions = await knex("permissions")
-    .insert(permissionCodes)
-    .returning("id");
+  await knex("permissions").insert(permissionCodes);
 
   // ── Roles ───────────────────────────────────────────────────
+  // 5 roles ↔ 5 portals (ADR-0009). The seed splits the former single
+  // "普通用户" role into 填写者 + 审批者 so a user is no longer both a filler
+  // and an approver by default (work order 17).
   const [adminRole] = await knex("roles")
+    .insert([{ name: "管理员", description: "系统管理员，拥有全部权限" }])
+    .returning("id");
+
+  const [designerRole] = await knex("roles")
+    .insert([{ name: "设计者", description: "模板设计者，可创建、编辑、发布模板" }])
+    .returning("id");
+
+  const [fillerRole] = await knex("roles")
+    .insert([{ name: "填写者", description: "表单填写者，可填写和提交表单" }])
+    .returning("id");
+
+  const [approverRole] = await knex("roles")
+    .insert([{ name: "审批者", description: "审批人，可处理待审批事项" }])
+    .returning("id");
+
+  const [opsRole] = await knex("roles")
     .insert([
-      {
-        name: "管理员",
-        description: "系统管理员，拥有全部权限",
-      },
+      { name: "运维", description: "运维人员，可导入导出配置、查看数据与统计" },
     ])
     .returning("id");
 
-  const [userRole] = await knex("roles")
-    .insert([
-      {
-        name: "普通用户",
-        description: "普通用户，可填写和提交表单",
-      },
-    ])
-    .returning("id");
+  // ── Assign permissions to roles ─────────────────────────────
+  const roleCodes: Record<string, string[]> = {
+    管理员: permissionCodes.map((p) => p.code),
+    设计者: [
+      "template:create",
+      "template:edit",
+      "template:delete",
+      "template:publish",
+      "template:export",
+      "template:import",
+      "template:force_unlock",
+    ],
+    填写者: ["form:fill", "form:submit", "form:withdraw"],
+    审批者: [
+      "approval:view_pending",
+      "approval:approve",
+      "approval:reject",
+      "approval:return",
+      "approval:transfer",
+    ],
+    运维: ["template:import", "template:export", "data:view", "data:view_stats"],
+  };
 
-  // ── Assign all permissions to admin role ────────────────────
-  await knex("roles_permissions").insert(
-    permissions.map((p) => ({
-      role_id: adminRole.id,
-      permission_id: p.id,
-    }))
-  );
+  const roleIdByName: Record<string, string> = {
+    管理员: adminRole.id,
+    设计者: designerRole.id,
+    填写者: fillerRole.id,
+    审批者: approverRole.id,
+    运维: opsRole.id,
+  };
 
-  // ── Assign basic permissions to user role ───────────────────
-  const userPermissionCodes = [
-    "form:fill",
-    "form:submit",
-    "form:withdraw",
-    "approval:view_pending",
-    "approval:approve",
-    "approval:reject",
-    "approval:return",
-    "approval:transfer",
-    "data:view",
-  ];
-  const userPermissions = await knex("permissions")
-    .whereIn("code", userPermissionCodes)
-    .select("id");
-
-  await knex("roles_permissions").insert(
-    userPermissions.map((p) => ({
-      role_id: userRole.id,
-      permission_id: p.id,
-    }))
-  );
+  for (const [roleName, codes] of Object.entries(roleCodes)) {
+    const permissionRows = await knex("permissions")
+      .whereIn("code", codes)
+      .select("id");
+    await knex("roles_permissions").insert(
+      permissionRows.map((p) => ({
+        role_id: roleIdByName[roleName],
+        permission_id: p.id,
+      })),
+    );
+  }
 
   // ── Assign roles to users ───────────────────────────────────
-  // Admin gets admin role
-  await knex("users_roles").insert({
-    user_id: admin.id,
-    role_id: adminRole.id,
-  });
+  await knex("users_roles").insert({ user_id: admin.id, role_id: adminRole.id });
+  await knex("users_roles").insert({ user_id: designer.id, role_id: designerRole.id });
+  await knex("users_roles").insert({ user_id: ops.id, role_id: opsRole.id });
 
-  // All 3 regular users get user role
-  for (const user of users) {
-    await knex("users_roles").insert({
-      user_id: user.id,
-      role_id: userRole.id,
-    });
-  }
+  // 张三：填写者 + 审批者（样例审批链里作为直属上级）
+  await knex("users_roles").insert([
+    { user_id: zhangsan.id, role_id: fillerRole.id },
+    { user_id: zhangsan.id, role_id: approverRole.id },
+  ]);
+
+  // 李四、王五：填写者
+  await knex("users_roles").insert({ user_id: lisi.id, role_id: fillerRole.id });
+  await knex("users_roles").insert({ user_id: wangwu.id, role_id: fillerRole.id });
 
   // ── Sample Form Template ────────────────────────────────────
   const sampleSchema = {
@@ -353,6 +397,8 @@ export async function seed(knex: Knex): Promise<void> {
 
   console.log("Seed completed successfully.");
   console.log(`  - Admin: admin@example.com / admin123`);
+  console.log(`  - Designer: designer@example.com / user123`);
+  console.log(`  - Ops: ops@example.com / user123`);
   console.log(`  - Users: zhangsan@example.com, lisi@example.com, wangwu@example.com / user123`);
   console.log(`  - 1 sample template: "IT设备申领表" (published)`);
 }

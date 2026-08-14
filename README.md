@@ -49,8 +49,11 @@ INFO: Server started on port 3001 [development]
 
 | 角色 | 账号 | 密码 |
 |------|------|------|
-| 管理员 | `admin@example.com` | `admin123` |
-| 普通用户 | `zhangsan@example.com` / `lisi@example.com` / `wangwu@example.com` | `user123` |
+| 系统管理员 | `admin@example.com` | `admin123` |
+| 模板设计者 | `designer@example.com` | `user123` |
+| 运维人员 | `ops@example.com` | `user123` |
+| 填写者/审批者 | `zhangsan@example.com` | `user123` |
+| 填写者 | `lisi@example.com` / `wangwu@example.com` | `user123` |
 
 > 种子仅在 `users` 表为空时执行。示例模板：「IT设备申领表」（已发布）。
 

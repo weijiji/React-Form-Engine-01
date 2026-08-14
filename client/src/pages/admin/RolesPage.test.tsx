@@ -22,7 +22,7 @@ const roles = {
     },
     {
       id: "r2",
-      name: "普通用户",
+      name: "填写者",
       description: null,
       permissions: ["filler:fill_forms"],
       created_at: "2026-01-01T00:00:00Z",
@@ -92,7 +92,7 @@ describe("RolesPage", () => {
     renderPage();
 
     expect(await screen.findByText("管理员")).toBeInTheDocument();
-    expect(screen.getByText("普通用户")).toBeInTheDocument();
+    expect(screen.getByText("填写者")).toBeInTheDocument();
     expect(screen.getByText("admin:manage_roles")).toBeInTheDocument();
   });
 

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { getDb } from "../db/connection";
-import { resolveCurrentUser } from "../middleware/currentUser";
+import { authenticate } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
 import {
   parseSchema,
@@ -13,6 +13,10 @@ import { createDbOrgDataSource } from "../services/orgDataSource";
 import { notifyApprovers } from "../services/notifications";
 
 const router = Router();
+
+// Identity comes from the JWT cookie (work order 17): every instance route
+// requires a logged-in user.
+router.use(authenticate);
 
 /**
  * Form Instance API (work order 05). An instance is the runtime record of a
@@ -140,7 +144,7 @@ function requireOwner(instance: InstanceRow, userId: string): void {
 router.get(
   "/my",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const db = getDb();
     const statuses = parseStatusList(req.query.status);
     const page = clampInt(req.query.page, 1, 1, Number.MAX_SAFE_INTEGER);
@@ -182,7 +186,7 @@ router.get(
 router.post(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const templateId = req.body?.template_id;
 
     if (typeof templateId !== "string" || templateId.trim() === "") {
@@ -222,7 +226,7 @@ router.get(
 router.put(
   "/:id/values",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const instance = await findInstance(req.params.id);
     requireOwner(instance, user.id);
 
@@ -254,7 +258,7 @@ router.put(
 router.post(
   "/:id/submit",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const instance = await findInstance(req.params.id);
     requireOwner(instance, user.id);
 
@@ -353,7 +357,7 @@ router.post(
 router.post(
   "/:id/withdraw",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const instance = await findInstance(req.params.id);
     requireOwner(instance, user.id);
 

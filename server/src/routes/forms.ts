@@ -1,8 +1,12 @@
 import { Router, Request, Response } from "express";
 import { getDb } from "../db/connection";
+import { authenticate } from "../middleware/auth";
 import { asyncHandler, clampInt, parseJsonb } from "./helpers";
 
 const router = Router();
+
+// The form center requires a logged-in user (work order 17).
+router.use(authenticate);
 
 /**
  * Form Center API (work order 05). `GET /api/v1/forms` lists the forms a filler

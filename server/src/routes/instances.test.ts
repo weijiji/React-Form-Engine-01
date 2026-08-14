@@ -3,18 +3,25 @@ import request from "supertest";
 import { createApp } from "../app";
 import { closeDb, getDb } from "../db/connection";
 import { runMigrations, runSeedIfEmpty } from "../db/migrate";
+import { signAccessToken } from "../services/jwt";
 
 /**
  * Form instance + form-center API integration tests (work order 05, 二级 seam).
  *
  * These exercise the full filler lifecycle against the seeded "IT设备申领表"
- * template (approval chain: 直属上级 → 系统管理员). Identity is injected via the
- * `X-User-Id` header. Key seams: submit atomicity (a resolution failure rolls back
+ * template (approval chain: 直属上级 → 系统管理员). Identity is injected via a
+ * minted access-token cookie (work order 17). Key seams: submit atomicity (a resolution failure rolls back
  * the snapshot + approval records), template-offline rejection, and autosave→resume
  * consistency.
  */
 
 const app = createApp();
+
+const COOKIE = "access_token";
+/** Mint an access token and return it as a Cookie header (work order 17 auth). */
+function authCookie(userId: string): string {
+  return COOKIE + "=" + signAccessToken(userId);
+}
 
 let adminId: string;
 let zhangsanId: string;
@@ -65,13 +72,15 @@ function createDraftInstance(
 ): Promise<request.Response> {
   return request(app)
     .post("/api/v1/instances")
-    .set("X-User-Id", userId)
+    .set("Cookie", authCookie(userId))
     .send({ template_id: templateId });
 }
 
 describe("GET /api/v1/forms (form center)", () => {
   it("lists published forms only", async () => {
-    const res = await request(app).get("/api/v1/forms");
+    const res = await request(app)
+      .get("/api/v1/forms")
+      .set("Cookie", authCookie(lisiId));
     expect(res.status).toBe(200);
     expect(res.body.total).toBeGreaterThanOrEqual(1);
     expect(
@@ -96,7 +105,7 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("rejects creating an instance for an unpublished template", async () => {
     const tpl = await request(app)
       .post("/api/v1/templates")
-      .set("X-User-Id", zhangsanId)
+      .set("Cookie", authCookie(zhangsanId))
       .send({ name: "未发布模板" });
     createdTemplateIds.push(tpl.body.id);
 
@@ -108,14 +117,14 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("autosaves field values and returns them on resume", async () => {
     const save = await request(app)
       .put(`/api/v1/instances/${instanceId}/values`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ field_values: validValues });
     expect(save.status).toBe(200);
     expect(save.body.field_values).toEqual(validValues);
 
     const reload = await request(app)
       .get(`/api/v1/instances/${instanceId}`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(reload.status).toBe(200);
     expect(reload.body.field_values).toEqual(validValues);
   });
@@ -123,7 +132,7 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("rejects a values save by a non-owner (403)", async () => {
     const res = await request(app)
       .put(`/api/v1/instances/${instanceId}/values`)
-      .set("X-User-Id", zhangsanId)
+      .set("Cookie", authCookie(zhangsanId))
       .send({ field_values: validValues });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("FORBIDDEN");
@@ -132,7 +141,7 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("rejects submission with invalid values (422)", async () => {
     const res = await request(app)
       .post(`/api/v1/instances/${instanceId}/submit`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ field_values: { "fld-001": "李四" } });
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
@@ -142,7 +151,7 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("submits atomically, resolving the approval chain", async () => {
     const res = await request(app)
       .post(`/api/v1/instances/${instanceId}/submit`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ field_values: validValues });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("submitted");
@@ -158,7 +167,7 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("rejects resubmitting an already-submitted instance (409)", async () => {
     const res = await request(app)
       .post(`/api/v1/instances/${instanceId}/submit`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ field_values: validValues });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("VERSION_CONFLICT");
@@ -167,7 +176,7 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("withdraws back to draft and clears pending records", async () => {
     const res = await request(app)
       .post(`/api/v1/instances/${instanceId}/withdraw`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ version: 2 });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("draft");
@@ -177,7 +186,7 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("rejects withdrawing a non-withdrawable draft (400)", async () => {
     const res = await request(app)
       .post(`/api/v1/instances/${instanceId}/withdraw`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
@@ -185,14 +194,14 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   it("resubmits after withdraw, then rejects a stale-version withdraw (409)", async () => {
     const submit = await request(app)
       .post(`/api/v1/instances/${instanceId}/submit`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ field_values: validValues });
     expect(submit.status).toBe(200);
     expect(submit.body.status).toBe("submitted");
 
     const withdraw = await request(app)
       .post(`/api/v1/instances/${instanceId}/withdraw`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ version: 1 });
     expect(withdraw.status).toBe(409);
     expect(withdraw.body.error.code).toBe("VERSION_CONFLICT");
@@ -208,14 +217,14 @@ describe("submit atomicity on approver-resolution failure", () => {
 
     const res = await request(app)
       .post(`/api/v1/instances/${instanceId}/submit`)
-      .set("X-User-Id", zhangsanId)
+      .set("Cookie", authCookie(zhangsanId))
       .send({ field_values: validValues });
     expect(res.status).toBe(500);
     expect(res.body.error.code).toBe("APPROVER_RESOLUTION_FAILED");
 
     const detail = await request(app)
       .get(`/api/v1/instances/${instanceId}`)
-      .set("X-User-Id", zhangsanId);
+      .set("Cookie", authCookie(zhangsanId));
     expect(detail.body.status).toBe("draft");
     expect(detail.body.approval_records).toHaveLength(0);
   });

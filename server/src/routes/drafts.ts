@@ -1,12 +1,16 @@
 import { Router, Request, Response } from "express";
 import { getDb } from "../db/connection";
-import { resolveCurrentUser } from "../middleware/currentUser";
+import { authenticate } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
 import { parseSchema, type FormValues } from "form-engine-core";
 import { asyncHandler, clampInt, parseJsonb, requireObject } from "./helpers";
 import { migrateFieldValues } from "../services/fieldMigration";
 
 const router = Router();
+
+// Identity comes from the JWT cookie (work order 17): every draft route
+// requires a logged-in user.
+router.use(authenticate);
 
 /**
  * Draft API (work order 05). A `drafts` row is a lightweight, template-version
@@ -50,7 +54,7 @@ async function findDraft(id: string, userId: string): Promise<DraftRow> {
 router.get(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const db = getDb();
     const page = clampInt(req.query.page, 1, 1, Number.MAX_SAFE_INTEGER);
     const pageSize = clampInt(req.query.pageSize, 20, 1, 100);
@@ -87,7 +91,7 @@ router.get(
 router.post(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const templateId = req.body?.template_id;
 
     if (typeof templateId !== "string" || templateId.trim() === "") {
@@ -124,7 +128,7 @@ router.post(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const draft = await findDraft(req.params.id, user.id);
 
     const template = await getDb()("form_templates")
@@ -158,7 +162,7 @@ router.get(
 router.put(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const draft = await findDraft(req.params.id, user.id);
 
     const fieldValues = req.body.field_values;
@@ -178,7 +182,7 @@ router.put(
 router.delete(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    const user = await resolveCurrentUser(req);
+    const user = req.auth!;
     const draft = await findDraft(req.params.id, user.id);
 
     await getDb()("drafts").where({ id: draft.id }).del();

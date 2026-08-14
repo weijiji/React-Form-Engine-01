@@ -57,22 +57,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
-  /api/v1/me:
-    get:
-      tags: [system]
-      summary: Current user
-      description: |
-        Resolves the acting user. The pre-auth MVP takes identity from the
-        `X-User-Id` header and falls back to the seeded designer (张三).
-      operationId: getCurrentUser
-      responses:
-        "200":
-          description: The resolved current user
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-
   /api/v1/templates:
     post:
       tags: [templates]

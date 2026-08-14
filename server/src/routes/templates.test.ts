@@ -3,16 +3,23 @@ import request from "supertest";
 import { createApp } from "../app";
 import { closeDb, getDb } from "../db/connection";
 import { runMigrations, runSeedIfEmpty } from "../db/migrate";
+import { signAccessToken } from "../services/jwt";
 
 /**
  * Template API integration tests (work order 04, 二级 seam).
  *
  * These hit the real app (`createApp()`) through supertest against the configured
  * database, exercising the full designer lifecycle and the lock-conflict paths.
- * Identity is injected via the `X-User-Id` header (the pre-auth MVP convention).
+ * Identity is injected via a minted access-token cookie (work order 17).
  */
 
 const app = createApp();
+
+const COOKIE = "access_token";
+/** Mint an access token and return it as a Cookie header (work order 17 auth). */
+function authCookie(userId: string): string {
+  return COOKIE + "=" + signAccessToken(userId);
+}
 
 let zhangsanId: string;
 let lisiId: string;
@@ -43,7 +50,7 @@ afterAll(async () => {
 function newTemplate(name = "集成测试模板"): Promise<request.Response> {
   return request(app)
     .post("/api/v1/templates")
-    .set("X-User-Id", zhangsanId)
+    .set("Cookie", authCookie(zhangsanId))
     .send({ name, category: "测试" });
 }
 
@@ -61,7 +68,7 @@ describe("POST /api/v1/templates (create + auto-checkout)", () => {
   it("rejects a missing or blank name", async () => {
     const res = await request(app)
       .post("/api/v1/templates")
-      .set("X-User-Id", zhangsanId)
+      .set("Cookie", authCookie(zhangsanId))
       .send({ name: "   " });
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
@@ -80,6 +87,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("lists the created template (searchable)", async () => {
     const res = await request(app)
       .get("/api/v1/templates")
+      .set("Cookie", authCookie(zhangsanId))
       .query({ search: "全流程" });
     expect(res.status).toBe(200);
     expect(res.body.total).toBeGreaterThanOrEqual(1);
@@ -89,7 +97,9 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   });
 
   it("returns detail with schema and approval_chain", async () => {
-    const res = await request(app).get(`/api/v1/templates/${templateId}`);
+    const res = await request(app)
+      .get(`/api/v1/templates/${templateId}`)
+      .set("Cookie", authCookie(zhangsanId));
     expect(res.status).toBe(200);
     expect(res.body.schema).toEqual({ schemaVersion: "1.0.0", sections: [] });
     expect(res.body.approval_chain).toBeNull();
@@ -99,7 +109,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
     const schema = { schemaVersion: "1.0.0", sections: [{ id: "s1", title: "章节", fields: [] }] };
     const res = await request(app)
       .put(`/api/v1/templates/${templateId}/schema`)
-      .set("X-User-Id", zhangsanId)
+      .set("Cookie", authCookie(zhangsanId))
       .send({ schema, approval_chain: { nodes: [] } });
     expect(res.status).toBe(200);
     expect(res.body.version).toBe(2);
@@ -109,7 +119,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("rejects a schema save by a non-holder (409)", async () => {
     const res = await request(app)
       .put(`/api/v1/templates/${templateId}/schema`)
-      .set("X-User-Id", lisiId)
+      .set("Cookie", authCookie(lisiId))
       .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
@@ -118,7 +128,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("rejects a checkout by another user while locked (409)", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/checkout`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
   });
@@ -126,7 +136,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("is idempotent when the holder re-checks-out", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/checkout`)
-      .set("X-User-Id", zhangsanId);
+      .set("Cookie", authCookie(zhangsanId));
     expect(res.status).toBe(200);
     expect(res.body.locked_by).toBe(zhangsanId);
   });
@@ -134,7 +144,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("releases the lock on checkin", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/checkin`)
-      .set("X-User-Id", zhangsanId);
+      .set("Cookie", authCookie(zhangsanId));
     expect(res.status).toBe(200);
     expect(res.body.locked_by).toBeNull();
   });
@@ -142,7 +152,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("rejects a schema save when not checked out (409)", async () => {
     const res = await request(app)
       .put(`/api/v1/templates/${templateId}/schema`)
-      .set("X-User-Id", zhangsanId)
+      .set("Cookie", authCookie(zhangsanId))
       .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
@@ -151,7 +161,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("publishes the template (draft → published)", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/publish`)
-      .set("X-User-Id", zhangsanId);
+      .set("Cookie", authCookie(zhangsanId));
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("published");
   });
@@ -159,7 +169,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("rejects publishing a non-draft template", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/publish`)
-      .set("X-User-Id", zhangsanId);
+      .set("Cookie", authCookie(zhangsanId));
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("TEMPLATE_NOT_DRAFT");
   });
@@ -174,7 +184,7 @@ describe("force-unlock", () => {
 
     const unlock = await request(app)
       .post(`/api/v1/templates/${templateId}/force-unlock`)
-      .set("X-User-Id", lisiId);
+      .set("Cookie", authCookie(lisiId));
     expect(unlock.status).toBe(200);
     expect(unlock.body.locked_by).toBeNull();
   });
@@ -182,9 +192,9 @@ describe("force-unlock", () => {
 
 describe("GET /api/v1/templates/:id (missing)", () => {
   it("returns 404 for an unknown template", async () => {
-    const res = await request(app).get(
-      "/api/v1/templates/00000000-0000-0000-0000-000000000000",
-    );
+    const res = await request(app)
+      .get("/api/v1/templates/00000000-0000-0000-0000-000000000000")
+      .set("Cookie", authCookie(zhangsanId));
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });

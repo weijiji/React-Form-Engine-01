@@ -8,6 +8,7 @@ import type {
   FieldType,
 } from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
+import { useAuth } from "../../auth/AuthContext";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
 import { PropertyPanel } from "../../designer/PropertyPanel";
@@ -29,7 +30,7 @@ import {
   updateField,
   type DesignerSchema,
 } from "../../designer/schemaModel";
-import type { FormTemplate, User } from "../../designer/types";
+import type { FormTemplate } from "../../designer/types";
 import "./designer.css";
 
 /** Normalize a stored template `schema` JSONB into a DesignerSchema (safe on miss). */
@@ -81,9 +82,9 @@ function formatDate(iso: string | null): string {
 export const DesignerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user: me } = useAuth();
 
   const [template, setTemplate] = useState<FormTemplate | null>(null);
-  const [me, setMe] = useState<User | null>(null);
   const [schema, setSchema] = useState<DesignerSchema>(createEmptySchema());
   const [chain, setChain] = useState<ApprovalChain>({ nodes: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -97,12 +98,8 @@ export const DesignerPage: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    Promise.all([
-      apiClient<User>("/me"),
-      apiClient<FormTemplate>(`/templates/${id}`),
-    ])
-      .then(([user, tpl]) => {
-        setMe(user);
+    apiClient<FormTemplate>(`/templates/${id}`)
+      .then((tpl) => {
         setTemplate(tpl);
         setSchema(toDesignerSchema(tpl.schema));
         setChain(toChain(tpl.approval_chain));

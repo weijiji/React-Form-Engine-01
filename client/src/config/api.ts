@@ -1,3 +1,5 @@
+import type { components } from "form-engine-core";
+
 /**
  * API client configuration.
  * All API requests go through this centralized base URL.
@@ -33,14 +35,25 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Typed fetch wrapper for API calls.
- * Automatically injects CSRF token for mutating requests.
- * All requests include credentials (cookies).
- */
-export async function apiClient<T>(
+/** Parse a non-ok fetch Response into an ApiError (never throws). */
+async function toApiError(response: Response): Promise<ApiError> {
+  let errorBody: { error?: { code?: string; message?: string } } = {};
+  try {
+    errorBody = await response.json();
+  } catch {
+    // Response is not JSON
+  }
+  return new ApiError(
+    response.status,
+    errorBody.error?.code || "UNKNOWN",
+    errorBody.error?.message || response.statusText,
+  );
+}
+
+/** Perform a single fetch + parse. Throws ApiError on a non-ok response. */
+async function doRequest<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
 
@@ -65,17 +78,7 @@ export async function apiClient<T>(
   });
 
   if (!response.ok) {
-    let errorBody: { error?: { code?: string; message?: string } } = {};
-    try {
-      errorBody = await response.json();
-    } catch {
-      // Response is not JSON
-    }
-    throw new ApiError(
-      response.status,
-      errorBody.error?.code || "UNKNOWN",
-      errorBody.error?.message || response.statusText
-    );
+    throw await toApiError(response);
   }
 
   // 204 No Content
@@ -84,4 +87,77 @@ export async function apiClient<T>(
   }
 
   return response.json();
+}
+
+/** Auth endpoints must never be retried through the silent-refresh path. */
+const AUTH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout", "/auth/me"];
+
+let refreshing: Promise<boolean> | null = null;
+
+/** Exchange the current cookie for a fresh one (sliding expiration). */
+function refreshSession(): Promise<boolean> {
+  if (!refreshing) {
+    refreshing = (async () => {
+      try {
+        await doRequest("/auth/refresh", { method: "POST" });
+        return true;
+      } catch {
+        return false;
+      } finally {
+        refreshing = null;
+      }
+    })();
+  }
+  return refreshing;
+}
+
+/**
+ * Typed fetch wrapper for API calls.
+ * Automatically injects CSRF token for mutating requests.
+ * All requests include credentials (cookies).
+ *
+ * On a 401 from a business endpoint (not the auth endpoints themselves), it
+ * attempts one silent refresh and retries the original request once before
+ * giving up — so a stale access token doesn't bounce the user to login.
+ */
+export async function apiClient<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  try {
+    return await doRequest<T>(path, options);
+  } catch (err) {
+    if (
+      err instanceof ApiError &&
+      err.statusCode === 401 &&
+      !AUTH_PATHS.some((p) => path.startsWith(p))
+    ) {
+      if (await refreshSession()) {
+        return await doRequest<T>(path, options);
+      }
+    }
+    throw err;
+  }
+}
+
+// ── Auth convenience methods (work order 17) ────────────────────────────────
+
+type AuthResponse = components["schemas"]["AuthResponse"];
+
+/** POST /auth/login — issues the session cookies and returns the user. */
+export function login(email: string, password: string): Promise<AuthResponse> {
+  return apiClient<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+/** POST /auth/logout — clears the session cookies. */
+export function logout(): Promise<void> {
+  return apiClient<void>("/auth/logout", { method: "POST" });
+}
+
+/** GET /auth/me — the authenticated user with roles + permissions. */
+export function getMe(): Promise<AuthResponse> {
+  return apiClient<AuthResponse>("/auth/me");
 }

@@ -14,9 +14,8 @@ const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
  *
  * The CSRF cookie is set on login (see services/cookies.ts) and read by the
  * client via `document.cookie` to echo back in the header. Requests that carry
- * no CSRF cookie at all (e.g. the pre-auth legacy X-User-Id routes, or the
- * login request itself) are still allowed, preserving backward compatibility
- * with the pre-issue-09 surface; once a cookie is present the header must match.
+ * no CSRF cookie at all (e.g. the login request itself) are still allowed;
+ * once a cookie is present the header must match.
  */
 export function csrfMiddleware(
   req: Request,

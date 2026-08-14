@@ -3,7 +3,7 @@ import {
   Navigate,
   type RouteObject,
 } from "react-router-dom";
-import { Shell, type NavGroup, type ShellHandle, type ShellUser } from "../layouts/Shell";
+import type { NavGroup, ShellHandle } from "../layouts/Shell";
 import {
   ArchiveIcon,
   BarChartIcon,
@@ -21,7 +21,11 @@ import {
   UploadIcon,
   UsersIcon,
 } from "../layouts/icons";
+import { HomeRedirect, RequireAuth, RequireRole } from "../auth/guards";
+import { PortalShell } from "../auth/PortalShell";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
+import { LoginPage } from "../pages/LoginPage";
+import { ForbiddenPage } from "../pages/ForbiddenPage";
 import { TemplatesPage } from "../pages/designer/TemplatesPage";
 import { CreateTemplatePage } from "../pages/designer/CreateTemplatePage";
 import { DesignerPage } from "../pages/designer/DesignerPage";
@@ -121,205 +125,206 @@ const opsNav: NavGroup[] = [
   commonNav,
 ];
 
-const designerUser: ShellUser = { name: "张三", role: "设计者" };
-const fillerUser: ShellUser = { name: "李四", role: "员工" };
-const approverUser: ShellUser = { name: "王五", role: "审批人" };
-const adminUser: ShellUser = { name: "赵六", role: "系统管理员" };
-const opsUser: ShellUser = { name: "孙七", role: "运维人员" };
-
 /**
- * The five-portal route map (ADR-0009). `/admin` is the system-admin portal,
- * the designer lives at `/designer`. Root `/` redirects to a deterministic
- * default (`/designer`, the MVP's primary surface); issue 09 makes this
- * role-based once authentication lands. Unimplemented detail pages render
- * `PlaceholderPage` until their own work orders fill them in.
+ * The five-portal route map (ADR-0009). Work order 17 wires authentication:
+ * `RequireAuth` is the outer boundary, each portal is gated by `RequireRole`
+ * (its fixed role), and the root `/` redirects to the signed-in user's primary
+ * portal via `HomeRedirect`. Unimplemented detail pages render `PlaceholderPage`
+ * until their own work orders fill them in.
  */
 export const routes: RouteObject[] = [
   // ── Temporary demo route (work order 03) ──
   { path: "/preview", element: <PreviewPage /> },
 
-  // ── Public pages (sitemap §2, no Shell) ──
+  // ── Public pages (no auth) ──
   { path: "/notifications", element: <PlaceholderPage title="通知中心" /> },
+  { path: "/login", element: <LoginPage /> },
+  { path: "/403", element: <ForbiddenPage /> },
 
-  // ── Full-screen designer workbench (no Shell — mirrors the prototype's
-  //    designer-edit.html, which is a standalone editor without sidebar/topbar) ──
-  { path: "/designer/templates/:id", element: <DesignerPage /> },
-
-  // ── Root: pre-auth default → designer (issue 09 → role-based) ──
-  { path: "/", element: <Navigate to="/designer" replace /> },
-
-  // ── 模板设计者门户 ──
+  // ── Authenticated area (work order 17) ──
   {
-    path: "/designer",
-    element: (
-      <Shell
-        brandName="动态表单引擎"
-        brandSub="模板设计者门户"
-        navGroups={designerNav}
-        user={designerUser}
-      />
-    ),
+    element: <RequireAuth />,
     children: [
-      { index: true, element: <Navigate to="/designer/templates" replace /> },
-      {
-        path: "templates",
-        element: <TemplatesPage />,
-        handle: { title: "我的模板", crumb: "模板设计者门户" } satisfies ShellHandle,
-      },
-      {
-        path: "create",
-        element: <CreateTemplatePage />,
-        handle: { title: "创建表单", crumb: "模板设计者门户" } satisfies ShellHandle,
-      },
-      {
-        path: "create/nl",
-        element: <PlaceholderPage />,
-        handle: { title: "自然语言创建", crumb: "创建表单" } satisfies ShellHandle,
-      },
-      {
-        path: "drafts",
-        element: <PlaceholderPage />,
-        handle: { title: "草稿模板", crumb: "模板设计者门户" } satisfies ShellHandle,
-      },
-      { path: "*", element: <NotFoundPage /> },
-    ],
-  },
+      // Root: role-based landing page
+      { path: "/", element: <HomeRedirect /> },
 
-  // ── 表单填写者门户 ──
-  {
-    path: "/filler",
-    element: (
-      <Shell
-        brandName="动态表单引擎"
-        brandSub="表单填写者门户"
-        navGroups={fillerNav}
-        user={fillerUser}
-      />
-    ),
-    children: [
-      { index: true, element: <Navigate to="/filler/forms" replace /> },
+      // ── 模板设计者门户 ──
       {
-        path: "forms",
-        element: <FormCenter />,
-        handle: { title: "表单中心", crumb: "表单填写者门户" } satisfies ShellHandle,
+        element: <RequireRole roles={["设计者"]} />,
+        children: [
+          // Full-screen designer workbench (no Shell — mirrors the prototype's
+          // designer-edit.html, a standalone editor without sidebar/topbar).
+          { path: "/designer/templates/:id", element: <DesignerPage /> },
+          {
+            path: "/designer",
+            element: (
+              <PortalShell brandSub="模板设计者门户" navGroups={designerNav} />
+            ),
+            children: [
+              { index: true, element: <Navigate to="/designer/templates" replace /> },
+              {
+                path: "templates",
+                element: <TemplatesPage />,
+                handle: { title: "我的模板", crumb: "模板设计者门户" } satisfies ShellHandle,
+              },
+              {
+                path: "create",
+                element: <CreateTemplatePage />,
+                handle: { title: "创建表单", crumb: "模板设计者门户" } satisfies ShellHandle,
+              },
+              {
+                path: "create/nl",
+                element: <PlaceholderPage />,
+                handle: { title: "自然语言创建", crumb: "创建表单" } satisfies ShellHandle,
+              },
+              {
+                path: "drafts",
+                element: <PlaceholderPage />,
+                handle: { title: "草稿模板", crumb: "模板设计者门户" } satisfies ShellHandle,
+              },
+              { path: "*", element: <NotFoundPage /> },
+            ],
+          },
+        ],
       },
-      {
-        path: "instances/:id",
-        element: <FormFillPage />,
-        handle: { title: "填写表单", crumb: "表单填写者门户" } satisfies ShellHandle,
-      },
-      {
-        path: "drafts",
-        element: <MyDrafts />,
-        handle: { title: "我的草稿", crumb: "表单填写者门户" } satisfies ShellHandle,
-      },
-      {
-        path: "submissions",
-        element: <MySubmissions />,
-        handle: { title: "我的提交", crumb: "表单填写者门户" } satisfies ShellHandle,
-      },
-      { path: "*", element: <NotFoundPage /> },
-    ],
-  },
 
-  // ── 审批人门户 ──
-  {
-    path: "/approver",
-    element: (
-      <Shell
-        brandName="动态表单引擎"
-        brandSub="审批人门户"
-        navGroups={approverNav}
-        user={approverUser}
-      />
-    ),
-    children: [
-      { index: true, element: <Navigate to="/approver/pending" replace /> },
+      // ── 表单填写者门户 ──
       {
-        path: "pending",
-        element: <PlaceholderPage />,
-        handle: { title: "待审批", crumb: "审批人门户" } satisfies ShellHandle,
+        element: <RequireRole roles={["填写者"]} />,
+        children: [
+          {
+            path: "/filler",
+            element: (
+              <PortalShell brandSub="表单填写者门户" navGroups={fillerNav} />
+            ),
+            children: [
+              { index: true, element: <Navigate to="/filler/forms" replace /> },
+              {
+                path: "forms",
+                element: <FormCenter />,
+                handle: { title: "表单中心", crumb: "表单填写者门户" } satisfies ShellHandle,
+              },
+              {
+                path: "instances/:id",
+                element: <FormFillPage />,
+                handle: { title: "填写表单", crumb: "表单填写者门户" } satisfies ShellHandle,
+              },
+              {
+                path: "drafts",
+                element: <MyDrafts />,
+                handle: { title: "我的草稿", crumb: "表单填写者门户" } satisfies ShellHandle,
+              },
+              {
+                path: "submissions",
+                element: <MySubmissions />,
+                handle: { title: "我的提交", crumb: "表单填写者门户" } satisfies ShellHandle,
+              },
+              { path: "*", element: <NotFoundPage /> },
+            ],
+          },
+        ],
       },
-      {
-        path: "history",
-        element: <PlaceholderPage />,
-        handle: { title: "已审批", crumb: "审批人门户" } satisfies ShellHandle,
-      },
-      { path: "*", element: <NotFoundPage /> },
-    ],
-  },
 
-  // ── 系统管理员门户 ──
-  {
-    path: "/admin",
-    element: (
-      <Shell
-        brandName="动态表单引擎"
-        brandSub="系统管理员门户"
-        navGroups={adminNav}
-        user={adminUser}
-      />
-    ),
-    children: [
-      { index: true, element: <Navigate to="/admin/users" replace /> },
+      // ── 审批人门户 ──
       {
-        path: "users",
-        element: <UsersPage />,
-        handle: { title: "用户管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+        element: <RequireRole roles={["审批者"]} />,
+        children: [
+          {
+            path: "/approver",
+            element: (
+              <PortalShell brandSub="审批人门户" navGroups={approverNav} />
+            ),
+            children: [
+              { index: true, element: <Navigate to="/approver/pending" replace /> },
+              {
+                path: "pending",
+                element: <PlaceholderPage />,
+                handle: { title: "待审批", crumb: "审批人门户" } satisfies ShellHandle,
+              },
+              {
+                path: "history",
+                element: <PlaceholderPage />,
+                handle: { title: "已审批", crumb: "审批人门户" } satisfies ShellHandle,
+              },
+              { path: "*", element: <NotFoundPage /> },
+            ],
+          },
+        ],
       },
-      {
-        path: "roles",
-        element: <RolesPage />,
-        handle: { title: "角色管理", crumb: "系统管理员门户" } satisfies ShellHandle,
-      },
-      {
-        path: "data",
-        element: <PlaceholderPage />,
-        handle: { title: "数据管理", crumb: "系统管理员门户" } satisfies ShellHandle,
-      },
-      {
-        path: "statistics",
-        element: <PlaceholderPage />,
-        handle: { title: "统计看板", crumb: "系统管理员门户" } satisfies ShellHandle,
-      },
-      {
-        path: "templates",
-        element: <PlaceholderPage />,
-        handle: { title: "模板管理", crumb: "系统管理员门户" } satisfies ShellHandle,
-      },
-      { path: "*", element: <NotFoundPage /> },
-    ],
-  },
 
-  // ── 运维人员门户 ──
-  {
-    path: "/ops",
-    element: (
-      <Shell
-        brandName="动态表单引擎"
-        brandSub="运维人员门户"
-        navGroups={opsNav}
-        user={opsUser}
-      />
-    ),
-    children: [
-      { index: true, element: <Navigate to="/ops/import" replace /> },
+      // ── 系统管理员门户 ──
       {
-        path: "import",
-        element: <PlaceholderPage />,
-        handle: { title: "导入配置", crumb: "运维人员门户" } satisfies ShellHandle,
+        element: <RequireRole roles={["管理员"]} />,
+        children: [
+          {
+            path: "/admin",
+            element: (
+              <PortalShell brandSub="系统管理员门户" navGroups={adminNav} />
+            ),
+            children: [
+              { index: true, element: <Navigate to="/admin/users" replace /> },
+              {
+                path: "users",
+                element: <UsersPage />,
+                handle: { title: "用户管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+              },
+              {
+                path: "roles",
+                element: <RolesPage />,
+                handle: { title: "角色管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+              },
+              {
+                path: "data",
+                element: <PlaceholderPage />,
+                handle: { title: "数据管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+              },
+              {
+                path: "statistics",
+                element: <PlaceholderPage />,
+                handle: { title: "统计看板", crumb: "系统管理员门户" } satisfies ShellHandle,
+              },
+              {
+                path: "templates",
+                element: <PlaceholderPage />,
+                handle: { title: "模板管理", crumb: "系统管理员门户" } satisfies ShellHandle,
+              },
+              { path: "*", element: <NotFoundPage /> },
+            ],
+          },
+        ],
       },
+
+      // ── 运维人员门户 ──
       {
-        path: "migrations",
-        element: <PlaceholderPage />,
-        handle: { title: "迁移记录", crumb: "运维人员门户" } satisfies ShellHandle,
+        element: <RequireRole roles={["运维"]} />,
+        children: [
+          {
+            path: "/ops",
+            element: (
+              <PortalShell brandSub="运维人员门户" navGroups={opsNav} />
+            ),
+            children: [
+              { index: true, element: <Navigate to="/ops/import" replace /> },
+              {
+                path: "import",
+                element: <PlaceholderPage />,
+                handle: { title: "导入配置", crumb: "运维人员门户" } satisfies ShellHandle,
+              },
+              {
+                path: "migrations",
+                element: <PlaceholderPage />,
+                handle: { title: "迁移记录", crumb: "运维人员门户" } satisfies ShellHandle,
+              },
+              {
+                path: "templates",
+                element: <PlaceholderPage />,
+                handle: { title: "模板查看", crumb: "运维人员门户" } satisfies ShellHandle,
+              },
+              { path: "*", element: <NotFoundPage /> },
+            ],
+          },
+        ],
       },
-      {
-        path: "templates",
-        element: <PlaceholderPage />,
-        handle: { title: "模板查看", crumb: "运维人员门户" } satisfies ShellHandle,
-      },
-      { path: "*", element: <NotFoundPage /> },
     ],
   },
 

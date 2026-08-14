@@ -36,7 +36,7 @@ beforeAll(async () => {
 
   const roles = await getDb()("roles").select("id", "name");
   adminRoleId = roles.find((r) => r.name === "管理员")?.id as string;
-  userRoleId = roles.find((r) => r.name === "普通用户")?.id as string;
+  userRoleId = roles.find((r) => r.name === "填写者")?.id as string;
 
   expect(adminId && zhangsanId && adminRoleId && userRoleId).toBeTruthy();
 });
@@ -79,7 +79,7 @@ describe("role CRUD", () => {
     expect(res.status).toBe(200);
     const names = res.body.items.map((r: { name: string }) => r.name);
     expect(names).toContain("管理员");
-    expect(names).toContain("普通用户");
+    expect(names).toContain("填写者");
 
     const admin = res.body.items.find((r: { name: string }) => r.name === "管理员");
     expect(admin.permissions).toContain("template:create");
@@ -171,7 +171,7 @@ describe("user role assignment", () => {
     expect(res.body.items.length).toBeGreaterThanOrEqual(4);
 
     const zhangsan = res.body.items.find((u: { id: string }) => u.id === zhangsanId);
-    expect(zhangsan.roles.map((r: { name: string }) => r.name)).toContain("普通用户");
+    expect(zhangsan.roles.map((r: { name: string }) => r.name)).toContain("填写者");
   });
 
   it("replaces a user's roles", async () => {

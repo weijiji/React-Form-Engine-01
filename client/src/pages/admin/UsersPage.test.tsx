@@ -33,7 +33,7 @@ const users = {
 const roles = {
   items: [
     { id: "r1", name: "管理员", description: "系统管理员" },
-    { id: "r2", name: "普通用户", description: null },
+    { id: "r2", name: "填写者", description: null },
   ],
 };
 
@@ -84,7 +84,7 @@ describe("UsersPage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "分配角色" })[0]);
 
     await screen.findByRole("dialog", { name: "分配角色" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /普通用户/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /填写者/ }));
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() => {
