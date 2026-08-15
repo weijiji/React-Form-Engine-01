@@ -1,9 +1,5 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiClient, ApiError } from "../../config/api";
 import { Badge } from "../../components";
-import { createEmptySchema } from "../../designer/schemaModel";
-import type { FormTemplate } from "../../designer/types";
 import {
   ArrowRightIcon,
   BlankDocIcon,
@@ -15,39 +11,11 @@ import "./templates.css";
 /**
  * Create-form entry chooser (designer-create.html). Two ways to start:
  * natural-language generation (→ /designer/create/nl) or a blank template,
- * which is created + auto-checked-out here and jumps straight into the
- * designer workbench.
+ * which collects its basic info on /designer/create/blank first, then creates
+ * it (auto-checked-out) and jumps into the designer workbench.
  */
 export const CreateTemplatePage: React.FC = () => {
   const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const createBlank = async () => {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const created = await apiClient<FormTemplate>("/templates", {
-        method: "POST",
-        body: JSON.stringify({
-          name: "未命名模板",
-          schema: createEmptySchema(),
-        }),
-      });
-      // Auto-checked-out to the creator — jump straight into the designer.
-      navigate(`/designer/templates/${created.id}`);
-    } catch (err: unknown) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "创建失败",
-      );
-      setBusy(false);
-    }
-  };
 
   const points = {
     nl: [
@@ -70,8 +38,6 @@ export const CreateTemplatePage: React.FC = () => {
           两种方式均可生成表单模板，创建后可随时在设计器中继续调整。
         </p>
       </div>
-
-      {error && <p className="create-error">{error}</p>}
 
       <div className="create-grid">
         <div
@@ -112,12 +78,11 @@ export const CreateTemplatePage: React.FC = () => {
           className="create-opt blank"
           role="button"
           tabIndex={0}
-          aria-busy={busy}
-          onClick={createBlank}
+          onClick={() => navigate("/designer/create/blank")}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              void createBlank();
+              navigate("/designer/create/blank");
             }
           }}
         >
@@ -135,7 +100,7 @@ export const CreateTemplatePage: React.FC = () => {
             ))}
           </div>
           <div className="co-cta">
-            {busy ? "正在创建…" : "创建空白模板"}
+            创建空白模板
             <ArrowRightIcon />
           </div>
         </div>

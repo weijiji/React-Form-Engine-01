@@ -28,6 +28,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { ForbiddenPage } from "../pages/ForbiddenPage";
 import { TemplatesPage } from "../pages/designer/TemplatesPage";
 import { CreateTemplatePage } from "../pages/designer/CreateTemplatePage";
+import { CreateBlankPage } from "../pages/designer/CreateBlankPage";
 import { DesignerPage } from "../pages/designer/DesignerPage";
 import { PreviewPage } from "../pages/PreviewPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
@@ -61,6 +62,7 @@ export const ROUTE_CODES: Record<string, string[]> = {
   "/designer/templates/:id": TEMPLATE_EDIT, // workbench inherits the list
   "/designer/create": TEMPLATE_CREATE,
   "/designer/create/nl": TEMPLATE_CREATE, // inherits /designer/create
+  "/designer/create/blank": TEMPLATE_CREATE, // inherits /designer/create
   "/designer/drafts": TEMPLATE_EDIT,
   "/filler/forms": FORM_FILL,
   "/filler/instances/:id": FORM_FILL, // inherits /filler/forms
@@ -230,6 +232,15 @@ export const routes: RouteObject[] = [
               </RequirePermission>
             ),
             handle: { title: "自然语言创建", crumb: "创建模板" } satisfies ShellHandle,
+          },
+          {
+            path: "/designer/create/blank",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/designer/create/blank"]!}>
+                <CreateBlankPage />
+              </RequirePermission>
+            ),
+            handle: { title: "空白模板", crumb: "创建模板" } satisfies ShellHandle,
           },
           {
             path: "/designer/drafts",
