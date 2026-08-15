@@ -22,7 +22,7 @@ export const FileIcon = () => (
   </svg>
 );
 
-/** 创建表单 — 加号 */
+/** 创建模板 — 加号 */
 export const PlusIcon = () => (
   <svg {...svgProps}>
     <path d="M5 12h14" />
@@ -47,7 +47,7 @@ export const BellIcon = () => (
   </svg>
 );
 
-// ── Portal nav icons (feather) for the five-role split (issue 16) ──────────
+// ── Nav icons (feather) for the authenticated areas ─────────────────────────
 
 /** 表单中心 — 网格 */
 export const LayoutIcon = () => (

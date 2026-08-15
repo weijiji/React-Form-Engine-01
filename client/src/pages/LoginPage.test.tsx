@@ -30,7 +30,9 @@ function renderLogin() {
   const router = createMemoryRouter(
     [
       { path: "/login", element: <LoginPage /> },
-      { path: "/designer", element: <div>designer-landing</div> },
+      // Login navigates to `/` on success; HomeRedirect resolves the landing
+      // (ADR-0010), so this tiny router just needs a `/` route to land on.
+      { path: "/", element: <div>home</div> },
     ],
     { initialEntries: ["/login"] },
   );
@@ -65,7 +67,7 @@ describe("LoginPage (work order 17)", () => {
     expect(screen.getByRole("button", { name: "登录" })).toBeInTheDocument();
   });
 
-  it("logs in and redirects to the primary portal", async () => {
+  it("logs in and redirects to the root landing", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -79,7 +81,16 @@ describe("LoginPage (work order 17)", () => {
             name: "设计员",
             email: "designer@example.com",
             roles: [{ id: "r-designer", name: "设计者", description: null }],
-            permissions: [],
+            // 权限码随 /auth/me 下发；登录后跳 `/`，由 HomeRedirect 解析落点（ADR-0010）。
+            permissions: [
+              "template:create",
+              "template:edit",
+              "template:delete",
+              "template:publish",
+              "template:export",
+              "template:import",
+              "template:force_unlock",
+            ],
             csrfToken: "csrf-123",
           });
         }
@@ -99,7 +110,7 @@ describe("LoginPage (work order 17)", () => {
     });
     fireEvent.submit(container.querySelector("form")!);
 
-    expect(await screen.findByText("designer-landing")).toBeInTheDocument();
+    expect(await screen.findByText("home")).toBeInTheDocument();
   });
 
   it("shows the server error on bad credentials", async () => {

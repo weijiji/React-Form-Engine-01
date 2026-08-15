@@ -68,23 +68,18 @@ function renderShell(initialEntry = "/admin/templates") {
     [
       {
         element: (
-          <Shell
-            brandName="动态表单引擎"
-            brandSub="模板设计者门户"
-            navGroups={navGroups}
-            user={user}
-          />
+          <Shell brandName="动态表单引擎" navGroups={navGroups} user={user} />
         ),
         children: [
           {
             path: "/admin/templates",
             element: <div>templates content</div>,
-            handle: { title: "模板管理", crumb: "模板设计者" },
+            handle: { title: "模板管理", crumb: "模板设计" },
           },
           {
             path: "/admin/roles",
             element: <div>roles content</div>,
-            handle: { title: "角色管理", crumb: "模板设计者" },
+            handle: { title: "角色管理", crumb: "模板设计" },
           },
         ],
       },
@@ -115,12 +110,9 @@ describe("Shell — shared portal chrome", () => {
     renderShell();
 
     expect(screen.getByText("动态表单引擎")).toBeInTheDocument();
-    expect(document.querySelector(".brand-sub")?.textContent).toBe(
-      "模板设计者门户",
-    );
     expect(screen.getByText("设计工作台")).toBeInTheDocument();
     await expectTitle("模板管理");
-    expect(document.querySelector(".tb-crumb")?.textContent).toBe("模板设计者");
+    expect(document.querySelector(".tb-crumb")?.textContent).toBe("模板设计");
     expect(screen.getByText("张三")).toBeInTheDocument();
     expect(screen.getByText("设计者")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "通知" })).toBeInTheDocument();

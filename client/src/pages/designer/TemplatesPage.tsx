@@ -21,16 +21,6 @@ const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
   { key: "draft", label: "草稿" },
 ];
 
-/** Category → card icon tint, mirroring the prototype's `.t-icon.cat-*` set. */
-const CATEGORY_TONES: Record<string, string> = {
-  人力资源: "cat-hr",
-  采购: "cat-ps",
-  财务: "cat-fn",
-  行政: "cat-xz",
-  IT: "cat-it",
-  通用: "cat-tg",
-};
-
 /** Count fields across every section of a stored `schema` JSONB (0 on miss). */
 function fieldCount(schema: unknown): number {
   const s = schema as { sections?: Array<{ fields?: unknown[] }> } | undefined;
@@ -85,7 +75,6 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   onToggleMenu,
   onOpen,
 }) => {
-  const tone = CATEGORY_TONES[template.category ?? ""] ?? "cat-tg";
   return (
     <div
       className="tpl-card"
@@ -100,9 +89,10 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
       }}
     >
       <div className="t-head">
-        <span className={`t-icon ${tone}`} aria-hidden="true">
+        <div><h3>{template.name}</h3></div>
+        {/* <span className={`t-icon ${tone}`} aria-hidden="true">
           <DocIcon />
-        </span>
+        </span> */}
         <div className="t-head-right">
           {statusBadge(template.status)}
           <span className="menu-wrap">
@@ -145,8 +135,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
             )}
           </span>
         </div>
-      </div>
-      <h3>{template.name}</h3>
+      </div>      
       <p className="t-desc">{template.description || "暂无描述"}</p>
       <div className="t-meta">
         <span>

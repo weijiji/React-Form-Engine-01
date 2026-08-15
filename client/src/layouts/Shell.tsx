@@ -11,6 +11,8 @@ export interface NavItem {
   count?: number;
   /** Style the count badge as a danger alert (e.g. 通知中心). */
   countTone?: "danger";
+  /** Permission codes that unlock this item (OR). Omit to always show. */
+  codes?: string[];
 }
 
 export interface NavGroup {
@@ -23,12 +25,6 @@ export interface ShellUser {
   role: string;
 }
 
-/** A portal the signed-in user can switch to (rendered in the sidebar footer). */
-export interface ShellPortal {
-  to: string;
-  label: string;
-}
-
 /** Per-route page metadata, attached to each route's `handle` (see router). */
 export interface ShellHandle {
   /** Page title shown in the topbar — also the page's single `<h1>`. */
@@ -39,25 +35,20 @@ export interface ShellHandle {
 
 export interface ShellProps {
   brandName: string;
-  brandSub?: string;
   navGroups: NavGroup[];
   user?: ShellUser;
   /** Extra controls rendered in the topbar action area, before the bell. */
   actions?: React.ReactNode;
   /** Sign-out handler — when set, a logout button appears next to the user chip. */
   onLogout?: () => void;
-  /** Portals the user can switch between — shown when more than one is present. */
-  portals?: ShellPortal[];
 }
 
 export const Shell: React.FC<ShellProps> = ({
   brandName,
-  brandSub,
   navGroups,
   user,
   actions,
   onLogout,
-  portals,
 }) => {
   // The page title/crumb live on the leaf route's `handle`, not on the Shell —
   // one source of truth, per route. Walk the match chain top-down so a deeper
@@ -91,7 +82,6 @@ export const Shell: React.FC<ShellProps> = ({
           </span>
           <div>
             <div className="brand-name">{brandName}</div>
-            {brandSub && <div className="brand-sub">{brandSub}</div>}
           </div>
         </div>
 
@@ -146,22 +136,6 @@ export const Shell: React.FC<ShellProps> = ({
                 </button>
               )}
             </div>
-            {portals && portals.length > 1 && (
-              <div className="portal-switcher">
-                <span className="portal-switcher-label">切换门户</span>
-                {portals.map((portal) => (
-                  <NavLink
-                    key={portal.to}
-                    to={portal.to}
-                    className={({ isActive }) =>
-                      isActive ? "portal-link active" : "portal-link"
-                    }
-                  >
-                    {portal.label}
-                  </NavLink>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </aside>

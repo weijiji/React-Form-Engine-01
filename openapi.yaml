@@ -144,6 +144,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      tags: [templates]
+      summary: Delete a template
+      description: |
+        Permanently deletes a **draft** template (status `draft` only). Published
+        or archived templates cannot be deleted — instances reference them.
+        Gated by `template:delete` (role enforcement lands with auth, issue 09).
+      operationId: deleteTemplate
+      responses:
+        "204":
+          description: Template deleted
+        "400":
+          description: Template is not in draft status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /api/v1/templates/{id}/schema:
     parameters:

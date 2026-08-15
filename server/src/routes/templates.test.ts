@@ -190,6 +190,48 @@ describe("force-unlock", () => {
   });
 });
 
+describe("DELETE /api/v1/templates/:id", () => {
+  it("deletes a draft template (204) and it is gone afterwards", async () => {
+    const res = await newTemplate("待删除模板");
+    const templateId = res.body.id;
+    expect(res.body.status).toBe("draft");
+
+    const del = await request(app)
+      .delete(`/api/v1/templates/${templateId}`)
+      .set("Cookie", authCookie(zhangsanId));
+    expect(del.status).toBe(204);
+
+    const after = await request(app)
+      .get(`/api/v1/templates/${templateId}`)
+      .set("Cookie", authCookie(zhangsanId));
+    expect(after.status).toBe(404);
+  });
+
+  it("rejects deleting a published template (400)", async () => {
+    const res = await newTemplate("已发布不可删");
+    const templateId = res.body.id;
+    createdIds.push(templateId);
+
+    await request(app)
+      .post(`/api/v1/templates/${templateId}/publish`)
+      .set("Cookie", authCookie(zhangsanId));
+
+    const del = await request(app)
+      .delete(`/api/v1/templates/${templateId}`)
+      .set("Cookie", authCookie(zhangsanId));
+    expect(del.status).toBe(400);
+    expect(del.body.error.code).toBe("TEMPLATE_NOT_DRAFT");
+  });
+
+  it("returns 404 for an unknown template", async () => {
+    const res = await request(app)
+      .delete("/api/v1/templates/00000000-0000-0000-0000-000000000000")
+      .set("Cookie", authCookie(zhangsanId));
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+});
+
 describe("GET /api/v1/templates/:id (missing)", () => {
   it("returns 404 for an unknown template", async () => {
     const res = await request(app)

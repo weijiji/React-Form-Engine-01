@@ -19,4 +19,4 @@
 - [x] **防回归**：`package.json` 加 `check:css`（`client/scripts/check-css.mjs` + root 委托）；共享类清单与组件库保持同步（注释注明）
 - [x] 验证：`npm run typecheck` + `npm run build` + 测试全绿（client 21 文件/118 用例，shared 8 文件/103 用例）+ `npm run check:css` 通过
 
-> 注：`admin.css` 保持 `.rbac-*` 命名空间不动（止血带），待 admin 页面被触及再切组件（ADR-0011 决策 4）。落地基线：develop（`issues/19-shared-control-componentization` 分支），不混入 hotfix 分支改动。
+> 注：`admin.css` 保持 `.rbac-*` 命名空间不动（止血带），待 admin 页面被触及再切组件（ADR-0011 决策 4）。落地基线：develop（`issues/19-shared-control-componentization` 分支），后经确认并入 `hotfix/RBAC-bug`（ADR-0010），最终合并落地于 `hotfix/try-merge-hotfix-rbac` 分支。

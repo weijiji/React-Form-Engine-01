@@ -189,6 +189,24 @@ router.get(
   }),
 );
 
+// ── DELETE /api/v1/templates/:id — delete a draft template ──────────────────
+// Only `draft` templates can be hard-deleted: a published/archived template
+// may have instances/drafts referencing it, so those must be archived instead.
+// Role enforcement (`template:delete`) lands with auth (issue 09).
+router.delete(
+  "/:id",
+  asyncHandler(async (req: Request, res: Response) => {
+    const template = await findTemplate(req.params.id);
+
+    if (template.status !== "draft") {
+      throw new AppError("TEMPLATE_NOT_DRAFT", "仅草稿模板可删除", 400);
+    }
+
+    await getDb()("form_templates").where({ id: template.id }).del();
+    res.status(204).end();
+  }),
+);
+
 // ── PUT /api/v1/templates/:id/schema — save schema (lock holder only) ───────
 router.put(
   "/:id/schema",

@@ -12,7 +12,7 @@ import type { AuthUser } from "./types";
 /**
  * Auth state + actions (work order 17). `AuthProvider` bootstraps the session
  * from `GET /auth/me` on mount; `login`/`logout` mutate it. The router's
- * `RequireAuth`/`RequireRole` guards read this context to gate the portals.
+ * `RequireAuth`/`RequirePermission` guards read this context to gate pages.
  */
 
 interface AuthContextValue {

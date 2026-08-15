@@ -26,7 +26,7 @@ Vite 会把所有页面 CSS 打进同一个全局样式表，重复选择器按�
 3. **废弃"每页样式表自包含"约定**：共享控件唯一来源 = 组件库。
 4. **`admin.css` 保持 `.rbac-*` 命名空间作为止血带**，不并入本次；待 admin 页面后续被触及再切组件，届时命名空间自然作废。
 5. **防回归**：CLAUDE.md 记录约定 + `npm run check:css` 守卫脚本（共享裸类出现在非 `components/` 的 CSS 即失败）。脚本在工单 19 落地。
-6. **落地为独立工单（19），一次 PR**。原定从 main 分支做，实际因 main 严重落后，经确认改以 **develop** 为基线（分支 `issues/19-shared-control-componentization`），不混入 hotfix 分支的改动（ADR-0010 未并入）。
+6. **落地为独立工单（19），一次 PR**。原定从 main 分支做，实际因 main 严重落后，经确认改以 **develop** 为基线（分支 `issues/19-shared-control-componentization`）；随后经用户确认，将 `hotfix/RBAC-bug`（ADR-0010 权限驱动路由、删除模板 API、术语统一）并入，最终合并落地于 `hotfix/try-merge-hotfix-rbac` 分支。
 
 ## 替代方案
 

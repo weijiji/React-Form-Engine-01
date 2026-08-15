@@ -15,6 +15,7 @@
   - `POST /api/v1/templates/:id/checkin` — 签入（释放锁）
   - `POST /api/v1/templates/:id/publish` — 发布（draft → published，原子：UPDATE status + 清缓存）
   - `POST /api/v1/templates/:id/force-unlock` — 强制解锁（管理员）
+  - `DELETE /api/v1/templates/:id` — 删除草稿模板（仅 status=draft，已发布/归档不可删；template:delete）
 - [X] **设计器 UI**：
   - 三栏 flex 布局：左侧 ComponentPalette（240px）+ 中间 DesignCanvas（flex:1，内嵌DesignerCanvasInner，1，内嵌DesignerCanvasInner maxwidth=960px）+ 右侧面板（360px，属性/审批链/预览三个 Tab）
   - 拖拽支持：Palette → Canvas（HTML5 DnD），Canvas 内字段自由排序（鼠标长按拖拽移动）
@@ -22,4 +23,4 @@
   - 预览面板：嵌只读 FormEngine，Schema 变更时 < 1s 同步渲染
   - 签出状态徽标（"编辑中"/"已锁定 - 张三"）
 - 最终效果必须与`/prototype/designer-edit.html`完美对齐，注意不需要 shell>sidebar + shell>main>topbar 
-- [X] 集成测试：创建模板 → 签出 → 编辑 → 签入 → 发布全流程；他人签出已锁模板 → 409；强制解锁
+- [X] 集成测试：创建模板 → 签出 → 编辑 → 签入 → 发布全流程；他人签出已锁模板 → 409；强制解锁；删除草稿模板 → 204 后 404；删除已发布模板 → 400 TEMPLATE_NOT_DRAFT
