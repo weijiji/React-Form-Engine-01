@@ -484,7 +484,7 @@ export const DesignerPage: React.FC = () => {
           >
             {template.status === "published" && isHolder ? "重新发布" : "发布"}
           </Button>
-          {isHolder && (
+          {isHolder && template.status === "draft" && (
             <Button
               variant="danger"
               disabled={busy}

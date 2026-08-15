@@ -278,7 +278,7 @@ export const TemplatesPage: React.FC = () => {
               key={tpl.id}
               template={tpl}
               menuOpen={openMenuId === tpl.id}
-              canDelete={me != null && tpl.locked_by === me.id}
+              canDelete={me != null && tpl.status === "draft" && tpl.locked_by === me.id}
               onToggleMenu={() =>
                 setOpenMenuId((cur) => (cur === tpl.id ? null : tpl.id))
               }
