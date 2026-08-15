@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { parseSchema, type ApprovalChain, type FormValues } from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
+import { Button } from "../../components";
 import { Form } from "../../form";
 import type { ApprovalRecordSummary, InstanceDetail } from "./types";
 import { ACTION_LABEL, formatDate, statusLabel } from "./labels";
@@ -158,13 +159,9 @@ export const FormFillPage: React.FC = () => {
               <span className="fill-save-indicator" aria-live="polite">
                 {autosave.label}
               </span>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => void saveDraft()}
-              >
+              <Button size="sm" onClick={() => void saveDraft()}>
                 保存草稿
-              </button>
+              </Button>
             </>
           )}
         </div>

@@ -1,67 +1,6 @@
 /* Filler portal (work order 05) — form center, fill page, drafts, submissions.
-   Tokens from global.css (ADR-0008). */
-
-/* ── Buttons (local to the filler portal; mirrors the designer's .btn) ─────── */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-
-.btn:hover {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: var(--brand-soft);
-}
-
-.btn-primary {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: var(--brand-strong);
-  border-color: var(--brand-strong);
-  color: #fff;
-}
-
-.btn-ghost {
-  border-color: transparent;
-  background: transparent;
-  color: var(--text-2);
-}
-
-.btn-ghost:hover {
-  border-color: var(--border);
-  background: var(--bg-subtle);
-  color: var(--text);
-}
-
-.btn-sm {
-  height: 30px;
-  padding: 0 12px;
-  font-size: 13px;
-  border-radius: 7px;
-}
-
-.btn[disabled] {
-  opacity: 0.55;
-  pointer-events: none;
-}
+   Tokens from global.css (ADR-0008). Buttons come from client/src/components/
+   (CSS Modules, ADR-0011); this stylesheet is page-specific only. */
 
 /* ── Shared list scaffolding ──────────────────────────────────────────────── */
 

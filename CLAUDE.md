@@ -76,6 +76,7 @@ Two `version` concepts must not be conflated (ADR-0005): `FormTemplate.version` 
 
 - Routing via `react-router-dom` `createBrowserRouter` in `client/src/router/index.tsx`. Canonical model is **5 role portals** (`/designer` `/filler` `/approver` `/admin` `/ops`) in a single shared `Shell` component (ADR-0008 / ADR-0009). The shared `Shell` (`client/src/layouts/Shell.tsx`) replaced the old `AdminLayout`/`UserLayout` (ticket 15); the router still uses the two pre-split portals (`/admin` and `/`) pending the 5-portal routing refactor (ticket 16). The full route map (~40 routes) lives in `docs/sitemap-form-engine.md`.
 - API access goes through `apiClient<T>` in `client/src/config/api.ts`, which injects the CSRF token for mutating requests and parses the error envelope into `ApiError`. New endpoints should consume the generated types from `shared/src/api.ts` rather than hand-written generics (ADR-0007).
+- Shared UI controls (`.btn` / `.input` / `.icon-btn` / `.seg` / `.badge` …) are **components** in `client/src/components/` (CSS Modules, tokens from `global.css`), NOT hand-copied page CSS — pages must consume `<Button/>` / `<Input/>` etc. Defining these bare class names in a page stylesheet is a regression (ADR-0011). `npm run check:css` enforces this; keep the shared-class list there in sync with the library.
 
 ### Spec-first API contract
 
@@ -92,6 +93,7 @@ Two `version` concepts must not be conflated (ADR-0005): `FormTemplate.version` 
 - **ADR-0007** — spec-first OpenAPI + `openapi-typescript` codegen (see above).
 - **ADR-0008** — design system source of truth: prototype「Canvas Workbench」tokens (indigo) + one shared shell; antd palette retired.
 - **ADR-0009** — 5 role portals; `/designer` is the designer portal, `/admin` is the system-admin portal.
+- **ADR-0011** — shared controls are a component library (`client/src/components/`, CSS Modules) replacing the "self-contained mirroring" convention; CSS Modules scoping kills global collisions. `admin.css` keeps its `.rbac-*` namespace as a stopgap until that area migrates.
 
 ## Testing Approach
 

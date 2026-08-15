@@ -1,199 +1,8 @@
 /* Template list + create pages (work order 04) — card grid per the Canvas
    Workbench prototype (designer-templates.html / designer-create.html).
    Tokens from global.css (ADR-0008). Shared controls (.btn / .seg / .icon-btn /
-   .input-wrap) are mirrored locally, matching the designer.css / filler.css
-   convention of keeping each page's stylesheet self-contained. */
-
-/* ── 通用控件（按钮 / 图标按钮 / 分段 / 输入） ─────────────────────────────── */
-
-.icon {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-
-.btn:hover {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: var(--brand-soft);
-}
-
-.btn-primary {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: var(--brand-strong);
-  border-color: var(--brand-strong);
-  color: #fff;
-}
-
-.btn[disabled] {
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.btn .icon {
-  width: 16px;
-  height: 16px;
-}
-
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.icon-btn:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
-  border-color: var(--border);
-}
-
-.icon-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.seg {
-  display: inline-flex;
-  background: #eef0f4;
-  border-radius: 9px;
-  padding: 3px;
-  gap: 2px;
-}
-
-.seg button {
-  border: none;
-  background: transparent;
-  padding: 6px 14px;
-  border-radius: 7px;
-  font-size: 13px;
-  font-weight: 550;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.seg button.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-}
-
-.input-wrap {
-  position: relative;
-}
-
-.input-wrap .icon {
-  position: absolute;
-  left: 11px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-3);
-  pointer-events: none;
-}
-
-.input {
-  width: 100%;
-  height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  font-family: inherit;
-  outline: none;
-  transition: all 0.15s;
-}
-
-.input:focus {
-  border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-soft);
-}
-
-.input::placeholder {
-  color: var(--text-3);
-}
-
-.input-sm {
-  height: 32px;
-  font-size: 13px;
-}
-
-.input-wrap .input {
-  padding-left: 36px;
-}
-
-/* ── 徽标 ──────────────────────────────────────────────────────────────── */
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 550;
-  white-space: nowrap;
-}
-
-.badge .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.badge-green {
-  background: var(--success-bg);
-  color: var(--success);
-}
-
-.badge-amber {
-  background: var(--warning-bg);
-  color: var(--warning);
-}
-
-.badge-gray {
-  background: #eef0f4;
-  color: var(--text-2);
-}
-
-.badge-indigo {
-  background: var(--brand-soft);
-  color: var(--brand);
-}
+   .input / .badge) live in client/src/components/ (CSS Modules, ADR-0011) —
+   this stylesheet is page-specific only. */
 
 /* ── 模板列表 ──────────────────────────────────────────────────────────── */
 
@@ -329,17 +138,6 @@
   position: relative;
 }
 
-.menu-trigger.active {
-  background: var(--bg-subtle);
-  border-color: var(--border);
-  color: var(--text);
-}
-
-.menu-trigger svg {
-  width: 16px;
-  height: 16px;
-}
-
 .tpl-menu {
   position: absolute;
   top: calc(100% + 8px);
@@ -427,7 +225,7 @@
   max-width: 360px;
 }
 
-.empty .btn {
+.empty .empty-cta {
   margin-top: 18px;
 }
 

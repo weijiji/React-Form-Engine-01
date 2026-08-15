@@ -1,0 +1,69 @@
+/* ADR-0011 — shared IconButton. Absorbs the duplicated `.icon-btn` family.
+   Sizes mirror the old contextual overrides:
+     md = 32px button / 16px svg (default),
+     sm = 24px / 14px (`.fld-tools`, `.sec-head`, `.cc-tools`),
+     xs = 22px / 13px (`.t-tools`). */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: transparent;
+}
+
+/* Pressed/toggled state (e.g. an open menu trigger). */
+.active {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.sm {
+  width: 24px;
+  height: 24px;
+}
+
+.xs {
+  width: 22px;
+  height: 22px;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sm svg {
+  width: 14px;
+  height: 14px;
+}
+
+.xs svg {
+  width: 13px;
+  height: 13px;
+}

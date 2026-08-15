@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../config/api";
+import { Button } from "../../components";
 import type { FormListResponse, FormSummary, InstanceDetail } from "./types";
 import { formatDate } from "./labels";
 import "./filler.css";
@@ -106,14 +107,14 @@ export const FormCenter: React.FC = () => {
                 <span className="form-card-meta">
                   更新于 {formatDate(form.updated_at)}
                 </span>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
+                <Button
+                  variant="primary"
+                  size="sm"
                   disabled={starting === form.id}
                   onClick={() => void startFilling(form)}
                 >
                   {starting === form.id ? "创建中…" : "填写"}
-                </button>
+                </Button>
               </div>
             </li>
           ))}

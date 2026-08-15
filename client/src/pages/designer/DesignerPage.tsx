@@ -9,6 +9,7 @@ import type {
 } from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
 import { useAuth } from "../../auth/AuthContext";
+import { Button, Segmented } from "../../components";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
 import { PropertyPanel } from "../../designer/PropertyPanel";
@@ -334,14 +335,13 @@ export const DesignerPage: React.FC = () => {
   return (
     <div className="editor">
       <header className="editor-top">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<BackIcon />}
           title="返回我的模板"
           onClick={handleBack}
-        >
-          <BackIcon className="icon" />
-        </button>
+        />
 
         <div>
           <div className="et-name">{template.name}</div>
@@ -358,40 +358,26 @@ export const DesignerPage: React.FC = () => {
         </span>
 
         <div className="et-actions">
-          <div className="seg">
-            <button
-              type="button"
-              className={mode === "static" ? "active" : ""}
-              onClick={() => setMode("static")}
-            >
-              静态预览
-            </button>
-            <button
-              type="button"
-              className={mode === "test" ? "active" : ""}
-              onClick={() => setMode("test")}
-            >
-              交互测试
-            </button>
-          </div>
-          <button
-            type="button"
-            className="btn"
-            disabled={!isHolder || busy}
-            onClick={handleSave}
-          >
-            <SaveIcon className="icon" />
+          <Segmented
+            label="预览模式"
+            options={[
+              { value: "static", label: "静态预览" },
+              { value: "test", label: "交互测试" },
+            ]}
+            value={mode}
+            onChange={setMode}
+          />
+          <Button disabled={!isHolder || busy} icon={<SaveIcon />} onClick={handleSave}>
             保存草稿
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
+          </Button>
+          <Button
+            variant="primary"
             disabled={template.status !== "draft" || busy}
+            icon={<SendIcon />}
             onClick={handlePublish}
           >
-            <SendIcon className="icon" />
             发布
-          </button>
+          </Button>
         </div>
       </header>
 

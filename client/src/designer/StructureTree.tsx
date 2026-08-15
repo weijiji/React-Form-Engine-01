@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { IconButton } from "../components";
 import {
   CaretIcon,
   CheckIcon,
@@ -72,28 +73,27 @@ export const StructureTree: React.FC<StructureTreeProps> = ({
               <span className="t-name">{section.title}</span>
               <span className="t-type">章节 · {section.fields.length}</span>
               <span className="t-tools">
-                <button
-                  type="button"
-                  className="icon-btn"
-                  title="添加字段"
+                <IconButton
+                  size="xs"
+                  label="添加字段"
                   onClick={(e) => {
                     e.stopPropagation();
                     onAddFieldToSection(section.id);
                   }}
                 >
                   <PlusIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn danger"
-                  title="删除章节"
+                </IconButton>
+                <IconButton
+                  size="xs"
+                  variant="danger"
+                  label="删除章节"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveSection(section.id);
                   }}
                 >
                   <TrashIcon />
-                </button>
+                </IconButton>
               </span>
             </div>
 
@@ -143,10 +143,9 @@ export const StructureTree: React.FC<StructureTreeProps> = ({
                       </span>
                       <span className="t-type">{FIELD_LABELS[field.type]}</span>
                       <span className="t-tools">
-                        <button
-                          type="button"
-                          className="icon-btn"
-                          title="上移"
+                        <IconButton
+                          size="xs"
+                          label="上移"
                           disabled={index === 0}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -154,11 +153,10 @@ export const StructureTree: React.FC<StructureTreeProps> = ({
                           }}
                         >
                           <UpIcon />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-btn"
-                          title="下移"
+                        </IconButton>
+                        <IconButton
+                          size="xs"
+                          label="下移"
                           disabled={index === section.fields.length - 1}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -166,18 +164,18 @@ export const StructureTree: React.FC<StructureTreeProps> = ({
                           }}
                         >
                           <DownIcon />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-btn danger"
-                          title="删除"
+                        </IconButton>
+                        <IconButton
+                          size="xs"
+                          variant="danger"
+                          label="删除"
                           onClick={(e) => {
                             e.stopPropagation();
                             onRemoveField(section.id, field.id);
                           }}
                         >
                           <TrashIcon />
-                        </button>
+                        </IconButton>
                       </span>
                     </div>
                   </div>

@@ -1,4 +1,5 @@
 import type { FieldSchema, FieldType } from "form-engine-core";
+import { Button, IconButton } from "../components";
 import { Form } from "../form/Form";
 import { CopyIcon, FileIcon, TrashIcon, UserIcon } from "./icons";
 import { FIELD_TYPE_MIME } from "./palette";
@@ -66,9 +67,9 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
               <div className="empty-canvas">
                 画布为空。从左侧「组件面板」点击或拖拽组件到此处开始设计。
                 <div>
-                  <button type="button" className="btn btn-sm" onClick={onAddSection}>
+                  <Button size="sm" className="empty-canvas-btn" onClick={onAddSection}>
                     添加章节
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -89,17 +90,16 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
                   <span className="sec-title">{section.title}</span>
                   <span className="sec-count">{section.fields.length} 个字段</span>
                   <div className="sec-tools">
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="删除章节"
+                    <IconButton
+                      size="sm"
+                      label="删除章节"
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemoveSection(section.id);
                       }}
                     >
                       <TrashIcon />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
 
@@ -150,28 +150,26 @@ function FieldCard({
       }}
     >
       <div className="fld-tools">
-        <button
-          type="button"
-          className="icon-btn"
-          title="删除"
+        <IconButton
+          size="sm"
+          label="删除"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
         >
           <TrashIcon />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          title="复制"
+        </IconButton>
+        <IconButton
+          size="sm"
+          label="复制"
           onClick={(e) => {
             e.stopPropagation();
             onDuplicate();
           }}
         >
           <CopyIcon />
-        </button>
+        </IconButton>
       </div>
 
       <label>

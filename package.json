@@ -20,7 +20,8 @@
     "typecheck:server": "cd server && npx tsc --noEmit",
     "typecheck:client": "cd client && npx tsc --noEmit",
     "test": "npm run test:shared",
-    "test:shared": "cd shared && npx vitest run"
+    "test:shared": "cd shared && npx vitest run",
+    "check:css": "cd client && npm run check:css"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

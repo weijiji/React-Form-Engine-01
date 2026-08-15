@@ -73,6 +73,16 @@ a:hover {
   color: var(--brand-strong);
 }
 
+/* Global icon utility (18px) — the non-component contexts that still need a
+   sized inline SVG (e.g. the designer's field-control preview icons). Sized
+   icons inside shared controls live in the component CSS Modules instead
+   (ADR-0011). */
+.icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
 #root {
   min-height: 100vh;
 }

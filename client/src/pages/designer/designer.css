@@ -69,140 +69,10 @@
   min-height: 0;
 }
 
-/* ── 通用控件（表单元素 / 按钮 / 开关 / 分页段） ─────────────────────────── */
-
-.icon {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.icon-btn:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
-  border-color: var(--border);
-}
-
-.icon-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.icon-btn.danger:hover {
-  background: var(--danger-bg);
-  color: var(--danger);
-  border-color: transparent;
-}
-
-.icon-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-
-.btn:hover {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: var(--brand-soft);
-}
-
-.btn-primary {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: var(--brand-strong);
-  border-color: var(--brand-strong);
-  color: #fff;
-}
-
-.btn-ghost {
-  border-color: transparent;
-  background: transparent;
-  color: var(--text-2);
-}
-
-.btn-ghost:hover {
-  border-color: var(--border);
-  background: var(--bg-subtle);
-  color: var(--text);
-}
-
-.btn-sm {
-  height: 30px;
-  padding: 0 12px;
-  font-size: 13px;
-  border-radius: 7px;
-}
-
-.btn[disabled] {
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.btn .icon {
-  width: 16px;
-  height: 16px;
-}
-
-.seg {
-  display: inline-flex;
-  background: #eef0f4;
-  border-radius: 9px;
-  padding: 3px;
-  gap: 2px;
-}
-
-.seg button {
-  border: none;
-  background: transparent;
-  padding: 6px 14px;
-  border-radius: 7px;
-  font-size: 13px;
-  font-weight: 550;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.seg button.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-}
+/* ── 通用控件 ───────────────────────────────────────────────────────────────
+   .btn / .icon-btn / .seg / .input 已收敛到 client/src/components/（CSS
+   Modules，ADR-0011）。此处只保留 designer 专有控件（.textarea / .select /
+   .label / .hint / .switch 等）。 */
 
 .label {
   display: block;
@@ -218,7 +88,6 @@
   margin-top: 6px;
 }
 
-.input,
 .textarea,
 .select {
   width: 100%;
@@ -251,14 +120,12 @@
   cursor: pointer;
 }
 
-.input:focus,
 .textarea:focus,
 .select:focus {
   border-color: var(--brand);
   box-shadow: 0 0 0 3px var(--brand-soft);
 }
 
-.input::placeholder,
 .textarea::placeholder {
   color: var(--text-3);
 }
@@ -336,7 +203,8 @@
   gap: 8px;
 }
 
-.mono {
+input.mono,
+textarea.mono {
   font-family: var(--mono);
 }
 
@@ -487,7 +355,7 @@
   margin: 8px 0;
 }
 
-.empty-canvas .btn {
+.empty-canvas .empty-canvas-btn {
   margin-top: 12px;
 }
 
@@ -526,16 +394,6 @@
 .fld.selected .fld-tools,
 .fld:hover .fld-tools {
   display: flex;
-}
-
-.fld .fld-tools .icon-btn {
-  width: 24px;
-  height: 24px;
-}
-
-.fld .fld-tools .icon-btn svg {
-  width: 14px;
-  height: 14px;
 }
 
 .fld label {
@@ -630,16 +488,6 @@
 .fld-section.selected .sec-tools,
 .fld-section:hover .sec-tools {
   display: flex;
-}
-
-.fld-section .sec-head .icon-btn {
-  width: 24px;
-  height: 24px;
-}
-
-.fld-section .sec-head .icon-btn svg {
-  width: 14px;
-  height: 14px;
 }
 
 /* ── 右：结构树 / 属性 / 审批链 ───────────────────────────────────────── */
@@ -764,16 +612,6 @@
   display: flex;
 }
 
-.tree-node-head .t-tools .icon-btn {
-  width: 22px;
-  height: 22px;
-}
-
-.tree-node-head .t-tools .icon-btn svg {
-  width: 13px;
-  height: 13px;
-}
-
 .tree-children {
   padding: 4px 8px 6px 18px;
   border-top: 1px dashed var(--border);
@@ -840,7 +678,7 @@
   color: var(--text-3);
 }
 
-.prop-row .input,
+.prop-row .prop-input,
 .prop-row .select {
   height: 34px;
   font-size: 13px;
@@ -919,16 +757,6 @@
   margin-left: auto;
   display: flex;
   gap: 2px;
-}
-
-.chain-card .cc-tools .icon-btn {
-  width: 24px;
-  height: 24px;
-}
-
-.chain-card .cc-tools .icon-btn svg {
-  width: 14px;
-  height: 14px;
 }
 
 .rule-select-row {

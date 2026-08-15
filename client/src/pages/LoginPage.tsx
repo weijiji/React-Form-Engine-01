@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { primaryPortal } from "../auth/roles";
+import { Button, Input } from "../components";
 import "./login.css";
 
 /**
@@ -61,8 +62,8 @@ export const LoginPage: React.FC = () => {
 
         <label className="login-field">
           <span className="login-label">邮箱</span>
-          <input
-            className="input"
+          <Input
+            size="lg"
             type="email"
             autoComplete="email"
             value={email}
@@ -74,8 +75,8 @@ export const LoginPage: React.FC = () => {
 
         <label className="login-field">
           <span className="login-label">密码</span>
-          <input
-            className="input"
+          <Input
+            size="lg"
             type="password"
             autoComplete="current-password"
             value={password}
@@ -91,13 +92,15 @@ export const LoginPage: React.FC = () => {
           </p>
         )}
 
-        <button
+        <Button
           type="submit"
-          className="btn btn-primary login-submit"
+          variant="primary"
+          size="lg"
+          className="login-submit"
           disabled={submitting}
         >
           {submitting ? "登录中…" : "登录"}
-        </button>
+        </Button>
       </form>
     </div>
   );

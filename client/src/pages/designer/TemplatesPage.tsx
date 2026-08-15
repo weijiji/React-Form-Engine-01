@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../config/api";
+import { Badge, Button, IconButton, Input, Segmented } from "../../components";
 import type { FormTemplate, TemplateListResponse } from "../../designer/types";
 import {
   DocIcon,
@@ -52,25 +53,22 @@ function formatUpdated(iso: string): string {
 function statusBadge(status: string): React.ReactNode {
   if (status === "published") {
     return (
-      <span className="badge badge-green">
-        <span className="dot" />
+      <Badge color="green" dot>
         已发布
-      </span>
+      </Badge>
     );
   }
   if (status === "draft") {
     return (
-      <span className="badge badge-amber">
-        <span className="dot" />
+      <Badge color="amber" dot>
         草稿
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className="badge badge-gray">
-      <span className="dot" />
+    <Badge color="gray" dot>
       已归档
-    </span>
+    </Badge>
   );
 }
 
@@ -108,11 +106,9 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
         <div className="t-head-right">
           {statusBadge(template.status)}
           <span className="menu-wrap">
-            <button
-              type="button"
-              className={`icon-btn menu-trigger${menuOpen ? " active" : ""}`}
-              title="更多操作"
-              aria-label="更多操作"
+            <IconButton
+              active={menuOpen}
+              label="更多操作"
               aria-expanded={menuOpen}
               onClick={(e) => {
                 e.stopPropagation();
@@ -120,7 +116,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
               }}
             >
               <MoreIcon />
-            </button>
+            </IconButton>
             {menuOpen && (
               <div className="tpl-menu">
                 <button
@@ -211,37 +207,28 @@ export const TemplatesPage: React.FC = () => {
   return (
     <div className="templates">
       <div className="toolbar">
-        <div className="seg" role="group" aria-label="状态筛选">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={status === f.key}
-              className={status === f.key ? "active" : ""}
-              onClick={() => setStatus(f.key)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="input-wrap tb-search">
-          <SearchIcon className="icon" />
-          <input
-            className="input input-sm"
-            value={search}
-            placeholder="搜索模板名称…"
-            aria-label="搜索模板名称"
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary"
+        <Segmented
+          options={STATUS_FILTERS.map((f) => ({ value: f.key, label: f.label }))}
+          value={status}
+          onChange={setStatus}
+          label="状态筛选"
+        />
+        <Input
+          className="tb-search"
+          size="sm"
+          icon={<SearchIcon />}
+          value={search}
+          placeholder="搜索模板名称…"
+          aria-label="搜索模板名称"
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button
+          variant="primary"
+          icon={<PlusIcon />}
           onClick={() => navigate("/designer/create")}
         >
-          <PlusIcon className="icon" />
           新建表单
-        </button>
+        </Button>
       </div>
 
       {error ? (
@@ -255,13 +242,13 @@ export const TemplatesPage: React.FC = () => {
           </div>
           <h3>没有匹配的模板</h3>
           <p>调整筛选条件，或创建一个新的表单模板。</p>
-          <button
-            type="button"
-            className="btn btn-primary"
+          <Button
+            variant="primary"
+            className="empty-cta"
             onClick={() => navigate("/designer/create")}
           >
             新建表单
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="tpl-grid">

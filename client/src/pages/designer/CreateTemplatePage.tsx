@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient, ApiError } from "../../config/api";
+import { Badge } from "../../components";
 import { createEmptySchema } from "../../designer/schemaModel";
 import type { FormTemplate } from "../../designer/types";
 import {
@@ -85,7 +86,9 @@ export const CreateTemplatePage: React.FC = () => {
             }
           }}
         >
-          <span className="co-tag badge badge-indigo">推荐</span>
+          <Badge color="indigo" className="co-tag">
+            推荐
+          </Badge>
           <div className="co-ico">
             <ChatIcon />
           </div>

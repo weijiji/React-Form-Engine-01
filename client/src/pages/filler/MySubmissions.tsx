@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient, ApiError } from "../../config/api";
+import { Button } from "../../components";
 import type { InstanceListItem, InstanceListResponse } from "./types";
 import { formatDate, statusLabel } from "./labels";
 import "./filler.css";
@@ -95,39 +96,32 @@ export const MySubmissions: React.FC = () => {
                 <td>{formatDate(item.updated_at)}</td>
                 <td className="filler-actions">
                   {item.status === "draft" ? (
-                    <button
-                      type="button"
-                      className="btn btn-sm"
+                    <Button
+                      size="sm"
                       onClick={() => navigate(`/filler/instances/${item.id}`)}
                     >
                       继续填写
-                    </button>
+                    </Button>
                   ) : item.status === "submitted" ||
                     item.status === "in_approval" ? (
                     <>
-                      <button
-                        type="button"
-                        className="btn btn-sm"
+                      <Button
+                        size="sm"
                         onClick={() => navigate(`/filler/instances/${item.id}`)}
                       >
                         查看
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm"
-                        onClick={() => void withdraw(item)}
-                      >
+                      </Button>
+                      <Button size="sm" onClick={() => void withdraw(item)}>
                         撤回
-                      </button>
+                      </Button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      className="btn btn-sm"
+                    <Button
+                      size="sm"
                       onClick={() => navigate(`/filler/instances/${item.id}`)}
                     >
                       查看
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>

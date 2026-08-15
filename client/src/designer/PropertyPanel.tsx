@@ -8,6 +8,7 @@ import type {
   ValidationRuleType,
 } from "form-engine-core";
 import { removeRule, setRule, type DesignerSchema } from "./schemaModel";
+import { IconButton, Input } from "../components";
 import { CloseIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from "./icons";
 import { StructureTree } from "./StructureTree";
 
@@ -150,8 +151,8 @@ function PropsTab({
 
       <div className="prop-row">
         <label className="label">字段标签</label>
-        <input
-          className="input"
+        <Input
+          inputClassName="prop-input"
           value={field.label}
           onChange={(e) => update({ label: e.target.value })}
         />
@@ -160,8 +161,8 @@ function PropsTab({
       {showPlaceholder && (
         <div className="prop-row">
           <label className="label">占位提示</label>
-          <input
-            className="input"
+          <Input
+            inputClassName="prop-input"
             value={field.placeholder ?? ""}
             onChange={(e) => update({ placeholder: e.target.value })}
           />
@@ -171,8 +172,8 @@ function PropsTab({
       {showDefault && (
         <div className="prop-row">
           <label className="label">默认值</label>
-          <input
-            className="input"
+          <Input
+            inputClassName="prop-input"
             value={field.defaultValue == null ? "" : String(field.defaultValue)}
             onChange={(e) => update({ defaultValue: e.target.value })}
           />
@@ -248,15 +249,15 @@ function OptionsEditor({
       <div className="prop-group-title">选项</div>
       {options.map((option, index) => (
         <div className="prop-row flex gap-8" key={index}>
-          <input
-            className="input"
+          <Input
+            inputClassName="prop-input"
             aria-label={`选项${index + 1}`}
             value={option.label}
             onChange={(e) => setLabel(index, e.target.value)}
           />
-          <button type="button" className="icon-btn danger" onClick={() => remove(index)}>
+          <IconButton variant="danger" label="删除选项" onClick={() => remove(index)}>
             <CloseIcon />
-          </button>
+          </IconButton>
         </div>
       ))}
       <button type="button" className="chip-add" onClick={add}>
@@ -305,15 +306,15 @@ function ValidationEditor({
         <div className="prop-row">
           <label className="label">数值范围</label>
           <div className="field-group">
-            <input
-              className="input"
+            <Input
+              inputClassName="prop-input"
               type="number"
               placeholder="最小"
               value={ruleValue("min")}
               onChange={(e) => setNumberRule("min", e.target.value)}
             />
-            <input
-              className="input"
+            <Input
+              inputClassName="prop-input"
               type="number"
               placeholder="最大"
               value={ruleValue("max")}
@@ -326,15 +327,15 @@ function ValidationEditor({
           <div className="prop-row">
             <label className="label">长度限制</label>
             <div className="field-group">
-              <input
-                className="input"
+              <Input
+                inputClassName="prop-input"
                 type="number"
                 placeholder="最小"
                 value={ruleValue("minLength")}
                 onChange={(e) => setNumberRule("minLength", e.target.value)}
               />
-              <input
-                className="input"
+              <Input
+                inputClassName="prop-input"
                 type="number"
                 placeholder="最大"
                 value={ruleValue("maxLength")}
@@ -344,16 +345,16 @@ function ValidationEditor({
           </div>
           <div className="prop-row">
             <label className="label">正则表达式</label>
-            <input
-              className="input mono"
+            <Input
+              inputClassName="prop-input mono"
               placeholder="例如 ^1\\d{10}$"
               value={ruleValue("regex")}
               onChange={(e) => setRegex({ value: e.target.value })}
             />
             <div className="hint">
               不匹配时提示：
-              <input
-                className="input"
+              <Input
+                inputClassName="prop-input"
                 style={{ marginTop: 6 }}
                 placeholder="自定义提示（可选）"
                 value={ruleMessage()}
@@ -479,32 +480,30 @@ function ChainTab({
             <div className="cc-head">
               <span className="cc-title">{node.label ?? "审批节点"}</span>
               <span className="cc-tools">
-                <button
-                  type="button"
-                  className="icon-btn"
-                  title="上移"
+                <IconButton
+                  size="sm"
+                  label="上移"
                   disabled={i === 0}
                   onClick={() => onMove(node.id, -1)}
                 >
                   <UpIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  title="下移"
+                </IconButton>
+                <IconButton
+                  size="sm"
+                  label="下移"
                   disabled={i === nodes.length - 1}
                   onClick={() => onMove(node.id, 1)}
                 >
                   <DownIcon />
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn danger"
-                  title="删除节点"
+                </IconButton>
+                <IconButton
+                  size="sm"
+                  variant="danger"
+                  label="删除节点"
                   onClick={() => onRemove(node.id)}
                 >
                   <TrashIcon />
-                </button>
+                </IconButton>
               </span>
             </div>
             <div className="rule-select-row">

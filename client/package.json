@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:css": "node scripts/check-css.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

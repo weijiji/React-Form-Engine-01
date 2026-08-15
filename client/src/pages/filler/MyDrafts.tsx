@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient, ApiError } from "../../config/api";
+import { Button } from "../../components";
 import type { DraftDetail, DraftListItem, DraftListResponse, InstanceDetail } from "./types";
 import { formatDate } from "./labels";
 import "./filler.css";
@@ -88,13 +89,13 @@ export const MyDrafts: React.FC = () => {
         <div className="orphan-banner" role="alert">
           <div className="orphan-banner-head">
             <strong>模板已更新，部分字段内容可能无法匹配</strong>
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost"
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setOrphansOpen((v) => !v)}
             >
               {orphansOpen ? "收起" : "查看孤儿数据"}
-            </button>
+            </Button>
           </div>
           {orphansOpen && (
             <pre className="orphan-banner-data">
@@ -102,20 +103,16 @@ export const MyDrafts: React.FC = () => {
             </pre>
           )}
           <div className="orphan-banner-actions">
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => void continueFromDraft(resuming)}
             >
               仍要继续填写
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={() => setResuming(null)}
-            >
+            </Button>
+            <Button size="sm" onClick={() => setResuming(null)}>
               取消
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -139,20 +136,12 @@ export const MyDrafts: React.FC = () => {
                 <td className="filler-name">{draft.template_name ?? "—"}</td>
                 <td>{formatDate(draft.updated_at)}</td>
                 <td className="filler-actions">
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => void inspectDraft(draft)}
-                  >
+                  <Button size="sm" onClick={() => void inspectDraft(draft)}>
                     继续填写
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => void discard(draft)}
-                  >
+                  </Button>
+                  <Button size="sm" onClick={() => void discard(draft)}>
                     删除
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
