@@ -21,9 +21,12 @@ export interface DesignCanvasProps {
 
 /**
  * Center column — a live preview of the form (the prototype's "静态预览" canvas).
- * The white card renders sections (dashed) and field cards (label + required +
- * readonly control + help); clicking a field/section selects it. In `test` mode
- * the interactive `<Form>` engine is rendered instead.
+ * The white card renders the template name head, then sections (dashed) and
+ * field cards (label + required + readonly control + help); clicking a
+ * field/section selects it. In `test` mode the interactive `<Form>` engine is
+ * rendered instead, wrapped in `.canvas-form` so designer.css can restyle it to
+ * match the static preview (section cards, fonts, full-bleed background) without
+ * touching the filler's form.css.
  */
 export const DesignCanvas: React.FC<DesignCanvasProps> = ({
   schema,
@@ -51,18 +54,19 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
       onDrop={handleDrop}
     >
       <div className="canvas-inner" onClick={(e) => e.stopPropagation()}>
+        <div className="canvas-head">
+          <h2>{templateName}</h2>
+          <p>
+            请完整填写以下信息，带{" "}
+            <span style={{ color: "var(--danger)" }}>*</span> 为必填项
+          </p>
+        </div>
         {mode === "test" ? (
-          <Form schema={schema} />
+          <div className="canvas-form">
+            <Form schema={schema} />
+          </div>
         ) : (
           <>
-            <div className="canvas-head">
-              <h2>{templateName}</h2>
-              <p>
-                请完整填写以下信息，带{" "}
-                <span style={{ color: "var(--danger)" }}>*</span> 为必填项
-              </p>
-            </div>
-
             {schema.sections.length === 0 && (
               <div className="empty-canvas">
                 画布为空。从左侧「组件面板」点击或拖拽组件到此处开始设计。

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DesignCanvas } from "./DesignCanvas";
@@ -84,5 +84,28 @@ describe("DesignCanvas", () => {
     expect(screen.getByText(/画布为空/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "添加章节" }));
     expect(onAddSection).toHaveBeenCalled();
+  });
+
+  it("test mode renders the interactive Form engine inside the canvas-form wrapper", () => {
+    const { container } = render(
+      <DesignCanvas
+        schema={schema}
+        templateName="员工入职信息登记表"
+        selectedId={null}
+        mode="test"
+        onSelect={vi.fn()}
+        onDropField={vi.fn()}
+        onRemoveField={vi.fn()}
+        onDuplicateField={vi.fn()}
+        onRemoveSection={vi.fn()}
+        onAddSection={vi.fn()}
+      />,
+    );
+    // 画布头部与静态预览共用（含模板名 + 必填提示）
+    expect(screen.getByText(/请完整填写以下信息/)).toBeInTheDocument();
+    // 真 Form 引擎在 .canvas-form 作用域内渲染（对齐静态预览视觉）
+    expect(container.querySelector(".canvas-form .form-engine")).not.toBeNull();
+    expect(within(container).getByText("基础信息")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "提交" })).toBeInTheDocument();
   });
 });
