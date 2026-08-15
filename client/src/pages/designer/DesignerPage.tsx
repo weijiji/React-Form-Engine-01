@@ -13,7 +13,14 @@ import { Button, Segmented } from "../../components";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
 import { PropertyPanel } from "../../designer/PropertyPanel";
-import { BackIcon, SaveIcon, SendIcon, TrashIcon } from "../../designer/icons";
+import {
+  BackIcon,
+  LockIcon,
+  SaveIcon,
+  SendIcon,
+  TrashIcon,
+  UnlockIcon,
+} from "../../designer/icons";
 import {
   addField,
   addSection,
@@ -123,6 +130,8 @@ export const DesignerPage: React.FC = () => {
   const statusText = useMemo(() => {
     if (isHolder) return "已签出 · 正在编辑";
     if (template?.locked_by) return `已锁定 · ${template.locked_by_name ?? "他人"}`;
+    if (template?.status === "published") return "已发布 · 只读";
+    if (template?.status === "archived") return "已归档 · 只读";
     return "未签出";
   }, [template, isHolder]);
 
@@ -331,19 +340,33 @@ export const DesignerPage: React.FC = () => {
       .finally(() => setBusy(false));
   };
 
+  // 返回不再自动签入（用户确认，工单 20 后续）：锁保留到显式签入/发布/删除，
+  // 否则从设计器签出后回列表，删除按钮会因丢锁而消失。需要释放锁时用工具栏
+  // 的「签入」按钮。
   const handleBack = () => {
-    if (isHolder) {
-      const ok = window.confirm("签入并离开？离开后其他设计者可以开始编辑该模板。");
-      if (ok) {
-        void runAction(
-          () =>
-            apiClient<FormTemplate>(`/templates/${id}/checkin`, { method: "POST" }),
-          "已签入，锁定已释放",
-        ).then(() => navigate("/designer/templates"));
-      }
-      return;
-    }
     navigate("/designer/templates");
+  };
+
+  // 签出：获得独占编辑锁（工单 04 前端缺失的入口）。仅未签出的草稿显示。
+  const handleCheckout = () => {
+    if (!id) return;
+    void runAction(
+      () => apiClient<FormTemplate>(`/templates/${id}/checkout`, { method: "POST" }),
+      "已签出，可开始编辑",
+    );
+  };
+
+  // 签入：显式释放锁（取代旧「返回自动签入」）。
+  const handleCheckin = () => {
+    if (!id) return;
+    const ok = window.confirm(
+      "签入并释放锁？未保存的改动将丢失，其他设计者可开始编辑该模板。",
+    );
+    if (!ok) return;
+    void runAction(
+      () => apiClient<FormTemplate>(`/templates/${id}/checkin`, { method: "POST" }),
+      "已签入，锁定已释放",
+    );
   };
 
   if (loading) {
@@ -396,6 +419,26 @@ export const DesignerPage: React.FC = () => {
             value={mode}
             onChange={setMode}
           />
+          {template.status === "draft" && template.locked_by == null && (
+            <Button
+              variant="primary"
+              disabled={busy}
+              icon={<LockIcon />}
+              onClick={handleCheckout}
+            >
+              签出并编辑
+            </Button>
+          )}
+          {isHolder && (
+            <Button
+              variant="ghost"
+              disabled={busy}
+              icon={<UnlockIcon />}
+              onClick={handleCheckin}
+            >
+              签入
+            </Button>
+          )}
           <Button disabled={!isHolder || busy} icon={<SaveIcon />} onClick={handleSave}>
             保存草稿
           </Button>

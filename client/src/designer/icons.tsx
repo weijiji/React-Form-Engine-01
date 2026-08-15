@@ -129,6 +129,20 @@ export const TrashIcon: Icon = (p) => (
   </Svg>
 );
 
+export const LockIcon: Icon = (p) => (
+  <Svg {...p}>
+    <rect width="18" height="11" x="3" y="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </Svg>
+);
+
+export const UnlockIcon: Icon = (p) => (
+  <Svg {...p}>
+    <rect width="18" height="11" x="3" y="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+  </Svg>
+);
+
 export const CopyIcon: Icon = (p) => (
   <Svg {...p}>
     <rect width="14" height="14" x="8" y="8" rx="2" />
