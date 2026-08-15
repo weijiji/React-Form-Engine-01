@@ -219,7 +219,18 @@ router.delete(
       );
     }
 
-    await getDb()("form_templates").where({ id: template.id }).del();
+    // Write-time guard (ADR-0003): the checks above ran on the row read at the
+    // start of the request; a concurrent publish/checkout could have changed
+    // status or holder in between, so re-guard at delete time. 0 rows affected
+    // means the row no longer matches (e.g. was just published) — back off.
+    const deleted = await getDb()("form_templates")
+      .where({ id: template.id })
+      .andWhere({ status: "draft" })
+      .andWhere({ locked_by: user.id })
+      .del();
+    if (deleted === 0) {
+      throw new AppError("TEMPLATE_LOCKED", "模板状态已变化，请刷新后重试", 409);
+    }
     res.status(204).end();
   }),
 );

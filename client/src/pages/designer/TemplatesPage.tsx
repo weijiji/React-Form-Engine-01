@@ -177,6 +177,9 @@ export const TemplatesPage: React.FC = () => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   // Bumped after a delete so the list refetches (delete is a destructive mutation).
   const [reloadTick, setReloadTick] = useState(0);
+  // Delete failures surface here, separate from the list-load `error` so a
+  // 403/409 from the delete isn't mislabeled as a loading failure.
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     // Debounce the keystroke-driven search so the API isn't hit per character.
@@ -204,11 +207,12 @@ export const TemplatesPage: React.FC = () => {
     if (!ok) return;
     apiClient<void>(`/templates/${tpl.id}`, { method: "DELETE" })
       .then(() => {
+        setActionError(null);
         setOpenMenuId(null);
         setReloadTick((t) => t + 1);
       })
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "删除失败"),
+        setActionError(err instanceof Error ? err.message : "删除失败"),
       );
   };
 
@@ -257,6 +261,8 @@ export const TemplatesPage: React.FC = () => {
           新建表单
         </Button>
       </div>
+
+      {actionError && <p className="templates-error">{actionError}</p>}
 
       {error ? (
         <p className="templates-error">加载模板失败：{error}</p>

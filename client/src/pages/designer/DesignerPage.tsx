@@ -305,12 +305,18 @@ export const DesignerPage: React.FC = () => {
   // Delete this template (work order 20). The button only renders for the lock
   // holder, and the server re-checks `template:delete` + the lock — so this is
   // a UI convenience, not the gate. Back to the list after a successful delete.
+  // Unlike the other actions this doesn't go through `runAction` (no updated
+  // FormTemplate comes back), so busy is toggled inline to keep the toolbar
+  // disabled for the duration (a double click would otherwise fire a second
+  // DELETE that 404s against the now-deleted row).
   const handleDelete = () => {
     if (!id) return;
     const ok = window.confirm(
       "确定删除此模板吗？未保存的改动将丢失，此操作不可撤销。",
     );
     if (!ok) return;
+    setBusy(true);
+    setNotice(null);
     apiClient<void>(`/templates/${id}`, { method: "DELETE" })
       .then(() => navigate("/designer/templates"))
       .catch((err: unknown) => {
@@ -321,7 +327,8 @@ export const DesignerPage: React.FC = () => {
               ? err.message
               : "删除失败";
         setNotice(`删除失败：${msg}`);
-      });
+      })
+      .finally(() => setBusy(false));
   };
 
   const handleBack = () => {
