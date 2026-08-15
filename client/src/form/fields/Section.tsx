@@ -20,9 +20,6 @@ export function Section({ section, children }: SectionProps) {
     <section className="form-section" data-section-id={section.id}>
       <header className="form-section-header">
         <h2 className="form-section-title">{section.title}</h2>
-        {section.description && (
-          <p className="form-section-desc">{section.description}</p>
-        )}
         {collapsible && (
           <button
             type="button"
@@ -33,6 +30,9 @@ export function Section({ section, children }: SectionProps) {
             {collapsed ? "展开" : "折叠"}
           </button>
         )}
+        {section.description && (
+          <p className="form-section-desc">{section.description}</p>
+        )}        
       </header>
       {!collapsed && <div className="form-section-body">{children}</div>}
     </section>
