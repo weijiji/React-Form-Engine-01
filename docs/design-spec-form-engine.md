@@ -856,7 +856,7 @@ Event:    approval_update → { nodeOrder, status, approverName, comment }
 /designer                            模板设计区域（桌面端）
 ├── /designer/templates              我的模板
 ├── /designer/templates/:id          模板详情（只读）
-├── /designer/create                 创建表单（入口选择）
+├── /designer/create                 创建模板（入口选择）
 │   ├── /designer/create/nl          NL 对话创建
 │   └── /designer/create/blank       空白模板创建
 ├── /designer/edit/:templateId       设计器（三栏工作台）⭐

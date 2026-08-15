@@ -22,7 +22,7 @@ export const FileIcon = () => (
   </svg>
 );
 
-/** 创建表单 — 加号 */
+/** 创建模板 — 加号 */
 export const PlusIcon = () => (
   <svg {...svgProps}>
     <path d="M5 12h14" />

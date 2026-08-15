@@ -96,7 +96,7 @@ const designerNav: NavGroup = {
     },
     {
       to: "/designer/create",
-      label: "创建表单",
+      label: "创建模板",
       icon: <PlusIcon />,
       codes: ROUTE_CODES["/designer/create"],
     },
@@ -220,7 +220,7 @@ export const routes: RouteObject[] = [
                 <CreateTemplatePage />
               </RequirePermission>
             ),
-            handle: { title: "创建表单", crumb: "模板设计" } satisfies ShellHandle,
+            handle: { title: "创建模板", crumb: "模板设计" } satisfies ShellHandle,
           },
           {
             path: "/designer/create/nl",
@@ -229,7 +229,7 @@ export const routes: RouteObject[] = [
                 <PlaceholderPage />
               </RequirePermission>
             ),
-            handle: { title: "自然语言创建", crumb: "创建表单" } satisfies ShellHandle,
+            handle: { title: "自然语言创建", crumb: "创建模板" } satisfies ShellHandle,
           },
           {
             path: "/designer/drafts",

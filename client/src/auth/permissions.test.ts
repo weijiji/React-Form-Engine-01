@@ -24,7 +24,7 @@ describe("filterNavGroups — permission-based nav filtering", () => {
     {
       label: "设计工作台",
       items: [
-        { to: "/designer/create", label: "创建表单", codes: ["template:create"] },
+        { to: "/designer/create", label: "创建模板", codes: ["template:create"] },
         { to: "/notifications", label: "通知中心" }, // no codes → always shown
       ],
     },

@@ -249,7 +249,7 @@ describe("permission-driven routing (ADR-0010)", () => {
       // 系统管理
       "用户管理", "角色管理", "数据管理", "统计看板", "模板管理",
       // 设计工作台
-      "我的模板", "创建表单", "草稿模板",
+      "我的模板", " 创建模板", "草稿模板",
       // 表单
       "表单中心", "我的草稿", "我的提交",
       // 审批
@@ -273,7 +273,7 @@ describe("permission-driven routing (ADR-0010)", () => {
     // template:import（→导入配置）；页面级门禁下这是预期结果。
     await screen.findByRole("link", { name: /我的模板/ });
     for (const label of [
-      "我的模板", "创建表单", "草稿模板", "模板管理", "导入配置", "通知中心",
+      "我的模板", " 创建模板", "草稿模板", "模板管理", "导入配置", "通知中心",
     ]) {
       expect(screen.getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
     }
