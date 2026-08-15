@@ -91,7 +91,7 @@ const designerNav: NavGroup = {
       to: "/designer/templates",
       label: "我的模板",
       icon: <FileIcon />,
-      count: 7,
+      // count: 7,
       codes: ROUTE_CODES["/designer/templates"],
     },
     {
@@ -104,7 +104,7 @@ const designerNav: NavGroup = {
       to: "/designer/drafts",
       label: "草稿模板",
       icon: <DraftIcon />,
-      count: 3,
+      // count: 3,
       codes: ROUTE_CODES["/designer/drafts"],
     },
   ],

@@ -212,7 +212,7 @@
 
 .tpl-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 16px;
 }
 
@@ -227,7 +227,9 @@
   flex-direction: column;
   gap: 10px;
   position: relative;
-  justify-content: center;
+  justify-content: space-between;
+  width: 360px;
+  height: 180px;
 }
 
 .tpl-card:hover {
@@ -302,6 +304,7 @@
   line-height: 1.55;
   min-height: 42px;
   margin: 0;
+  flex: 1;
 }
 
 .tpl-card .t-meta {

@@ -66,7 +66,14 @@ export interface paths {
         get: operations["getTemplate"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete a template
+         * @description Permanently deletes a **draft** template (status `draft` only). Published
+         *     or archived templates cannot be deleted — instances reference them. The
+         *     caller must be the current lock holder (checked out); otherwise 409.
+         *     Gated by `template:delete` (role enforcement lands with auth, issue 09).
+         */
+        delete: operations["deleteTemplate"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1108,6 +1115,54 @@ export interface operations {
             };
             /** @description Template not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Template deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Template is not in draft status */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not the lock holder (or not checked out) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
