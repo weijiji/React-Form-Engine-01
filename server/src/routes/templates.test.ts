@@ -180,12 +180,103 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
     expect(res.body.status).toBe("published");
   });
 
-  it("rejects publishing a non-draft template", async () => {
+  it("rejects re-publishing a published template without the lock (409)", async () => {
+    // The template was published above and publish cleared the lock, so this
+    // re-publish attempt must be refused (model B requires a checkout first).
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/publish`)
       .set("Cookie", authCookie(zhangsanId));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
+  });
+
+  it("re-publishes a published template when the caller holds the lock", async () => {
+    const created = await newTemplate("重发布模板");
+    const id = created.body.id;
+    createdIds.push(id);
+    await request(app)
+      .post(`/api/v1/templates/${id}/publish`)
+      .set("Cookie", authCookie(zhangsanId));
+    await request(app)
+      .post(`/api/v1/templates/${id}/checkout`)
+      .set("Cookie", authCookie(zhangsanId));
+    const res = await request(app)
+      .post(`/api/v1/templates/${id}/publish`)
+      .set("Cookie", authCookie(zhangsanId));
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("published");
+    expect(res.body.locked_by).toBeNull();
+  });
+
+  it("rejects publishing an archived template (400)", async () => {
+    const created = await newTemplate("归档发布模板");
+    const id = created.body.id;
+    createdIds.push(id);
+    await getDb()("form_templates").where({ id }).update({ status: "archived" });
+    const res = await request(app)
+      .post(`/api/v1/templates/${id}/publish`)
+      .set("Cookie", authCookie(zhangsanId));
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("TEMPLATE_NOT_DRAFT");
+    expect(res.body.error.code).toBe("TEMPLATE_ARCHIVED");
+  });
+});
+
+describe("published template editing (model B: checkout → edit → re-publish)", () => {
+  it("allows checking out a published template", async () => {
+    const created = await newTemplate("签出已发布模板");
+    const id = created.body.id;
+    createdIds.push(id);
+    await request(app)
+      .post(`/api/v1/templates/${id}/publish`)
+      .set("Cookie", authCookie(zhangsanId));
+    const res = await request(app)
+      .post(`/api/v1/templates/${id}/checkout`)
+      .set("Cookie", authCookie(zhangsanId));
+    expect(res.status).toBe(200);
+    expect(res.body.locked_by).toBe(zhangsanId);
+    expect(res.body.status).toBe("published");
+  });
+
+  it("saves schema on a published template when the caller holds the lock", async () => {
+    const created = await newTemplate("已发布改架构模板");
+    const id = created.body.id;
+    createdIds.push(id);
+    await request(app)
+      .post(`/api/v1/templates/${id}/publish`)
+      .set("Cookie", authCookie(zhangsanId));
+    await request(app)
+      .post(`/api/v1/templates/${id}/checkout`)
+      .set("Cookie", authCookie(zhangsanId));
+    const res = await request(app)
+      .put(`/api/v1/templates/${id}/schema`)
+      .set("Cookie", authCookie(zhangsanId))
+      .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects checking out an archived template (400)", async () => {
+    const created = await newTemplate("签出归档模板");
+    const id = created.body.id;
+    createdIds.push(id);
+    await getDb()("form_templates").where({ id }).update({ status: "archived" });
+    const res = await request(app)
+      .post(`/api/v1/templates/${id}/checkout`)
+      .set("Cookie", authCookie(zhangsanId));
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("TEMPLATE_ARCHIVED");
+  });
+
+  it("rejects schema save on an archived template (400)", async () => {
+    const created = await newTemplate("归档改架构模板");
+    const id = created.body.id;
+    createdIds.push(id);
+    await getDb()("form_templates").where({ id }).update({ status: "archived" });
+    const res = await request(app)
+      .put(`/api/v1/templates/${id}/schema`)
+      .set("Cookie", authCookie(zhangsanId))
+      .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("TEMPLATE_ARCHIVED");
   });
 });
 

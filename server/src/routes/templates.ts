@@ -16,10 +16,15 @@ router.use(authenticate);
  *
  * Checkout/checkin implement the exclusive edit lock (CONTEXT.md "签出 / 签入"):
  * exactly one user holds `locked_by` at a time; `PUT …/schema` requires the
- * caller to be that holder. `publish` is a single atomic UPDATE that flips
- * `draft → published` and clears the lock. `force-unlock` is documented as
- * admin-only; role enforcement lands with auth (issue 09), so for now it clears
- * the lock unconditionally — consistent with the MVP's permissive CSRF stance.
+ * caller to be that holder. The editable status set is `draft` + `published`
+ * (a published template can be checked out, edited and re-published in place —
+ * its status stays `published` so the fill-in entry stays live, BR-05).
+ * `archived` is read-only everywhere (400 TEMPLATE_ARCHIVED). `publish` is a
+ * single atomic UPDATE: `draft → published` (no lock needed) or `published →
+ * published` (re-publish, caller must hold the lock); both clear the lock.
+ * `force-unlock` is documented as admin-only; role enforcement lands with auth
+ * (issue 09), so for now it clears the lock unconditionally — consistent with
+ * the MVP's permissive CSRF stance.
  */
 
 interface TemplateRow {
@@ -242,6 +247,11 @@ router.put(
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
 
+    // Archived templates are read-only — reject even if a stale lock lingers.
+    if (template.status === "archived") {
+      throw new AppError("TEMPLATE_ARCHIVED", "已归档模板不可编辑", 400);
+    }
+
     if (template.locked_by !== user.id) {
       if (template.locked_by == null) {
         throw new AppError("TEMPLATE_LOCKED", "模板未签出，请先签出后编辑", 409);
@@ -283,6 +293,11 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
+
+    // Archived templates are read-only and can never be checked out.
+    if (template.status === "archived") {
+      throw new AppError("TEMPLATE_ARCHIVED", "已归档模板不可签出编辑", 400);
+    }
 
     if (template.locked_by === user.id) {
       res.json(await withLockerName(template));
@@ -335,23 +350,39 @@ router.post(
   }),
 );
 
-// ── POST /api/v1/templates/:id/publish — draft → published ──────────────────
+// ── POST /api/v1/templates/:id/publish — draft → published, or re-publish ───
+// First publish (draft → published) needs no lock. Re-publishing a published
+// template (published → published, same row, schema overwritten) requires the
+// caller to hold the lock, so one person's in-flight edits can't be pushed over
+// the live template without a checkout. Both transitions are one atomic UPDATE
+// that clears the lock and bumps the optimistic-lock version (ADR-0003).
 router.post(
   "/:id/publish",
   asyncHandler(async (req: Request, res: Response) => {
+    const user = req.auth!;
     const template = await findTemplate(req.params.id);
 
-    if (template.status !== "draft") {
-      throw new AppError("TEMPLATE_NOT_DRAFT", "仅草稿模板可发布", 400);
+    if (template.status === "archived") {
+      throw new AppError("TEMPLATE_ARCHIVED", "已归档模板不可发布", 400);
+    }
+    if (template.status === "published" && template.locked_by !== user.id) {
+      throw new AppError(
+        "TEMPLATE_LOCKED",
+        "已发布模板需签出后才能重新发布",
+        409,
+      );
     }
 
-    // Atomic draft → published transition (ADR-0003-style optimistic guard on
-    // `status`). The MVP has no template cache, so clearing it is a no-op —
-    // this UPDATE is the whole publish side effect.
     const db = getDb();
     const [updated] = await db("form_templates")
       .where({ id: template.id })
-      .andWhere({ status: "draft" })
+      .andWhere((qb) =>
+        qb
+          .where({ status: "draft" })
+          .orWhere((inner) =>
+            inner.where({ status: "published" }).andWhere({ locked_by: user.id }),
+          ),
+      )
       .update({
         status: "published",
         locked_by: null,
@@ -360,6 +391,12 @@ router.post(
         version: db.raw("version + 1"),
       })
       .returning("*");
+
+    // Write-time guard (ADR-0003): 0 rows affected means the state changed
+    // between the read and the UPDATE (e.g. the lock was released) — back off.
+    if (!updated) {
+      throw new AppError("TEMPLATE_LOCKED", "模板状态已变化，请刷新后重试", 409);
+    }
 
     res.json(await withLockerName(toTemplate(updated)));
   }),

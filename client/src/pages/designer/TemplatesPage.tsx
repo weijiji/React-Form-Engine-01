@@ -7,7 +7,6 @@ import type { FormTemplate, TemplateListResponse } from "../../designer/types";
 import {
   DocIcon,
   EditIcon,
-  EyeIcon,
   MoreIcon,
   PlusIcon,
   SearchIcon,
@@ -125,17 +124,6 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
                 >
                   <EditIcon />
                   编辑
-                </button>
-                <button
-                  type="button"
-                  className="menu-item"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpen();
-                  }}
-                >
-                  <EyeIcon />
-                  查看详情
                 </button>
                 {canDelete && (
                   <button

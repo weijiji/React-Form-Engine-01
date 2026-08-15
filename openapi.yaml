@@ -189,8 +189,10 @@ paths:
       tags: [templates]
       summary: Save template schema
       description: |
-        Persists the form schema (and optional approval chain). Requires the caller
-        to be the current lock holder (checked out); otherwise 409 TEMPLATE_LOCKED.
+        Persists the form schema (and optional approval chain) for a draft or
+        published template. Requires the caller to be the current lock holder
+        (checked out); otherwise 409 TEMPLATE_LOCKED. Archived templates are
+        read-only (400 TEMPLATE_ARCHIVED).
       operationId: saveTemplateSchema
       requestBody:
         required: true
@@ -211,6 +213,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "400":
+          description: Template is archived and cannot be edited (TEMPLATE_ARCHIVED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "409":
           description: Template locked by someone else or not checked out
           content:
@@ -224,7 +232,11 @@ paths:
     post:
       tags: [templates]
       summary: Check out a template
-      description: Acquires the exclusive edit lock. Idempotent for the current holder.
+      description: |
+        Acquires the exclusive edit lock. Draft and published templates can be checked
+        out (a published template stays `published` while edited, so the fill-in entry
+        stays live); archived templates are read-only and rejected (400 TEMPLATE_ARCHIVED).
+        Idempotent for the current holder.
       operationId: checkoutTemplate
       responses:
         "200":
@@ -235,6 +247,12 @@ paths:
                 $ref: "#/components/schemas/FormTemplate"
         "404":
           description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "400":
+          description: Template is archived and cannot be edited (TEMPLATE_ARCHIVED)
           content:
             application/json:
               schema:
@@ -279,12 +297,17 @@ paths:
       - $ref: "#/components/parameters/TemplateId"
     post:
       tags: [templates]
-      summary: Publish a template
-      description: Transitions a draft template to published (atomic status update; clears the lock).
+      summary: Publish or re-publish a template
+      description: |
+        First publish transitions `draft → published` (no lock needed). Re-publishing a
+        published template in place (`published → published`, schema overwritten) requires
+        the caller to hold the checkout lock. Both are one atomic status update that clears
+        the lock and bumps the optimistic-lock `version`. Archived templates can never be
+        published (400 TEMPLATE_ARCHIVED).
       operationId: publishTemplate
       responses:
         "200":
-          description: Template published
+          description: Template published (or re-published)
           content:
             application/json:
               schema:
@@ -296,7 +319,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "400":
-          description: Template is not in draft status
+          description: Template is archived (TEMPLATE_ARCHIVED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Published template re-published without holding the lock, or the state changed mid-flight (TEMPLATE_LOCKED)
           content:
             application/json:
               schema:

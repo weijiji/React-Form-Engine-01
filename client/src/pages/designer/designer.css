@@ -805,7 +805,10 @@ textarea.mono {
   transform: translateX(-50%);
   z-index: 100;
   margin: 0;
-  padding: 9px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px 7px 16px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -813,6 +816,25 @@ textarea.mono {
   border: 1px solid var(--border);
   border-radius: 999px;
   box-shadow: var(--shadow);
+}
+
+.designer-notice-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.designer-notice-close:hover {
+  color: var(--text);
+  background: var(--bg-subtle);
 }
 
 .designer-loading,

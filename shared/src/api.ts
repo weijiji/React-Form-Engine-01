@@ -93,8 +93,10 @@ export interface paths {
         get?: never;
         /**
          * Save template schema
-         * @description Persists the form schema (and optional approval chain). Requires the caller
-         *     to be the current lock holder (checked out); otherwise 409 TEMPLATE_LOCKED.
+         * @description Persists the form schema (and optional approval chain) for a draft or
+         *     published template. Requires the caller to be the current lock holder
+         *     (checked out); otherwise 409 TEMPLATE_LOCKED. Archived templates are
+         *     read-only (400 TEMPLATE_ARCHIVED).
          */
         put: operations["saveTemplateSchema"];
         post?: never;
@@ -118,7 +120,10 @@ export interface paths {
         put?: never;
         /**
          * Check out a template
-         * @description Acquires the exclusive edit lock. Idempotent for the current holder.
+         * @description Acquires the exclusive edit lock. Draft and published templates can be checked
+         *     out (a published template stays `published` while edited, so the fill-in entry
+         *     stays live); archived templates are read-only and rejected (400 TEMPLATE_ARCHIVED).
+         *     Idempotent for the current holder.
          */
         post: operations["checkoutTemplate"];
         delete?: never;
@@ -163,8 +168,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Publish a template
-         * @description Transitions a draft template to published (atomic status update; clears the lock).
+         * Publish or re-publish a template
+         * @description First publish transitions `draft → published` (no lock needed). Re-publishing a
+         *     published template in place (`published → published`, schema overwritten) requires
+         *     the caller to hold the checkout lock. Both are one atomic status update that clears
+         *     the lock and bumps the optimistic-lock `version`. Archived templates can never be
+         *     published (400 TEMPLATE_ARCHIVED).
          */
         post: operations["publishTemplate"];
         delete?: never;
@@ -1207,6 +1216,15 @@ export interface operations {
                     "application/json": components["schemas"]["FormTemplate"];
                 };
             };
+            /** @description Template is archived and cannot be edited (TEMPLATE_ARCHIVED) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Template not found */
             404: {
                 headers: {
@@ -1246,6 +1264,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template is archived and cannot be edited (TEMPLATE_ARCHIVED) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Template not found */
@@ -1321,7 +1348,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Template published */
+            /** @description Template published (or re-published) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1330,7 +1357,7 @@ export interface operations {
                     "application/json": components["schemas"]["FormTemplate"];
                 };
             };
-            /** @description Template is not in draft status */
+            /** @description Template is archived (TEMPLATE_ARCHIVED) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1341,6 +1368,15 @@ export interface operations {
             };
             /** @description Template not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Published template re-published without holding the lock, or the state changed mid-flight (TEMPLATE_LOCKED) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -192,8 +192,9 @@ CSRF_TOKEN_MISSING        → 403  缺少 CSRF Token
 CSRF_TOKEN_MISMATCH       → 403  CSRF Token 不匹配
 VERSION_CONFLICT          → 409  乐观锁冲突
 IDEMPOTENCY_CONFLICT      → 409  幂等键重复（不同请求体）
-TEMPLATE_LOCKED           → 409  模板已被他人签出
-TEMPLATE_NOT_DRAFT        → 400  模板非草稿，无法发布
+TEMPLATE_LOCKED           → 409  模板已被他人签出（或已发布模板未签出即重发布）
+TEMPLATE_NOT_DRAFT        → 400  模板非草稿，无法删除
+TEMPLATE_ARCHIVED         → 400  模板已归档，只读不可编辑/签出/发布
 TEMPLATE_NOT_PUBLISHED    → 400  模板未发布或已下线
 APPROVAL_NOT_PENDING      → 400  审批已处理，无法操作
 APPROVER_RESOLUTION_FAILED → 500  审批人解析失败

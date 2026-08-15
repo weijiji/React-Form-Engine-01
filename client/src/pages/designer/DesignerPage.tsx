@@ -15,6 +15,7 @@ import { DesignCanvas } from "../../designer/DesignCanvas";
 import { PropertyPanel } from "../../designer/PropertyPanel";
 import {
   BackIcon,
+  CloseIcon,
   LockIcon,
   SaveIcon,
   SendIcon,
@@ -130,10 +131,20 @@ export const DesignerPage: React.FC = () => {
   const statusText = useMemo(() => {
     if (isHolder) return "已签出 · 正在编辑";
     if (template?.locked_by) return `已锁定 · ${template.locked_by_name ?? "他人"}`;
-    if (template?.status === "published") return "已发布 · 只读";
+    if (template?.status === "published") return "已发布";
     if (template?.status === "archived") return "已归档 · 只读";
     return "未签出";
   }, [template, isHolder]);
+
+  // Model B: a draft publishes without a lock; a published template only
+  // re-publishes when the caller holds the checkout lock.
+  const canPublish = useMemo(
+    () =>
+      template != null &&
+      (template.status === "draft" ||
+        (template.status === "published" && isHolder)),
+    [template, isHolder],
+  );
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -307,8 +318,8 @@ export const DesignerPage: React.FC = () => {
     if (!id) return;
     void runAction(
       () => apiClient<FormTemplate>(`/templates/${id}/publish`, { method: "POST" }),
-      "模板已发布",
-    );
+      template?.status === "published" ? "模板已重新发布" : "模板已发布",
+    ).then((updated) => updated && setDirty(false));
   };
 
   // Delete this template (work order 20). The button only renders for the lock
@@ -419,7 +430,7 @@ export const DesignerPage: React.FC = () => {
             value={mode}
             onChange={setMode}
           />
-          {template.status === "draft" && template.locked_by == null && (
+          {template.status !== "archived" && template.locked_by == null && (
             <Button
               variant="primary"
               disabled={busy}
@@ -439,16 +450,25 @@ export const DesignerPage: React.FC = () => {
               签入
             </Button>
           )}
-          <Button disabled={!isHolder || busy} icon={<SaveIcon />} onClick={handleSave}>
+          <Button
+            disabled={!isHolder || busy || template.status === "published"}
+            title={
+              template.status === "published"
+                ? "已发布模板的修改需重新发布生效"
+                : undefined
+            }
+            icon={<SaveIcon />}
+            onClick={handleSave}
+          >
             保存草稿
           </Button>
           <Button
             variant="primary"
-            disabled={template.status !== "draft" || busy}
+            disabled={!canPublish || busy}
             icon={<SendIcon />}
             onClick={handlePublish}
           >
-            发布
+            {template.status === "published" && isHolder ? "重新发布" : "发布"}
           </Button>
           {isHolder && (
             <Button
@@ -463,7 +483,19 @@ export const DesignerPage: React.FC = () => {
         </div>
       </header>
 
-      {notice && <p className="designer-notice">{notice}</p>}
+      {notice && (
+        <div className="designer-notice" role="status">
+          <span>{notice}</span>
+          <button
+            type="button"
+            className="designer-notice-close"
+            aria-label="关闭提示"
+            onClick={() => setNotice(null)}
+          >
+            <CloseIcon width={14} height={14} />
+          </button>
+        </div>
+      )}
 
       <div className="editor-body">
         <ComponentPalette onAddField={handleAddField} />
