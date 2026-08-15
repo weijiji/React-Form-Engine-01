@@ -6,13 +6,18 @@ import type {
   ApproverRule,
   FieldSchema,
   FieldType,
+  SectionSchema,
 } from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
 import { useAuth } from "../../auth/AuthContext";
 import { Button, Segmented } from "../../components";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
-import { PropertyPanel } from "../../designer/PropertyPanel";
+import {
+  PropertyPanel,
+  resolveSelected,
+  type PanelSelection,
+} from "../../designer/PropertyPanel";
 import {
   BackIcon,
   CloseIcon,
@@ -30,13 +35,13 @@ import {
   createSection,
   duplicateField,
   ensureSection,
-  findField,
   moveField,
   newId,
   removeField,
   removeSection,
   reorderField,
   updateField,
+  updateSection,
   type DesignerSchema,
 } from "../../designer/schemaModel";
 import type { FormTemplate } from "../../designer/types";
@@ -146,10 +151,11 @@ export const DesignerPage: React.FC = () => {
     [template, isHolder],
   );
 
-  const selected = useMemo(() => {
-    if (!selectedId) return null;
-    return findField(schema, selectedId) ?? null;
-  }, [schema, selectedId]);
+  // selectedId may be a field OR a section id (canvas/tree both select sections).
+  const selected = useMemo<PanelSelection>(
+    () => resolveSelected(schema, selectedId),
+    [schema, selectedId],
+  );
 
   // ── schema mutations ──
 
@@ -222,6 +228,14 @@ export const DesignerPage: React.FC = () => {
   const handleChangeField = useCallback(
     (sectionId: string, fieldId: string, patch: Partial<FieldSchema>) => {
       setSchema((prev) => updateField(prev, sectionId, fieldId, patch));
+      setDirty(true);
+    },
+    [],
+  );
+
+  const handleChangeSection = useCallback(
+    (sectionId: string, patch: Partial<SectionSchema>) => {
+      setSchema((prev) => updateSection(prev, sectionId, patch));
       setDirty(true);
     },
     [],
@@ -531,6 +545,7 @@ export const DesignerPage: React.FC = () => {
           selected={selected}
           chain={chain}
           onChangeField={handleChangeField}
+          onChangeSection={handleChangeSection}
           onSelect={setSelectedId}
           onAddFieldToSection={handleAddFieldToSection}
           onRemoveSection={handleRemoveSection}

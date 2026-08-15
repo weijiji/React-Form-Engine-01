@@ -4,27 +4,50 @@ import type {
   ApprovalNode,
   ApproverRule,
   FieldSchema,
+  SectionSchema,
   SelectOption,
   ValidationRuleType,
 } from "form-engine-core";
-import { removeRule, setRule, type DesignerSchema } from "./schemaModel";
+import { findField, removeRule, setRule, type DesignerSchema } from "./schemaModel";
 import { IconButton, Input } from "../components";
 import { CloseIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from "./icons";
 import { StructureTree } from "./StructureTree";
 
 type TabKey = "tree" | "props" | "chain";
 
+/** The selected canvas/tree node: a field (with its owning section) or a section. */
+export type PanelSelection =
+  | { kind: "field"; sectionId: string; field: FieldSchema }
+  | { kind: "section"; section: SectionSchema }
+  | null;
+
+/**
+ * Resolve a selected canvas/structure-tree id into the panel's selection model.
+ * A field id wins; a section id resolves to a section; anything else is null.
+ * Pure (no DOM) so the id→selection wiring is unit-testable.
+ */
+export function resolveSelected(
+  schema: DesignerSchema,
+  selectedId: string | null,
+): PanelSelection {
+  if (!selectedId) return null;
+  const hit = findField(schema, selectedId);
+  if (hit) return { kind: "field", sectionId: hit.sectionId, field: hit.field };
+  const section = schema.sections.find((s) => s.id === selectedId);
+  return section ? { kind: "section", section } : null;
+}
+
 export interface PropertyPanelProps {
   schema: DesignerSchema;
   selectedId: string | null;
-  /** The selected field (with its owning section) or null when nothing/only a section is selected. */
-  selected: { sectionId: string; field: FieldSchema } | null;
+  selected: PanelSelection;
   chain: ApprovalChain;
   onChangeField: (
     sectionId: string,
     fieldId: string,
     patch: Partial<FieldSchema>,
   ) => void;
+  onChangeSection: (sectionId: string, patch: Partial<SectionSchema>) => void;
   onSelect: (id: string | null) => void;
   // Structure tree
   onAddFieldToSection: (sectionId: string) => void;
@@ -86,7 +109,11 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
         )}
         {tab === "props" && (
           <div className="side-pane active">
-            <PropsTab selected={props.selected} onChangeField={props.onChangeField} />
+            <PropsTab
+              selected={props.selected}
+              onChangeField={props.onChangeField}
+              onChangeSection={props.onChangeSection}
+            />
           </div>
         )}
         {tab === "chain" && (
@@ -110,9 +137,11 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
 function PropsTab({
   selected,
   onChangeField,
+  onChangeSection,
 }: {
   selected: PropertyPanelProps["selected"];
   onChangeField: PropertyPanelProps["onChangeField"];
+  onChangeSection: PropertyPanelProps["onChangeSection"];
 }) {
   if (!selected) {
     return (
@@ -130,11 +159,15 @@ function PropsTab({
             <path d="M9 9h6M9 13h6M9 17h3" />
           </svg>
           <div>
-            在画布或结构树中<b>选择一个字段</b>以编辑属性
+            在画布或结构树中<b>选择一个字段或章节</b>以编辑属性
           </div>
         </div>
       </div>
     );
+  }
+
+  if (selected.kind === "section") {
+    return <SectionEditor section={selected.section} onChangeSection={onChangeSection} />;
   }
 
   const { sectionId, field } = selected;
@@ -191,20 +224,13 @@ function PropsTab({
         </div>
       )}
 
-      <div className="prop-row prop-switch">
-        <div>
-          <div className="ps-label">必填</div>
-          <div className="ps-hint">填写者必须填写此字段</div>
-        </div>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={field.required}
-            onChange={(e) => update({ required: e.target.checked })}
-          />
-          <span className="track" />
-        </label>
-      </div>
+      <SwitchRow
+        label="必填"
+        hint="填写者必须填写此字段"
+        checked={field.required}
+        ariaLabel="必填"
+        onChange={(v) => update({ required: v })}
+      />
 
       {(field.type === "select" ||
         field.type === "radio" ||
@@ -219,6 +245,100 @@ function PropsTab({
       )}
 
       {field.type === "file" && <FileEditor field={field} onChange={update} />}
+    </div>
+  );
+}
+
+/** A labelled on/off switch row (ps-label + ps-hint + switch/track). */
+function SwitchRow({
+  label,
+  hint,
+  checked,
+  ariaLabel,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  checked: boolean;
+  ariaLabel: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="prop-row prop-switch">
+      <div>
+        <div className="ps-label">{label}</div>
+        <div className="ps-hint">{hint}</div>
+      </div>
+      <label className="switch">
+        <input
+          type="checkbox"
+          aria-label={ariaLabel}
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span className="track" />
+      </label>
+    </div>
+  );
+}
+
+// ── 章节属性 ──────────────────────────────────────────────────────────────
+
+function SectionEditor({
+  section,
+  onChangeSection,
+}: {
+  section: SectionSchema;
+  onChangeSection: PropertyPanelProps["onChangeSection"];
+}) {
+  const update = (patch: Partial<SectionSchema>) =>
+    onChangeSection(section.id, patch);
+
+  return (
+    <div className="props">
+      <div className="prop-group-title">基本</div>
+
+      <div className="prop-row">
+        <label className="label">章节标题</label>
+        <Input
+          inputClassName="prop-input"
+          aria-label="章节标题"
+          value={section.title}
+          onChange={(e) => update({ title: e.target.value })}
+        />
+      </div>
+
+      <div className="prop-row">
+        <label className="label">章节描述</label>
+        <textarea
+          className="textarea"
+          aria-label="章节描述"
+          value={section.description ?? ""}
+          onChange={(e) => update({ description: e.target.value })}
+        />
+      </div>
+
+      <SwitchRow
+        label="可折叠"
+        hint="允许填写者折叠 / 展开此章节"
+        checked={section.collapsible ?? false}
+        ariaLabel="可折叠"
+        onChange={(v) =>
+          // Turning collapse off also clears any remembered default-collapsed
+          // state, so re-enabling later starts from an explicit off.
+          update({ collapsible: v, defaultCollapsed: v ? section.defaultCollapsed : false })
+        }
+      />
+
+      {(section.collapsible ?? false) && (
+        <SwitchRow
+          label="默认折叠"
+          hint="填写者打开表单时章节默认收起"
+          checked={section.defaultCollapsed ?? false}
+          ariaLabel="默认折叠"
+          onChange={(v) => update({ defaultCollapsed: v })}
+        />
+      )}
     </div>
   );
 }

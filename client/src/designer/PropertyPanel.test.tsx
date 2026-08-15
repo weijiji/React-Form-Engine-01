@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FieldSchema } from "form-engine-core";
 import { describe, expect, it, vi } from "vitest";
-import { PropertyPanel } from "./PropertyPanel";
+import { PropertyPanel, resolveSelected } from "./PropertyPanel";
 import type { PropertyPanelProps } from "./PropertyPanel";
 import { createEmptySchema } from "./schemaModel";
 
@@ -24,6 +24,21 @@ const textField: FieldSchema = {
   required: false,
 };
 
+const sectionSchema = {
+  schemaVersion: "1.0.0",
+  sections: [{ id: "sec-1", title: "基础信息", fields: [] }],
+};
+
+const schemaWithField = {
+  schemaVersion: "1.0.0",
+  sections: [{ id: "sec-1", title: "基础信息", fields: [selectField, textField] }],
+};
+
+const selectedSection = {
+  kind: "section" as const,
+  section: { id: "sec-1", title: "基础信息", fields: [] },
+};
+
 function renderPanel(overrides: Partial<PropertyPanelProps> = {}) {
   const props: PropertyPanelProps = {
     schema: createEmptySchema(),
@@ -31,6 +46,7 @@ function renderPanel(overrides: Partial<PropertyPanelProps> = {}) {
     selected: null,
     chain: { nodes: [] },
     onChangeField: vi.fn(),
+    onChangeSection: vi.fn(),
     onSelect: vi.fn(),
     onAddFieldToSection: vi.fn(),
     onRemoveSection: vi.fn(),
@@ -58,7 +74,7 @@ describe("PropertyPanel", () => {
     expect(screen.getByText("基础信息")).toBeInTheDocument();
   });
 
-  it("shows a hint in the props tab when no field is selected", async () => {
+  it("shows a hint in the props tab when nothing is selected", async () => {
     renderPanel();
     await userEvent.click(screen.getByRole("tab", { name: "属性" }));
     expect(screen.getByText(/选择一个字段/)).toBeInTheDocument();
@@ -67,7 +83,7 @@ describe("PropertyPanel", () => {
   it("edits options via the options editor", async () => {
     const onChangeField = vi.fn();
     renderPanel({
-      selected: { sectionId: "sec-1", field: selectField },
+      selected: { kind: "field", sectionId: "sec-1", field: selectField },
       onChangeField,
     });
     await userEvent.click(screen.getByRole("tab", { name: "属性" }));
@@ -87,7 +103,7 @@ describe("PropertyPanel", () => {
   it("writes a min-length rule via the validation editor", async () => {
     const onChangeField = vi.fn();
     renderPanel({
-      selected: { sectionId: "sec-1", field: textField },
+      selected: { kind: "field", sectionId: "sec-1", field: textField },
       onChangeField,
     });
     await userEvent.click(screen.getByRole("tab", { name: "属性" }));
@@ -109,5 +125,56 @@ describe("PropertyPanel", () => {
     await userEvent.click(screen.getByRole("tab", { name: "审批链" }));
     await userEvent.click(screen.getByRole("button", { name: /添加审批节点/ }));
     expect(onAddChainNode).toHaveBeenCalled();
+  });
+
+  it("shows section properties when a section is selected", async () => {
+    renderPanel({ schema: sectionSchema, selected: selectedSection });
+    await userEvent.click(screen.getByRole("tab", { name: "属性" }));
+    expect(screen.getByLabelText("章节标题")).toHaveValue("基础信息");
+    expect(screen.getByLabelText("章节描述")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "可折叠" })).not.toBeChecked();
+  });
+
+  it("edits a section title via onChangeSection", async () => {
+    const onChangeSection = vi.fn();
+    renderPanel({ schema: sectionSchema, selected: selectedSection, onChangeSection });
+    await userEvent.click(screen.getByRole("tab", { name: "属性" }));
+    fireEvent.change(screen.getByLabelText("章节标题"), { target: { value: "员工信息" } });
+    expect(onChangeSection).toHaveBeenCalledWith("sec-1", { title: "员工信息" });
+  });
+
+  it("shows the default-collapsed switch only when collapsible is on", async () => {
+    renderPanel({
+      schema: sectionSchema,
+      selected: {
+        kind: "section",
+        section: { id: "sec-1", title: "基础信息", collapsible: true, fields: [] },
+      },
+    });
+    await userEvent.click(screen.getByRole("tab", { name: "属性" }));
+    expect(screen.getByRole("checkbox", { name: "可折叠" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "默认折叠" })).toBeInTheDocument();
+  });
+});
+
+describe("resolveSelected", () => {
+  it("resolves a field id to a field selection", () => {
+    expect(resolveSelected(schemaWithField, "fld-2")).toEqual({
+      kind: "field",
+      sectionId: "sec-1",
+      field: textField,
+    });
+  });
+
+  it("resolves a section id to a section selection", () => {
+    expect(resolveSelected(sectionSchema, "sec-1")).toEqual({
+      kind: "section",
+      section: { id: "sec-1", title: "基础信息", fields: [] },
+    });
+  });
+
+  it("returns null for an unknown or absent id", () => {
+    expect(resolveSelected(sectionSchema, "nope")).toBeNull();
+    expect(resolveSelected(sectionSchema, null)).toBeNull();
   });
 });
