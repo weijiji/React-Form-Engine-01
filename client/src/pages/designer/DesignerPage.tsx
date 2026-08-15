@@ -13,7 +13,7 @@ import { Button, Segmented } from "../../components";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
 import { PropertyPanel } from "../../designer/PropertyPanel";
-import { BackIcon, SaveIcon, SendIcon } from "../../designer/icons";
+import { BackIcon, SaveIcon, SendIcon, TrashIcon } from "../../designer/icons";
 import {
   addField,
   addSection,
@@ -302,6 +302,28 @@ export const DesignerPage: React.FC = () => {
     );
   };
 
+  // Delete this template (work order 20). The button only renders for the lock
+  // holder, and the server re-checks `template:delete` + the lock — so this is
+  // a UI convenience, not the gate. Back to the list after a successful delete.
+  const handleDelete = () => {
+    if (!id) return;
+    const ok = window.confirm(
+      "确定删除此模板吗？未保存的改动将丢失，此操作不可撤销。",
+    );
+    if (!ok) return;
+    apiClient<void>(`/templates/${id}`, { method: "DELETE" })
+      .then(() => navigate("/designer/templates"))
+      .catch((err: unknown) => {
+        const msg =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "删除失败";
+        setNotice(`删除失败：${msg}`);
+      });
+  };
+
   const handleBack = () => {
     if (isHolder) {
       const ok = window.confirm("签入并离开？离开后其他设计者可以开始编辑该模板。");
@@ -378,6 +400,16 @@ export const DesignerPage: React.FC = () => {
           >
             发布
           </Button>
+          {isHolder && (
+            <Button
+              variant="danger"
+              disabled={busy}
+              icon={<TrashIcon />}
+              onClick={handleDelete}
+            >
+              删除
+            </Button>
+          )}
         </div>
       </header>
 

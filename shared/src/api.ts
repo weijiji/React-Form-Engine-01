@@ -69,9 +69,10 @@ export interface paths {
         /**
          * Delete a template
          * @description Permanently deletes a **draft** template (status `draft` only). Published
-         *     or archived templates cannot be deleted — instances reference them. The
-         *     caller must be the current lock holder (checked out); otherwise 409.
-         *     Gated by `template:delete` (role enforcement lands with auth, issue 09).
+         *     or archived templates cannot be deleted — instances reference them.
+         *     Delete is gated by the `template:delete` permission code (403 FORBIDDEN)
+         *     and the exclusive checkout lock: the caller must hold `locked_by`
+         *     (409 TEMPLATE_LOCKED when the draft is not checked out to them).
          */
         delete: operations["deleteTemplate"];
         options?: never;
@@ -1152,6 +1153,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Caller lacks the template:delete permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Template not found */
             404: {
                 headers: {
@@ -1161,7 +1171,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not the lock holder (or not checked out) */
+            /** @description Template is not checked out to the caller (TEMPLATE_LOCKED) */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -21,7 +21,7 @@ Vite 会把所有页面 CSS 打进同一个全局样式表，重复选择器按�
 
 ## 决策
 
-1. **新建 `client/src/components/` 组件库**，首批五族：`Button`（`variant: default|primary|ghost`，`size: default|sm|lg`，`disabled`，`icon` 槽位）、`IconButton`、`Segmented`、`Input`（`size: default|sm|lg`，icon 槽位，吸收 `.input-wrap` / `.input-sm`）、`Badge`（`green` / `amber` / `gray` / `indigo`）。样式用 **CSS Modules**（Vite 原生、零新依赖），令牌继续引用 `global.css`。
+1. **新建 `client/src/components/` 组件库**，首批五族：`Button`（`variant: default|primary|ghost`，`size: default|sm|lg`，`disabled`，`icon` 槽位）、`IconButton`、`Segmented`、`Input`（`size: default|sm|lg`，icon 槽位，吸收 `.input-wrap` / `.input-sm`）、`Badge`（`green` / `amber` / `gray` / `indigo`）。样式用 **CSS Modules**（Vite 原生、零新依赖），令牌继续引用 `global.css`。工单 20 为 `Button` 增补 `danger` variant（红色描边 + 红字，与 `IconButton.danger` 呼应），用于模板删除等不可逆操作。
 2. **designer 三页 + filler 四页 + login 切换到组件**，删除各页 CSS 中五族副本，以及 `templates.css` 顶部的"自包含镜像"注释。
 3. **废弃"每页样式表自包含"约定**：共享控件唯一来源 = 组件库。
 4. **`admin.css` 保持 `.rbac-*` 命名空间作为止血带**，不并入本次；待 admin 页面后续被触及再切组件，届时命名空间自然作废。

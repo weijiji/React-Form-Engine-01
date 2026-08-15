@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import styles from "./Button.module.css";
 
-export type ButtonVariant = "default" | "primary" | "ghost";
+export type ButtonVariant = "default" | "primary" | "ghost" | "danger";
 export type ButtonSize = "default" | "sm" | "lg";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -32,6 +32,7 @@ export const Button: React.FC<ButtonProps> = ({
       styles.btn,
       variant === "primary" ? styles.primary : "",
       variant === "ghost" ? styles.ghost : "",
+      variant === "danger" ? styles.danger : "",
       SIZE_CLASS[size],
       className,
     ]

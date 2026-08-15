@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import { apiClient } from "../../config/api";
 import { Badge, Button, IconButton, Input, Segmented } from "../../components";
 import type { FormTemplate, TemplateListResponse } from "../../designer/types";
@@ -10,6 +11,7 @@ import {
   MoreIcon,
   PlusIcon,
   SearchIcon,
+  TrashIcon,
 } from "../../designer/icons";
 import "./templates.css";
 
@@ -65,15 +67,19 @@ function statusBadge(status: string): React.ReactNode {
 interface TemplateCardProps {
   template: FormTemplate;
   menuOpen: boolean;
+  canDelete: boolean;
   onToggleMenu: () => void;
   onOpen: () => void;
+  onDelete: () => void;
 }
 
 const TemplateCard: React.FC<TemplateCardProps> = ({
   template,
   menuOpen,
+  canDelete,
   onToggleMenu,
   onOpen,
+  onDelete,
 }) => {
   return (
     <div
@@ -131,6 +137,19 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
                   <EyeIcon />
                   查看详情
                 </button>
+                {canDelete && (
+                  <button
+                    type="button"
+                    className="menu-item danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                  >
+                    <TrashIcon />
+                    删除
+                  </button>
+                )}
               </div>
             )}
           </span>
@@ -149,12 +168,15 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
 
 export const TemplatesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user: me } = useAuth();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [data, setData] = useState<TemplateListResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // Bumped after a delete so the list refetches (delete is a destructive mutation).
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     // Debounce the keystroke-driven search so the API isn't hit per character.
@@ -172,7 +194,23 @@ export const TemplatesPage: React.FC = () => {
         .finally(() => setLoading(false));
     }, 250);
     return () => clearTimeout(timer);
-  }, [search, status]);
+  }, [search, status, reloadTick]);
+
+  // Delete a draft template the caller holds (work order 20). The server gates
+  // this on `template:delete` + the checkout lock, so only own-checked-out
+  // drafts show the entry and reach here.
+  const handleDelete = (tpl: FormTemplate) => {
+    const ok = window.confirm(`确定删除模板「${tpl.name}」吗？此操作不可撤销。`);
+    if (!ok) return;
+    apiClient<void>(`/templates/${tpl.id}`, { method: "DELETE" })
+      .then(() => {
+        setOpenMenuId(null);
+        setReloadTick((t) => t + 1);
+      })
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : "删除失败"),
+      );
+  };
 
   // Collapse the open "more" menu on outside click / Escape.
   useEffect(() => {
@@ -246,10 +284,12 @@ export const TemplatesPage: React.FC = () => {
               key={tpl.id}
               template={tpl}
               menuOpen={openMenuId === tpl.id}
+              canDelete={me != null && tpl.locked_by === me.id}
               onToggleMenu={() =>
                 setOpenMenuId((cur) => (cur === tpl.id ? null : tpl.id))
               }
               onOpen={() => navigate(`/designer/templates/${tpl.id}`)}
+              onDelete={() => handleDelete(tpl)}
             />
           ))}
         </div>

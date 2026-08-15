@@ -23,6 +23,8 @@ function authCookie(userId: string): string {
 
 let zhangsanId: string;
 let lisiId: string;
+let adminId: string;
+let designerId: string;
 const createdIds: string[] = [];
 
 beforeAll(async () => {
@@ -35,8 +37,12 @@ beforeAll(async () => {
 
   zhangsanId = byEmail("zhangsan@example.com");
   lisiId = byEmail("lisi@example.com");
+  adminId = byEmail("admin@example.com");
+  designerId = byEmail("designer@example.com");
   expect(zhangsanId).toBeTruthy();
   expect(lisiId).toBeTruthy();
+  expect(adminId).toBeTruthy();
+  expect(designerId).toBeTruthy();
 });
 
 afterAll(async () => {
@@ -48,9 +54,17 @@ afterAll(async () => {
 });
 
 function newTemplate(name = "集成测试模板"): Promise<request.Response> {
+  return newTemplateAs(zhangsanId, name);
+}
+
+/** Create a template as a specific user (used by the DELETE permission/lock tests). */
+function newTemplateAs(
+  userId: string,
+  name = "集成测试模板",
+): Promise<request.Response> {
   return request(app)
     .post("/api/v1/templates")
-    .set("Cookie", authCookie(zhangsanId))
+    .set("Cookie", authCookie(userId))
     .send({ name, category: "测试" });
 }
 
@@ -190,35 +204,36 @@ describe("force-unlock", () => {
   });
 });
 
-describe("DELETE /api/v1/templates/:id", () => {
-  it("deletes a draft template (204) and it is gone afterwards", async () => {
-    const res = await newTemplate("待删除模板");
+describe("DELETE /api/v1/templates/:id (template:delete + lock holder)", () => {
+  it("deletes a draft template the caller holds (204) and it is gone afterwards", async () => {
+    const res = await newTemplateAs(adminId, "待删除模板");
     const templateId = res.body.id;
     expect(res.body.status).toBe("draft");
+    expect(res.body.locked_by).toBe(adminId);
 
     const del = await request(app)
       .delete(`/api/v1/templates/${templateId}`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(adminId));
     expect(del.status).toBe(204);
 
     const after = await request(app)
       .get(`/api/v1/templates/${templateId}`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(adminId));
     expect(after.status).toBe(404);
   });
 
   it("rejects deleting a published template (400)", async () => {
-    const res = await newTemplate("已发布不可删");
+    const res = await newTemplateAs(adminId, "已发布不可删");
     const templateId = res.body.id;
     createdIds.push(templateId);
 
     await request(app)
       .post(`/api/v1/templates/${templateId}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(adminId));
 
     const del = await request(app)
       .delete(`/api/v1/templates/${templateId}`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(adminId));
     expect(del.status).toBe(400);
     expect(del.body.error.code).toBe("TEMPLATE_NOT_DRAFT");
   });
@@ -226,9 +241,50 @@ describe("DELETE /api/v1/templates/:id", () => {
   it("returns 404 for an unknown template", async () => {
     const res = await request(app)
       .delete("/api/v1/templates/00000000-0000-0000-0000-000000000000")
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(adminId));
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("rejects a delete by a non-holder who has the permission (409)", async () => {
+    const res = await newTemplateAs(adminId, "他人签出不可删");
+    const templateId = res.body.id;
+    createdIds.push(templateId);
+
+    const del = await request(app)
+      .delete(`/api/v1/templates/${templateId}`)
+      .set("Cookie", authCookie(designerId));
+    expect(del.status).toBe(409);
+    expect(del.body.error.code).toBe("TEMPLATE_LOCKED");
+  });
+
+  it("rejects a delete by a user without template:delete (403)", async () => {
+    const res = await newTemplateAs(adminId, "无权限不可删");
+    const templateId = res.body.id;
+    createdIds.push(templateId);
+
+    const del = await request(app)
+      .delete(`/api/v1/templates/${templateId}`)
+      .set("Cookie", authCookie(lisiId));
+    expect(del.status).toBe(403);
+    expect(del.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("rejects a delete when the draft is not checked out (409)", async () => {
+    const res = await newTemplateAs(adminId, "未签出不可删");
+    const templateId = res.body.id;
+    createdIds.push(templateId);
+
+    // Release the lock (checkin) — the template is still a draft.
+    await request(app)
+      .post(`/api/v1/templates/${templateId}/checkin`)
+      .set("Cookie", authCookie(adminId));
+
+    const del = await request(app)
+      .delete(`/api/v1/templates/${templateId}`)
+      .set("Cookie", authCookie(adminId));
+    expect(del.status).toBe(409);
+    expect(del.body.error.code).toBe("TEMPLATE_LOCKED");
   });
 });
 

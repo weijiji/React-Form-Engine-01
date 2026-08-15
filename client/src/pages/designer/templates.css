@@ -187,6 +187,25 @@
   color: var(--text-2);
 }
 
+/* Danger action (delete) — red text/icon, red hover to make the destructive
+   step unmistakable. Only rendered for templates the caller has checked out. */
+.tpl-menu .menu-item.danger {
+  color: var(--danger);
+}
+
+.tpl-menu .menu-item.danger svg {
+  color: var(--danger);
+}
+
+.tpl-menu .menu-item.danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.tpl-menu .menu-item.danger:hover svg {
+  color: var(--danger);
+}
+
 /* ── 空状态 ────────────────────────────────────────────────────────────── */
 
 .empty {

@@ -49,6 +49,20 @@
   color: var(--text);
 }
 
+/* Destructive action — red outline + red text, red-tinted hover. Mirrors the
+   IconButton `danger` variant so both spell "irreversible" the same way. */
+.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: transparent;
+}
+
+.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 .sm {
   height: 30px;
   padding: 0 12px;

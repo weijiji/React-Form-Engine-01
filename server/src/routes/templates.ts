@@ -1,12 +1,14 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { getDb } from "../db/connection";
-import { authenticate } from "../middleware/auth";
+import { authenticate, requirePermission } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
 
 const router = Router();
 
 // Identity comes from the JWT cookie (work order 17): every template route
-// requires a logged-in user. Per-route permission gating is a follow-up.
+// requires a logged-in user. `DELETE /:id` additionally gates on the
+// `template:delete` permission code (work order 20); the rest rely on the
+// shared checkout-lock semantics.
 router.use(authenticate);
 
 /**
@@ -189,17 +191,32 @@ router.get(
   }),
 );
 
-// ── DELETE /api/v1/templates/:id — delete a draft template ──────────────────
-// Only `draft` templates can be hard-deleted: a published/archived template
-// may have instances/drafts referencing it, so those must be archived instead.
-// Role enforcement (`template:delete`) lands with auth (issue 09).
+// ── DELETE /api/v1/templates/:id — delete a draft the caller holds ──────────
+// Delete is a destructive mutation, so it sits behind `template:delete` (work
+// order 20) and the exclusive checkout lock, like any other edit: the caller
+// must hold `locked_by`. Check order: status first (a published/archived
+// template may have instances/drafts referencing it — those must be archived,
+// not deleted), then the lock.
 router.delete(
   "/:id",
+  requirePermission("template:delete"),
   asyncHandler(async (req: Request, res: Response) => {
+    const user = req.auth!;
     const template = await findTemplate(req.params.id);
 
     if (template.status !== "draft") {
       throw new AppError("TEMPLATE_NOT_DRAFT", "仅草稿模板可删除", 400);
+    }
+
+    if (template.locked_by !== user.id) {
+      if (template.locked_by == null) {
+        throw new AppError("TEMPLATE_LOCKED", "模板未签出，请先签出后删除", 409);
+      }
+      throw new AppError(
+        "TEMPLATE_LOCKED",
+        `模板已被 ${await lockerName(template.locked_by)} 签出，仅签出人可删除`,
+        409,
+      );
     }
 
     await getDb()("form_templates").where({ id: template.id }).del();

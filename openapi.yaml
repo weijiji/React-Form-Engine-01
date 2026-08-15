@@ -150,7 +150,9 @@ paths:
       description: |
         Permanently deletes a **draft** template (status `draft` only). Published
         or archived templates cannot be deleted — instances reference them.
-        Gated by `template:delete` (role enforcement lands with auth, issue 09).
+        Delete is gated by the `template:delete` permission code (403 FORBIDDEN)
+        and the exclusive checkout lock: the caller must hold `locked_by`
+        (409 TEMPLATE_LOCKED when the draft is not checked out to them).
       operationId: deleteTemplate
       responses:
         "204":
@@ -161,8 +163,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Caller lacks the template:delete permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "404":
           description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Template is not checked out to the caller (TEMPLATE_LOCKED)
           content:
             application/json:
               schema:
