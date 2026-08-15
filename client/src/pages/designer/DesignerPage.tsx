@@ -316,9 +316,23 @@ export const DesignerPage: React.FC = () => {
 
   const handlePublish = () => {
     if (!id) return;
+    const isRepublish = template?.status === "published";
     void runAction(
-      () => apiClient<FormTemplate>(`/templates/${id}/publish`, { method: "POST" }),
-      template?.status === "published" ? "模板已重新发布" : "模板已发布",
+      async () => {
+        // 重发布：先把当前设计落库再翻状态。已发布模板的「保存草稿」是禁用的
+        // （修改只能随发布生效），而 publish 只翻状态+清锁、不携带 schema——
+        // 不先 PUT 的话修改只存在本地 state，发布后即丢失。
+        if (isRepublish) {
+          await apiClient<FormTemplate>(`/templates/${id}/schema`, {
+            method: "PUT",
+            body: JSON.stringify({ schema, approval_chain: chain }),
+          });
+        }
+        return apiClient<FormTemplate>(`/templates/${id}/publish`, {
+          method: "POST",
+        });
+      },
+      isRepublish ? "模板已重新发布" : "模板已发布",
     ).then((updated) => updated && setDirty(false));
   };
 
