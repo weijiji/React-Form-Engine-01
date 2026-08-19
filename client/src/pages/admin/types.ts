@@ -15,3 +15,5 @@ export type AdminUser = components["schemas"]["AdminUser"];
 export type RoleListResponse = components["schemas"]["RoleListResponse"];
 export type PermissionListResponse = components["schemas"]["PermissionListResponse"];
 export type UserListResponse = components["schemas"]["UserListResponse"];
+export type UserCreateRequest = components["schemas"]["UserCreateRequest"];
+export type UserUpdateRequest = components["schemas"]["UserUpdateRequest"];

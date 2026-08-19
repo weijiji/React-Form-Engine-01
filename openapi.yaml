@@ -1011,15 +1011,79 @@ paths:
     get:
       tags: [users]
       summary: List users
-      description: Users with their assigned roles. Requires admin:manage_users.
+      description: |
+        Offset-paginated list with optional search/role/status filters.
+        Requires admin:manage_users.
       operationId: listUsers
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match on name or email.
+        - name: roleId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter to users holding this role.
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+          description: Filter by enabled/disabled state.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         "200":
-          description: User list
+          description: Paginated user list
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserListResponse"
+    post:
+      tags: [users]
+      summary: Create a user
+      description: |
+        Creates a user with an initial password and optional initial roles.
+        Requires admin:manage_users.
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Missing or invalid name, email, or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /api/v1/users/{id}/roles:
     parameters:
@@ -1061,6 +1125,71 @@ paths:
                 $ref: "#/components/schemas/RoleListResponse"
         "404":
           description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    patch:
+      tags: [users]
+      summary: Update a user's name, email, or active state
+      description: |
+        Partial update — omitted fields are left unchanged. Setting is_active=false
+        is guarded against self-operation and the last admin (409). Requires
+        admin:manage_users.
+      operationId: updateUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Email taken, self-operation, or last admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Invalid name or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      tags: [users]
+      summary: Delete a user
+      description: |
+        Hard-deletes a user. Rejected (409) for self-operation, the last admin,
+        or a user who created templates. Requires admin:manage_users.
+      operationId: deleteUser
+      responses:
+        "204":
+          description: User deleted
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Self-operation, last admin, or user has templates
           content:
             application/json:
               schema:
@@ -1360,12 +1489,19 @@ components:
 
     UserListResponse:
       type: object
-      required: [items]
+      required: [items, total, page, pageSize]
       properties:
         items:
           type: array
           items:
             $ref: "#/components/schemas/AdminUser"
+        total:
+          type: integer
+          description: Total number of users matching the filters (ignoring pagination).
+        page:
+          type: integer
+        pageSize:
+          type: integer
 
     RoleAssignmentRequest:
       type: object
@@ -1376,6 +1512,36 @@ components:
           items:
             type: string
             format: uuid
+
+    UserCreateRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          description: Initial password (hashed server-side via PBKDF2).
+        roleIds:
+          type: array
+          description: Optional initial roles.
+          items:
+            type: string
+            format: uuid
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        is_active:
+          type: boolean
 
     FormInstance:
       type: object

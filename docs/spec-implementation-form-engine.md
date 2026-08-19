@@ -192,6 +192,10 @@ CSRF_TOKEN_MISSING        → 403  缺少 CSRF Token
 CSRF_TOKEN_MISMATCH       → 403  CSRF Token 不匹配
 VERSION_CONFLICT          → 409  乐观锁冲突
 IDEMPOTENCY_CONFLICT      → 409  幂等键重复（不同请求体）
+EMAIL_TAKEN               → 409  邮箱已被其他用户占用
+USER_SELF_OPERATION       → 409  不能删除/停用当前登录账号
+LAST_ADMIN                → 409  不能删除/停用最后一个管理员
+USER_HAS_TEMPLATES        → 409  该用户创建过模板，请先处理归属
 TEMPLATE_LOCKED           → 409  模板已被他人签出（或已发布模板未签出即重发布）
 TEMPLATE_NOT_DRAFT        → 400  模板非草稿，无法删除
 TEMPLATE_ARCHIVED         → 400  模板已归档，只读不可编辑/签出/发布

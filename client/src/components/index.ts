@@ -20,3 +20,4 @@ export {
 export { Segmented, type SegmentedOption, type SegmentedProps } from "./Segmented/Segmented";
 export { Input, type InputProps, type InputSize } from "./Input/Input";
 export { Badge, type BadgeColor, type BadgeProps } from "./Badge/Badge";
+export { Pagination, type PaginationProps } from "./Pagination/Pagination";

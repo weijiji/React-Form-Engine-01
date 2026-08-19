@@ -615,11 +615,17 @@ export interface paths {
         };
         /**
          * List users
-         * @description Users with their assigned roles. Requires admin:manage_users.
+         * @description Offset-paginated list with optional search/role/status filters.
+         *     Requires admin:manage_users.
          */
         get: operations["listUsers"];
         put?: never;
-        post?: never;
+        /**
+         * Create a user
+         * @description Creates a user with an initial password and optional initial roles.
+         *     Requires admin:manage_users.
+         */
+        post: operations["createUser"];
         delete?: never;
         options?: never;
         head?: never;
@@ -648,6 +654,36 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User UUID. */
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a user
+         * @description Hard-deletes a user. Rejected (409) for self-operation, the last admin,
+         *     or a user who created templates. Requires admin:manage_users.
+         */
+        delete: operations["deleteUser"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a user's name, email, or active state
+         * @description Partial update — omitted fields are left unchanged. Setting is_active=false
+         *     is guarded against self-operation and the last admin (409). Requires
+         *     admin:manage_users.
+         */
+        patch: operations["updateUser"];
         trace?: never;
     };
 }
@@ -812,9 +848,28 @@ export interface components {
         };
         UserListResponse: {
             items: components["schemas"]["AdminUser"][];
+            /** @description Total number of users matching the filters (ignoring pagination). */
+            total: number;
+            page: number;
+            pageSize: number;
         };
         RoleAssignmentRequest: {
             roleIds: string[];
+        };
+        UserCreateRequest: {
+            name: string;
+            /** Format: email */
+            email: string;
+            /** @description Initial password (hashed server-side via PBKDF2). */
+            password: string;
+            /** @description Optional initial roles. */
+            roleIds?: string[];
+        };
+        UserUpdateRequest: {
+            name?: string;
+            /** Format: email */
+            email?: string;
+            is_active?: boolean;
         };
         /** @description A filled form submission at runtime. Mirrors the form_instances table. */
         FormInstance: {
@@ -2284,20 +2339,71 @@ export interface operations {
     };
     listUsers: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Case-insensitive substring match on name or email. */
+                search?: string;
+                /** @description Filter to users holding this role. */
+                roleId?: string;
+                /** @description Filter by enabled/disabled state. */
+                status?: "active" | "inactive";
+                page?: number;
+                pageSize?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description User list */
+            /** @description Paginated user list */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["UserListResponse"];
+                };
+            };
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description User created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            /** @description Email already in use */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing or invalid name, email, or password */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -2361,6 +2467,99 @@ export interface operations {
             };
             /** @description User not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User UUID. */
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Self-operation, last admin, or user has templates */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User UUID. */
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Email taken, self-operation, or last admin */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Invalid name or email */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
