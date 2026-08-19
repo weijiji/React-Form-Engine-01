@@ -280,6 +280,101 @@ describe("published template editing (model B: checkout → edit → re-publish)
   });
 });
 
+describe("PATCH /api/v1/templates/:id/meta (edit basic info)", () => {
+  it("updates name/description/category when the caller holds the lock", async () => {
+    const res = await newTemplate("待改名模板");
+    const id = res.body.id;
+    createdIds.push(id);
+
+    const patch = await request(app)
+      .patch(`/api/v1/templates/${id}/meta`)
+      .set("Cookie", authCookie(zhangsanId))
+      .send({ name: "改名后", description: "新描述", category: "财务" });
+
+    expect(patch.status).toBe(200);
+    expect(patch.body.name).toBe("改名后");
+    expect(patch.body.description).toBe("新描述");
+    expect(patch.body.category).toBe("财务");
+    expect(patch.body.version).toBe(2);
+  });
+
+  it("applies a partial update, leaving omitted fields unchanged", async () => {
+    const res = await newTemplate("部分更新模板");
+    const id = res.body.id;
+    createdIds.push(id);
+
+    const patch = await request(app)
+      .patch(`/api/v1/templates/${id}/meta`)
+      .set("Cookie", authCookie(zhangsanId))
+      .send({ category: "IT" });
+
+    expect(patch.status).toBe(200);
+    expect(patch.body.name).toBe("部分更新模板");
+    expect(patch.body.category).toBe("IT");
+  });
+
+  it("rejects a blank name (422)", async () => {
+    const res = await newTemplate("空名模板");
+    const id = res.body.id;
+    createdIds.push(id);
+
+    const patch = await request(app)
+      .patch(`/api/v1/templates/${id}/meta`)
+      .set("Cookie", authCookie(zhangsanId))
+      .send({ name: "   " });
+
+    expect(patch.status).toBe(422);
+    expect(patch.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects a meta edit by a non-holder (409)", async () => {
+    const res = await newTemplate("他人改meta");
+    const id = res.body.id;
+    createdIds.push(id);
+
+    const patch = await request(app)
+      .patch(`/api/v1/templates/${id}/meta`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ name: "越权改名" });
+
+    expect(patch.status).toBe(409);
+    expect(patch.body.error.code).toBe("TEMPLATE_LOCKED");
+  });
+
+  it("rejects a meta edit when not checked out (409)", async () => {
+    const res = await newTemplate("未签出改meta");
+    const id = res.body.id;
+    createdIds.push(id);
+
+    await request(app)
+      .post(`/api/v1/templates/${id}/checkin`)
+      .set("Cookie", authCookie(zhangsanId));
+
+    const patch = await request(app)
+      .patch(`/api/v1/templates/${id}/meta`)
+      .set("Cookie", authCookie(zhangsanId))
+      .send({ name: "未签出改名" });
+
+    expect(patch.status).toBe(409);
+    expect(patch.body.error.code).toBe("TEMPLATE_LOCKED");
+  });
+
+  it("rejects a meta edit on an archived template (400)", async () => {
+    const res = await newTemplate("归档改meta");
+    const id = res.body.id;
+    createdIds.push(id);
+    await getDb()("form_templates").where({ id }).update({ status: "archived" });
+
+    const patch = await request(app)
+      .patch(`/api/v1/templates/${id}/meta`)
+      .set("Cookie", authCookie(zhangsanId))
+      .send({ name: "归档改名" });
+
+    expect(patch.status).toBe(400);
+    expect(patch.body.error.code).toBe("TEMPLATE_ARCHIVED");
+  });
+});
+
 describe("force-unlock", () => {
   it("clears the lock regardless of holder", async () => {
     const res = await newTemplate("待解锁模板");

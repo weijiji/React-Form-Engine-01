@@ -27,6 +27,12 @@
   font-weight: 650;
 }
 
+.editor-top .et-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .editor-top .et-sub {
   font-size: 12px;
   color: var(--text-3);
@@ -953,4 +959,74 @@ textarea.mono {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   cursor: pointer;
+}
+
+/* ── 基本信息编辑弹窗（BUG-04）─────────────────────────────────────────── */
+
+.meta-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 22, 28, 0.45);
+}
+
+.meta-dialog {
+  width: 420px;
+  max-width: calc(100vw - 40px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.meta-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.meta-head h3 {
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0;
+}
+
+.meta-body {
+  padding: 18px;
+}
+
+.meta-body .label {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.meta-body .textarea,
+.meta-body .select {
+  height: 38px;
+}
+
+.meta-body .textarea {
+  height: auto;
+  min-height: 72px;
+}
+
+.meta-error {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--danger);
+}
+
+.meta-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
 }

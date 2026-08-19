@@ -2,12 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient, ApiError } from "../../config/api";
 import { Button, Input } from "../../components";
+import { CATEGORIES } from "../../designer/categories";
 import { createEmptySchema } from "../../designer/schemaModel";
 import type { FormTemplate } from "../../designer/types";
 import "./templates.css";
-
-/** Category choices mirror the prototype (designer-create-blank.html). */
-const CATEGORIES = ["通用", "人力资源", "行政", "财务", "采购", "IT"];
 
 /**
  * Blank-template creation form (prototype designer-create-blank.html). The

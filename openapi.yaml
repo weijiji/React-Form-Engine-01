@@ -226,6 +226,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /api/v1/templates/{id}/meta:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    patch:
+      tags: [templates]
+      summary: Edit template metadata
+      description: |
+        Updates the template's name / description / category. Requires the caller
+        to be the current lock holder (checked out); otherwise 409 TEMPLATE_LOCKED.
+        Archived templates are read-only (400 TEMPLATE_ARCHIVED). The update bumps
+        the optimistic-lock `version`.
+      operationId: updateTemplateMeta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTemplateMetaRequest"
+      responses:
+        "200":
+          description: Metadata updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormTemplate"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "400":
+          description: Template is archived (TEMPLATE_ARCHIVED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Template locked by someone else or not checked out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Invalid `name` (blank when provided)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /api/v1/templates/{id}/checkout:
     parameters:
       - $ref: "#/components/parameters/TemplateId"
@@ -1113,6 +1163,18 @@ components:
         approval_chain:
           type: [object, "null"]
           description: Approval chain (JSONB). Replaces the stored chain when present.
+
+    UpdateTemplateMetaRequest:
+      type: object
+      description: Partial update of template metadata (name/description/category). Omitted fields are left unchanged.
+      properties:
+        name:
+          type: string
+          description: Display name (must be non-empty when provided).
+        description:
+          type: [string, "null"]
+        category:
+          type: [string, "null"]
 
     TemplateListResponse:
       type: object

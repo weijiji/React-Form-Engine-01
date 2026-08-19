@@ -287,6 +287,55 @@ router.put(
   }),
 );
 
+// ── PATCH /api/v1/templates/:id/meta — edit name/description/category ───────
+// Basic-info edit (BUG-04). Like the schema save, requires the caller to hold
+// the checkout lock — meta is part of the template's editable surface, so one
+// person edits at a time. Archived stays read-only. The UPDATE bumps the
+// optimistic-lock version (ADR-0003); omitted fields are left unchanged.
+router.patch(
+  "/:id/meta",
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = req.auth!;
+    const template = await findTemplate(req.params.id);
+
+    if (template.status === "archived") {
+      throw new AppError("TEMPLATE_ARCHIVED", "已归档模板不可编辑", 400);
+    }
+
+    if (template.locked_by !== user.id) {
+      if (template.locked_by == null) {
+        throw new AppError("TEMPLATE_LOCKED", "模板未签出，请先签出后编辑", 409);
+      }
+      throw new AppError(
+        "TEMPLATE_LOCKED",
+        `模板已被 ${await lockerName(template.locked_by)} 签出`,
+        409,
+      );
+    }
+
+    const { name, description, category } = req.body ?? {};
+    if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
+      throw new AppError("VALIDATION_ERROR", "模板名称不能为空", 422);
+    }
+
+    const db = getDb();
+    const update: Record<string, unknown> = {
+      updated_at: db.fn.now(),
+      version: db.raw("version + 1"),
+    };
+    if (name !== undefined) update.name = name.trim();
+    if (description !== undefined) update.description = description ?? null;
+    if (category !== undefined) update.category = category ?? null;
+
+    const [updated] = await db("form_templates")
+      .where({ id: template.id })
+      .update(update)
+      .returning("*");
+
+    res.json(await withLockerName(toTemplate(updated)));
+  }),
+);
+
 // ── POST /api/v1/templates/:id/checkout — acquire lock ──────────────────────
 router.post(
   "/:id/checkout",

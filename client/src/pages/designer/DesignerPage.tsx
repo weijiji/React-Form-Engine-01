@@ -10,7 +10,7 @@ import type {
 } from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
 import { useAuth } from "../../auth/AuthContext";
-import { Button, Segmented } from "../../components";
+import { Button, IconButton, Segmented } from "../../components";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
 import {
@@ -19,8 +19,13 @@ import {
   type PanelSelection,
 } from "../../designer/PropertyPanel";
 import {
+  TemplateMetaDialog,
+  type TemplateMeta,
+} from "../../designer/TemplateMetaDialog";
+import {
   BackIcon,
   CloseIcon,
+  EditIcon,
   LockIcon,
   SaveIcon,
   SendIcon,
@@ -109,6 +114,9 @@ export const DesignerPage: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [metaOpen, setMetaOpen] = useState(false);
+  const [metaSaving, setMetaSaving] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -424,6 +432,33 @@ export const DesignerPage: React.FC = () => {
     );
   };
 
+  // 编辑基本信息（BUG-04）：改模板名 / 描述 / 分类。走 PATCH …/meta，同样要求
+  // 持锁；成功后用返回的 FormTemplate 覆盖本地 state，顶栏名称即时刷新。
+  const handleSaveMeta = (meta: TemplateMeta) => {
+    if (!id) return;
+    setMetaSaving(true);
+    setMetaError(null);
+    apiClient<FormTemplate>(`/templates/${id}/meta`, {
+      method: "PATCH",
+      body: JSON.stringify(meta),
+    })
+      .then((updated) => {
+        setTemplate(updated);
+        setMetaOpen(false);
+        setNotice("基本信息已更新");
+      })
+      .catch((err: unknown) => {
+        setMetaError(
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "保存失败",
+        );
+      })
+      .finally(() => setMetaSaving(false));
+  };
+
   if (loading) {
     return <p className="designer-loading">加载中…</p>;
   }
@@ -451,7 +486,21 @@ export const DesignerPage: React.FC = () => {
         />
 
         <div>
-          <div className="et-name">{template.name}</div>
+          <div className="et-name-row">
+            <div className="et-name">{template.name}</div>
+            {isHolder && (
+              <IconButton
+                size="xs"
+                label="编辑基本信息"
+                onClick={() => {
+                  setMetaError(null);
+                  setMetaOpen(true);
+                }}
+              >
+                <EditIcon />
+              </IconButton>
+            )}
+          </div>
           <div className="et-sub">
             创建于 {formatDate(template.created_at)} · v{template.version}
             {isHolder ? "（编辑中）" : ""}
@@ -576,6 +625,19 @@ export const DesignerPage: React.FC = () => {
           onChangeChainNode={handleChangeChainNode}
         />
       </div>
+
+      <TemplateMetaDialog
+        open={metaOpen}
+        initial={{
+          name: template.name,
+          description: template.description ?? null,
+          category: template.category ?? null,
+        }}
+        busy={metaSaving}
+        error={metaError}
+        onClose={() => setMetaOpen(false)}
+        onSubmit={handleSaveMeta}
+      />
     </div>
   );
 };

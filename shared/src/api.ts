@@ -106,6 +106,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/templates/{id}/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit template metadata
+         * @description Updates the template's name / description / category. Requires the caller
+         *     to be the current lock holder (checked out); otherwise 409 TEMPLATE_LOCKED.
+         *     Archived templates are read-only (400 TEMPLATE_ARCHIVED). The update bumps
+         *     the optimistic-lock `version`.
+         */
+        patch: operations["updateTemplateMeta"];
+        trace?: never;
+    };
     "/api/v1/templates/{id}/checkout": {
         parameters: {
             query?: never;
@@ -696,6 +722,13 @@ export interface components {
             /** @description Approval chain (JSONB). Replaces the stored chain when present. */
             approval_chain?: Record<string, never> | null;
         };
+        /** @description Partial update of template metadata (name/description/category). Omitted fields are left unchanged. */
+        UpdateTemplateMetaRequest: {
+            /** @description Display name (must be non-empty when provided). */
+            name?: string;
+            description?: string | null;
+            category?: string | null;
+        };
         TemplateListResponse: {
             items: components["schemas"]["FormTemplate"][];
             /** @description Total number of templates matching the filters (ignoring pagination). */
@@ -1236,6 +1269,69 @@ export interface operations {
             };
             /** @description Template locked by someone else or not checked out */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateTemplateMeta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Form template UUID. */
+                id: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateMetaRequest"];
+            };
+        };
+        responses: {
+            /** @description Metadata updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormTemplate"];
+                };
+            };
+            /** @description Template is archived (TEMPLATE_ARCHIVED) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Template locked by someone else or not checked out */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Invalid `name` (blank when provided) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
