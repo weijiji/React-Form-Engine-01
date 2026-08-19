@@ -44,6 +44,7 @@ import {
   updateSection,
   type DesignerSchema,
 } from "../../designer/schemaModel";
+import { resolveStatus } from "../../designer/statusModel";
 import type { FormTemplate } from "../../designer/types";
 import "./designer.css";
 
@@ -140,13 +141,7 @@ export const DesignerPage: React.FC = () => {
   const isHolderRef = useRef(isHolder);
   isHolderRef.current = isHolder;
 
-  const statusText = useMemo(() => {
-    if (isHolder) return "已签出 · 正在编辑";
-    if (template?.locked_by) return `已锁定 · ${template.locked_by_name ?? "他人"}`;
-    if (template?.status === "published") return "已发布";
-    if (template?.status === "archived") return "已归档 · 只读";
-    return "未签出";
-  }, [template, isHolder]);
+  const status = useMemo(() => resolveStatus(template, isHolder), [template, isHolder]);
 
   // Model B: a draft publishes without a lock; a published template only
   // re-publishes when the caller holds the checkout lock.
@@ -464,9 +459,9 @@ export const DesignerPage: React.FC = () => {
           </div>
         </div>
 
-        <span className="et-status">
-          <span className={isHolder ? "et-dot" : "et-dot gray"} />
-          {statusText}
+        <span className={`et-status is-${status.kind}`}>
+          <span className="et-dot" />
+          {status.text}
         </span>
 
         <div className="et-actions">
