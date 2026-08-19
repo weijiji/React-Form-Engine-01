@@ -103,9 +103,10 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
   });
 
   it("rejects creating an instance for an unpublished template", async () => {
+    // 创建需 template:create（ADR-0012），用管理员（admin 持有全量权限码）造一个草稿模板。
     const tpl = await request(app)
       .post("/api/v1/templates")
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(adminId))
       .send({ name: "未发布模板" });
     createdTemplateIds.push(tpl.body.id);
 

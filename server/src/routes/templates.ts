@@ -1,14 +1,15 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { getDb } from "../db/connection";
-import { authenticate, requirePermission } from "../middleware/auth";
+import { authenticate, requirePermission, type AuthUser } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
 
 const router = Router();
 
 // Identity comes from the JWT cookie (work order 17): every template route
-// requires a logged-in user. `DELETE /:id` additionally gates on the
-// `template:delete` permission code (work order 20); the rest rely on the
-// shared checkout-lock semantics.
+// requires a logged-in user. Read/write access is layered on top (ADR-0012,
+// BUG-06): ownership (`created_by`) is the root — `assertReadable`/`assertWritable`
+// enforce it per route, and each mutating route additionally gates on its own
+// `template:*` permission code.
 router.use(authenticate);
 
 /**
@@ -22,9 +23,9 @@ router.use(authenticate);
  * `archived` is read-only everywhere (400 TEMPLATE_ARCHIVED). `publish` is a
  * single atomic UPDATE: `draft → published` (no lock needed) or `published →
  * published` (re-publish, caller must hold the lock); both clear the lock.
- * `force-unlock` is documented as admin-only; role enforcement lands with auth
- * (issue 09), so for now it clears the lock unconditionally — consistent with
- * the MVP's permissive CSRF stance.
+ * `force-unlock` is the one ownership exception (ADR-0012): gated only on
+ * `template:force_unlock` (管理员/运维), it clears the lock on any template the
+ * caller can see — without granting edit/publish/delete rights on it.
  */
 
 interface TemplateRow {
@@ -40,6 +41,7 @@ interface TemplateRow {
   locked_by_name: string | null;
   locked_at: Date | null;
   created_by: string;
+  created_by_name: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -74,15 +76,28 @@ function toTemplate(row: Record<string, unknown>): TemplateRow {
     locked_by_name: null,
     locked_at: row.locked_at ? (row.locked_at as Date) : null,
     created_by: row.created_by as string,
+    created_by_name: null,
     created_at: row.created_at as Date,
     updated_at: row.updated_at as Date,
   };
 }
 
-/** Attach the lock holder's display name for the designer's checkout badge. */
-async function withLockerName(template: TemplateRow): Promise<TemplateRow> {
-  if (!template.locked_by) return template;
-  return { ...template, locked_by_name: await lockerName(template.locked_by) };
+async function userName(userId: string): Promise<string> {
+  const user = await getDb()("users").where({ id: userId }).first();
+  return user?.name ?? "其他用户";
+}
+
+/**
+ * Resolve the display names for the lock holder and creator — the lock holder
+ * feeds the designer's checkout badge; the creator feeds the admin/ops read-only
+ * full view (ADR-0012).
+ */
+async function withDisplayNames(template: TemplateRow): Promise<TemplateRow> {
+  const [locker, creator] = await Promise.all([
+    template.locked_by ? userName(template.locked_by) : null,
+    userName(template.created_by),
+  ]);
+  return { ...template, locked_by_name: locker, created_by_name: creator };
 }
 
 async function findTemplate(id: string): Promise<TemplateRow> {
@@ -93,9 +108,24 @@ async function findTemplate(id: string): Promise<TemplateRow> {
   return toTemplate(row);
 }
 
-async function lockerName(userId: string): Promise<string> {
-  const user = await getDb()("users").where({ id: userId }).first();
-  return user?.name ?? "其他用户";
+// ── 归属校验（ADR-0012，BUG-06）─────────────────────────────────────────────
+// created_by 是模板读写权限的根。读：创建者或 template:view_all 持有者可读；
+// 写：仅创建者可写。其余用户一律按「不存在」处理（404，隐藏存在性防枚举）；
+// view_all 持有者能看到却不可写时返回 403（只读，非越权隐藏）。
+
+const VIEW_ALL = "template:view_all";
+
+function assertReadable(template: TemplateRow, user: AuthUser): void {
+  if (template.created_by === user.id || user.permissions.includes(VIEW_ALL)) return;
+  throw new AppError("NOT_FOUND", "模板不存在", 404);
+}
+
+function assertWritable(template: TemplateRow, user: AuthUser): void {
+  if (template.created_by === user.id) return;
+  if (user.permissions.includes(VIEW_ALL)) {
+    throw new AppError("FORBIDDEN", "该模板为只读，仅创建者可编辑", 403);
+  }
+  throw new AppError("NOT_FOUND", "模板不存在", 404);
 }
 
 function clampInt(
@@ -112,6 +142,7 @@ function clampInt(
 // ── POST /api/v1/templates — create + auto-checkout ─────────────────────────
 router.post(
   "/",
+  requirePermission("template:create"),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const name = req.body?.name;
@@ -135,7 +166,7 @@ router.post(
       })
       .returning("*");
 
-    res.status(201).json(await withLockerName(toTemplate(created)));
+    res.status(201).json(await withDisplayNames(toTemplate(created)));
   }),
 );
 
@@ -143,13 +174,24 @@ router.post(
 router.get(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
+    const user = req.auth!;
     const db = getDb();
-    const { category, status, search } = req.query as Record<string, unknown>;
+    const { category, status, search, scope } = req.query as Record<string, unknown>;
+
+    // scope=all 需 template:view_all（ADR-0012）；默认 mine 按创建者隔离。
+    if (scope === "all" && !user.permissions.includes(VIEW_ALL)) {
+      throw new AppError("FORBIDDEN", "无权限查看全部模板", 403);
+    }
 
     const page = clampInt(req.query.page, 1, 1, Number.MAX_SAFE_INTEGER);
     const pageSize = clampInt(req.query.pageSize, 20, 1, 100);
 
     const base = db("form_templates");
+    if (scope === "all") {
+      // 全量视图（管理员/运维）：不按创建者过滤。
+    } else {
+      base.where({ created_by: user.id });
+    }
     if (typeof category === "string" && category !== "") {
       base.where({ category });
     }
@@ -170,16 +212,23 @@ router.get(
       .offset((page - 1) * pageSize);
 
     const items = rows.map(toTemplate);
-    const lockedIds = [...new Set(items.map((t) => t.locked_by).filter(Boolean))] as string[];
-    const holders = lockedIds.length
-      ? await db("users").whereIn("id", lockedIds).select("id", "name")
+    const nameIds = [
+      ...new Set(
+        [...items.map((t) => t.locked_by), ...items.map((t) => t.created_by)].filter(
+          Boolean,
+        ),
+      ),
+    ] as string[];
+    const users = nameIds.length
+      ? await db("users").whereIn("id", nameIds).select("id", "name")
       : [];
-    const nameById = new Map(holders.map((u) => [u.id, u.name]));
+    const nameById = new Map(users.map((u) => [u.id, u.name]));
 
     res.json({
       items: items.map((t) => ({
         ...t,
         locked_by_name: t.locked_by ? nameById.get(t.locked_by) ?? null : null,
+        created_by_name: nameById.get(t.created_by) ?? null,
       })),
       total,
       page,
@@ -192,7 +241,9 @@ router.get(
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
-    res.json(await withLockerName(await findTemplate(req.params.id)));
+    const template = await findTemplate(req.params.id);
+    assertReadable(template, req.auth!);
+    res.json(await withDisplayNames(template));
   }),
 );
 
@@ -208,6 +259,7 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
+    assertWritable(template, user);
 
     if (template.status !== "draft") {
       throw new AppError("TEMPLATE_NOT_DRAFT", "仅草稿模板可删除", 400);
@@ -219,7 +271,7 @@ router.delete(
       }
       throw new AppError(
         "TEMPLATE_LOCKED",
-        `模板已被 ${await lockerName(template.locked_by)} 签出，仅签出人可删除`,
+        `模板已被 ${await userName(template.locked_by)} 签出，仅签出人可删除`,
         409,
       );
     }
@@ -243,9 +295,11 @@ router.delete(
 // ── PUT /api/v1/templates/:id/schema — save schema (lock holder only) ───────
 router.put(
   "/:id/schema",
+  requirePermission("template:edit"),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
+    assertWritable(template, user);
 
     // Archived templates are read-only — reject even if a stale lock lingers.
     if (template.status === "archived") {
@@ -258,7 +312,7 @@ router.put(
       }
       throw new AppError(
         "TEMPLATE_LOCKED",
-        `模板已被 ${await lockerName(template.locked_by)} 签出`,
+        `模板已被 ${await userName(template.locked_by)} 签出`,
         409,
       );
     }
@@ -283,7 +337,7 @@ router.put(
       .update(update)
       .returning("*");
 
-    res.json(await withLockerName(toTemplate(updated)));
+    res.json(await withDisplayNames(toTemplate(updated)));
   }),
 );
 
@@ -294,9 +348,11 @@ router.put(
 // optimistic-lock version (ADR-0003); omitted fields are left unchanged.
 router.patch(
   "/:id/meta",
+  requirePermission("template:edit"),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
+    assertWritable(template, user);
 
     if (template.status === "archived") {
       throw new AppError("TEMPLATE_ARCHIVED", "已归档模板不可编辑", 400);
@@ -308,7 +364,7 @@ router.patch(
       }
       throw new AppError(
         "TEMPLATE_LOCKED",
-        `模板已被 ${await lockerName(template.locked_by)} 签出`,
+        `模板已被 ${await userName(template.locked_by)} 签出`,
         409,
       );
     }
@@ -332,16 +388,18 @@ router.patch(
       .update(update)
       .returning("*");
 
-    res.json(await withLockerName(toTemplate(updated)));
+    res.json(await withDisplayNames(toTemplate(updated)));
   }),
 );
 
 // ── POST /api/v1/templates/:id/checkout — acquire lock ──────────────────────
 router.post(
   "/:id/checkout",
+  requirePermission("template:edit"),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
+    assertWritable(template, user);
 
     // Archived templates are read-only and can never be checked out.
     if (template.status === "archived") {
@@ -349,13 +407,13 @@ router.post(
     }
 
     if (template.locked_by === user.id) {
-      res.json(await withLockerName(template));
+      res.json(await withDisplayNames(template));
       return;
     }
     if (template.locked_by != null) {
       throw new AppError(
         "TEMPLATE_LOCKED",
-        `模板已被 ${await lockerName(template.locked_by)} 签出`,
+        `模板已被 ${await userName(template.locked_by)} 签出`,
         409,
       );
     }
@@ -366,16 +424,18 @@ router.post(
       .update({ locked_by: user.id, locked_at: db.fn.now(), updated_at: db.fn.now() })
       .returning("*");
 
-    res.json(await withLockerName(toTemplate(updated)));
+    res.json(await withDisplayNames(toTemplate(updated)));
   }),
 );
 
 // ── POST /api/v1/templates/:id/checkin — release lock ───────────────────────
 router.post(
   "/:id/checkin",
+  requirePermission("template:edit"),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
+    assertWritable(template, user);
 
     if (template.locked_by == null) {
       res.json(template);
@@ -384,7 +444,7 @@ router.post(
     if (template.locked_by !== user.id) {
       throw new AppError(
         "TEMPLATE_LOCKED",
-        `仅签出人（${await lockerName(template.locked_by)}）可签入`,
+        `仅签出人（${await userName(template.locked_by)}）可签入`,
         409,
       );
     }
@@ -395,7 +455,7 @@ router.post(
       .update({ locked_by: null, locked_at: null, updated_at: db.fn.now() })
       .returning("*");
 
-    res.json(await withLockerName(toTemplate(updated)));
+    res.json(await withDisplayNames(toTemplate(updated)));
   }),
 );
 
@@ -407,9 +467,11 @@ router.post(
 // that clears the lock and bumps the optimistic-lock version (ADR-0003).
 router.post(
   "/:id/publish",
+  requirePermission("template:publish"),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.auth!;
     const template = await findTemplate(req.params.id);
+    assertWritable(template, user);
 
     if (template.status === "archived") {
       throw new AppError("TEMPLATE_ARCHIVED", "已归档模板不可发布", 400);
@@ -447,13 +509,14 @@ router.post(
       throw new AppError("TEMPLATE_LOCKED", "模板状态已变化，请刷新后重试", 409);
     }
 
-    res.json(await withLockerName(toTemplate(updated)));
+    res.json(await withDisplayNames(toTemplate(updated)));
   }),
 );
 
 // ── POST /api/v1/templates/:id/force-unlock — admin override ────────────────
 router.post(
   "/:id/force-unlock",
+  requirePermission("template:force_unlock"),
   asyncHandler(async (req: Request, res: Response) => {
     const template = await findTemplate(req.params.id);
 
@@ -463,7 +526,7 @@ router.post(
       .update({ locked_by: null, locked_at: null, updated_at: db.fn.now() })
       .returning("*");
 
-    res.json(await withLockerName(toTemplate(updated)));
+    res.json(await withDisplayNames(toTemplate(updated)));
   }),
 );
 

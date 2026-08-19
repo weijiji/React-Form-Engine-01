@@ -59,7 +59,7 @@ interface TestUser {
 // The five seed roles' permission-code sets (server/src/db/seeds/001_seed_data.ts).
 const ALL_PERMS = [
   "template:create", "template:edit", "template:delete", "template:publish",
-  "template:export", "template:import", "template:force_unlock",
+  "template:export", "template:import", "template:force_unlock", "template:view_all",
   "form:fill", "form:submit", "form:withdraw",
   "approval:view_pending", "approval:approve", "approval:reject",
   "approval:return", "approval:transfer",
@@ -75,7 +75,7 @@ const APPROVER_PERMS = [
   "approval:view_pending", "approval:approve", "approval:reject",
   "approval:return", "approval:transfer",
 ];
-const OPS_PERMS = ["template:import", "template:export", "data:view", "data:view_stats"];
+const OPS_PERMS = ["template:import", "template:export", "template:view_all", "data:view", "data:view_stats"];
 
 const DESIGNER: TestUser = {
   name: "设计员",
@@ -222,13 +222,12 @@ describe("permission-driven routing (ADR-0010)", () => {
     expect(await screen.findByRole("button", { name: "登录" })).toBeInTheDocument();
   });
 
-  // Landing = first unlocked nav item in APP_NAV order. 设计者 holds
-  // template:publish (→ /admin/templates) and 运维 holds data:view (→
-  // /admin/data), so both land on the 系统管理 group before their own domain —
-  // the expected consequence of pure page-level gating with the seed codes.
+  // Landing = first unlocked nav item in APP_NAV order. 设计者不再持
+  // template:view_all（→「我的模板」），运维持 data:view（→ /admin/data，在
+  // 系统管理组里早于其 view_all 的「模板管理」）——纯页面级门禁的预期结果。
   it.each<[TestUser, string, string]>([
     [ADMIN, "/admin/users", "用户管理"],
-    [DESIGNER, "/admin/templates", "模板管理"],
+    [DESIGNER, "/designer/templates", "我的模板"],
     [FILLER, "/filler/forms", "表单中心"],
     [APPROVER, "/approver/pending", "待审批"],
     [OPS, "/admin/data", "数据管理"],
@@ -269,16 +268,16 @@ describe("permission-driven routing (ADR-0010)", () => {
 
   it("designer sees exactly the nav items their codes unlock", async () => {
     renderAs("/designer/templates", DESIGNER);
-    // 模板/通用 之外，设计者还持有 template:publish（→模板管理）与
-    // template:import（→导入配置）；页面级门禁下这是预期结果。
+    // 模板/通用 之外，设计者还持 template:import（→导入配置），但不持
+    // template:view_all（→模板管理/模板查看），故看不到全量只读视图。
     await screen.findByRole("link", { name: /我的模板/ });
     for (const label of [
-      "我的模板", "创建模板", "草稿模板", "模板管理", "导入配置", "通知中心",
+      "我的模板", "创建模板", "草稿模板", "导入配置", "通知中心",
     ]) {
       expect(screen.getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
     }
     for (const label of [
-      "用户管理", "角色管理", "数据管理", "统计看板",
+      "用户管理", "角色管理", "数据管理", "统计看板", "模板管理",
       "表单中心", "我的草稿", "我的提交",
       "待审批", "已审批", "迁移记录", "模板查看",
     ]) {

@@ -34,6 +34,9 @@ export interface paths {
         /**
          * List templates
          * @description Offset-paginated list with optional category/status/search filters.
+         *     `scope=mine` (default) returns only templates the caller created;
+         *     `scope=all` returns every template and requires the `template:view_all`
+         *     permission (403 FORBIDDEN otherwise).
          */
         get: operations["listTemplates"];
         put?: never;
@@ -592,7 +595,7 @@ export interface paths {
         };
         /**
          * List permission codes
-         * @description The 20 predefined permission codes, grouped by category.
+         * @description The 21 predefined permission codes, grouped by category.
          */
         get: operations["listPermissions"];
         put?: never;
@@ -697,6 +700,8 @@ export interface components {
             locked_by_name?: string | null;
             /** Format: uuid */
             created_by: string;
+            /** @description Display name of the template's creator (resolved for admin/ops read-only full views). */
+            created_by_name?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1078,6 +1083,8 @@ export interface operations {
     listTemplates: {
         parameters: {
             query?: {
+                /** @description Visibility scope (default `mine`). */
+                scope?: "mine" | "all";
                 category?: string;
                 status?: "draft" | "published" | "archived";
                 /** @description Case-insensitive substring match on template name. */
@@ -1098,6 +1105,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemplateListResponse"];
+                };
+            };
+            /** @description Caller requested `scope=all` without the `template:view_all` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };

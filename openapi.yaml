@@ -87,9 +87,20 @@ paths:
     get:
       tags: [templates]
       summary: List templates
-      description: Offset-paginated list with optional category/status/search filters.
+      description: |
+        Offset-paginated list with optional category/status/search filters.
+        `scope=mine` (default) returns only templates the caller created;
+        `scope=all` returns every template and requires the `template:view_all`
+        permission (403 FORBIDDEN otherwise).
       operationId: listTemplates
       parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [mine, all]
+            default: mine
+          description: Visibility scope (default `mine`).
         - name: category
           in: query
           schema: { type: string }
@@ -122,6 +133,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TemplateListResponse"
+        "403":
+          description: Caller requested `scope=all` without the `template:view_all` permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /api/v1/templates/{id}:
     parameters:
@@ -980,7 +997,7 @@ paths:
     get:
       tags: [permissions]
       summary: List permission codes
-      description: The 20 predefined permission codes, grouped by category.
+      description: The 21 predefined permission codes, grouped by category.
       operationId: listPermissions
       responses:
         "200":
@@ -1126,6 +1143,9 @@ components:
         created_by:
           type: string
           format: uuid
+        created_by_name:
+          type: [string, "null"]
+          description: Display name of the template's creator (resolved for admin/ops read-only full views).
         created_at:
           type: string
           format: date-time
