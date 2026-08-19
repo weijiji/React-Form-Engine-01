@@ -305,6 +305,18 @@ textarea.mono {
   opacity: 0.6;
 }
 
+/* 只读模式（未签出 / 他人锁定 / 已归档）：组件面板条目禁用拖拽与点击，
+   观感降饱和、去掉抓取光标与 hover 高亮。 */
+.comp-item.readonly {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.comp-item.readonly:hover {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
 /* ── 中：实时预览画布 ──────────────────────────────────────────────────── */
 
 .canvas {

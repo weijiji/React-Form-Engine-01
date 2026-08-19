@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
   ApprovalChain,
@@ -133,6 +133,13 @@ export const DesignerPage: React.FC = () => {
     [template, me],
   );
 
+  // 未持锁即只读（未签出 / 他人锁定 / 已归档）。下传给三大编辑区，让 UI 按只读
+  // 渲染；`isHolderRef` 供 schema 变更函数做兜底守卫，避免给每个 useCallback
+  // 加依赖（这些回调只调用稳定的 setState）。
+  const readonly = !isHolder;
+  const isHolderRef = useRef(isHolder);
+  isHolderRef.current = isHolder;
+
   const statusText = useMemo(() => {
     if (isHolder) return "已签出 · 正在编辑";
     if (template?.locked_by) return `已锁定 · ${template.locked_by_name ?? "他人"}`;
@@ -161,6 +168,7 @@ export const DesignerPage: React.FC = () => {
 
   const handleAddField = useCallback(
     (type: FieldType) => {
+      if (!isHolderRef.current) return;
       if (type === "section") {
         handleAddSection();
         return;
@@ -179,6 +187,7 @@ export const DesignerPage: React.FC = () => {
   );
 
   const handleAddFieldToSection = useCallback((sectionId: string) => {
+    if (!isHolderRef.current) return;
     const field = createField("text");
     setSchema((prev) => addField(prev, sectionId, field));
     setSelectedId(field.id);
@@ -186,6 +195,7 @@ export const DesignerPage: React.FC = () => {
   }, []);
 
   const handleAddSection = useCallback(() => {
+    if (!isHolderRef.current) return;
     const section = createSection();
     setSchema((prev) => addSection(prev, section));
     setSelectedId(section.id);
@@ -194,6 +204,7 @@ export const DesignerPage: React.FC = () => {
 
   const handleMoveField = useCallback(
     (sectionId: string, fieldId: string, delta: -1 | 1) => {
+      if (!isHolderRef.current) return;
       setSchema((prev) => moveField(prev, sectionId, fieldId, delta));
       setDirty(true);
     },
@@ -202,6 +213,7 @@ export const DesignerPage: React.FC = () => {
 
   const handleReorderField = useCallback(
     (sectionId: string, fieldId: string, targetIndex: number) => {
+      if (!isHolderRef.current) return;
       setSchema((prev) => reorderField(prev, sectionId, fieldId, targetIndex));
       setDirty(true);
     },
@@ -209,17 +221,20 @@ export const DesignerPage: React.FC = () => {
   );
 
   const handleRemoveField = useCallback((sectionId: string, fieldId: string) => {
+    if (!isHolderRef.current) return;
     setSchema((prev) => removeField(prev, sectionId, fieldId));
     setSelectedId((cur) => (cur === fieldId ? null : cur));
     setDirty(true);
   }, []);
 
   const handleDuplicateField = useCallback((sectionId: string, fieldId: string) => {
+    if (!isHolderRef.current) return;
     setSchema((prev) => duplicateField(prev, sectionId, fieldId));
     setDirty(true);
   }, []);
 
   const handleRemoveSection = useCallback((sectionId: string) => {
+    if (!isHolderRef.current) return;
     setSchema((prev) => removeSection(prev, sectionId));
     setSelectedId((cur) => (cur === sectionId ? null : cur));
     setDirty(true);
@@ -227,6 +242,7 @@ export const DesignerPage: React.FC = () => {
 
   const handleChangeField = useCallback(
     (sectionId: string, fieldId: string, patch: Partial<FieldSchema>) => {
+      if (!isHolderRef.current) return;
       setSchema((prev) => updateField(prev, sectionId, fieldId, patch));
       setDirty(true);
     },
@@ -235,6 +251,7 @@ export const DesignerPage: React.FC = () => {
 
   const handleChangeSection = useCallback(
     (sectionId: string, patch: Partial<SectionSchema>) => {
+      if (!isHolderRef.current) return;
       setSchema((prev) => updateSection(prev, sectionId, patch));
       setDirty(true);
     },
@@ -244,6 +261,7 @@ export const DesignerPage: React.FC = () => {
   // ── chain mutations ──
 
   const handleAddChainNode = useCallback(() => {
+    if (!isHolderRef.current) return;
     setChain((prev) => ({
       nodes: [
         ...prev.nodes,
@@ -259,6 +277,7 @@ export const DesignerPage: React.FC = () => {
   }, []);
 
   const handleRemoveChainNode = useCallback((id: string) => {
+    if (!isHolderRef.current) return;
     setChain((prev) => ({
       nodes: prev.nodes
         .filter((n) => n.id !== id)
@@ -268,6 +287,7 @@ export const DesignerPage: React.FC = () => {
   }, []);
 
   const handleMoveChainNode = useCallback((id: string, delta: -1 | 1) => {
+    if (!isHolderRef.current) return;
     setChain((prev) => {
       const nodes = [...prev.nodes];
       const i = nodes.findIndex((n) => n.id === id);
@@ -281,6 +301,7 @@ export const DesignerPage: React.FC = () => {
 
   const handleChangeChainNode = useCallback(
     (id: string, patch: Partial<ApprovalNode>) => {
+      if (!isHolderRef.current) return;
       setChain((prev) => ({
         nodes: prev.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
       }));
@@ -526,12 +547,13 @@ export const DesignerPage: React.FC = () => {
       )}
 
       <div className="editor-body">
-        <ComponentPalette onAddField={handleAddField} />
+        <ComponentPalette onAddField={handleAddField} readonly={readonly} />
         <DesignCanvas
           schema={schema}
           templateName={template.name}
           selectedId={selectedId}
           mode={mode}
+          readonly={readonly}
           onSelect={setSelectedId}
           onDropField={handleAddField}
           onRemoveField={handleRemoveField}
@@ -544,6 +566,7 @@ export const DesignerPage: React.FC = () => {
           selectedId={selectedId}
           selected={selected}
           chain={chain}
+          readonly={readonly}
           onChangeField={handleChangeField}
           onChangeSection={handleChangeSection}
           onSelect={setSelectedId}

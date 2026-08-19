@@ -15,6 +15,8 @@ import { FIELD_LABELS, type DesignerSchema } from "./schemaModel";
 export interface StructureTreeProps {
   schema: DesignerSchema;
   selectedId: string | null;
+  /** 只读模式：隐藏增删/排序工具、禁用字段拖拽（未签出 / 他人锁定 / 已归档）。 */
+  readonly?: boolean;
   onSelect: (id: string | null) => void;
   onAddFieldToSection: (sectionId: string) => void;
   onRemoveSection: (sectionId: string) => void;
@@ -30,6 +32,7 @@ export interface StructureTreeProps {
 export const StructureTree: React.FC<StructureTreeProps> = ({
   schema,
   selectedId,
+  readonly = false,
   onSelect,
   onAddFieldToSection,
   onRemoveSection,
@@ -72,29 +75,31 @@ export const StructureTree: React.FC<StructureTreeProps> = ({
               <SectionIcon className="t-ico" />
               <span className="t-name">{section.title}</span>
               <span className="t-type">章节 · {section.fields.length}</span>
-              <span className="t-tools">
-                <IconButton
-                  size="xs"
-                  label="添加字段"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddFieldToSection(section.id);
-                  }}
-                >
-                  <PlusIcon />
-                </IconButton>
-                <IconButton
-                  size="xs"
-                  variant="danger"
-                  label="删除章节"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveSection(section.id);
-                  }}
-                >
-                  <TrashIcon />
-                </IconButton>
-              </span>
+              {!readonly && (
+                <span className="t-tools">
+                  <IconButton
+                    size="xs"
+                    label="添加字段"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddFieldToSection(section.id);
+                    }}
+                  >
+                    <PlusIcon />
+                  </IconButton>
+                  <IconButton
+                    size="xs"
+                    variant="danger"
+                    label="删除章节"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveSection(section.id);
+                    }}
+                  >
+                    <TrashIcon />
+                  </IconButton>
+                </span>
+              )}
             </div>
 
             {!isCollapsed && (
@@ -103,28 +108,36 @@ export const StructureTree: React.FC<StructureTreeProps> = ({
                   <div
                     className="tree-node"
                     key={field.id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(
-                        FIELD_REORDER_MIME,
-                        JSON.stringify({ fieldId: field.id, sectionId: section.id }),
-                      );
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const raw = e.dataTransfer.getData(FIELD_REORDER_MIME);
-                      if (!raw) return;
-                      try {
-                        const { fieldId } = JSON.parse(raw) as { fieldId: string };
-                        if (fieldId && fieldId !== field.id) {
-                          onReorderField(section.id, fieldId, index);
-                        }
-                      } catch {
-                        // Ignore malformed reorder payloads.
-                      }
-                    }}
+                    draggable={!readonly}
+                    onDragStart={
+                      readonly
+                        ? undefined
+                        : (e) => {
+                            e.dataTransfer.setData(
+                              FIELD_REORDER_MIME,
+                              JSON.stringify({ fieldId: field.id, sectionId: section.id }),
+                            );
+                            e.dataTransfer.effectAllowed = "move";
+                          }
+                    }
+                    onDragOver={readonly ? undefined : (e) => e.preventDefault()}
+                    onDrop={
+                      readonly
+                        ? undefined
+                        : (e) => {
+                            e.preventDefault();
+                            const raw = e.dataTransfer.getData(FIELD_REORDER_MIME);
+                            if (!raw) return;
+                            try {
+                              const { fieldId } = JSON.parse(raw) as { fieldId: string };
+                              if (fieldId && fieldId !== field.id) {
+                                onReorderField(section.id, fieldId, index);
+                              }
+                            } catch {
+                              // Ignore malformed reorder payloads.
+                            }
+                          }
+                    }
                   >
                     <div
                       className={
@@ -142,41 +155,43 @@ export const StructureTree: React.FC<StructureTreeProps> = ({
                         )}
                       </span>
                       <span className="t-type">{FIELD_LABELS[field.type]}</span>
-                      <span className="t-tools">
-                        <IconButton
-                          size="xs"
-                          label="上移"
-                          disabled={index === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onMoveField(section.id, field.id, -1);
-                          }}
-                        >
-                          <UpIcon />
-                        </IconButton>
-                        <IconButton
-                          size="xs"
-                          label="下移"
-                          disabled={index === section.fields.length - 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onMoveField(section.id, field.id, 1);
-                          }}
-                        >
-                          <DownIcon />
-                        </IconButton>
-                        <IconButton
-                          size="xs"
-                          variant="danger"
-                          label="删除"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRemoveField(section.id, field.id);
-                          }}
-                        >
-                          <TrashIcon />
-                        </IconButton>
-                      </span>
+                      {!readonly && (
+                        <span className="t-tools">
+                          <IconButton
+                            size="xs"
+                            label="上移"
+                            disabled={index === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMoveField(section.id, field.id, -1);
+                            }}
+                          >
+                            <UpIcon />
+                          </IconButton>
+                          <IconButton
+                            size="xs"
+                            label="下移"
+                            disabled={index === section.fields.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMoveField(section.id, field.id, 1);
+                            }}
+                          >
+                            <DownIcon />
+                          </IconButton>
+                          <IconButton
+                            size="xs"
+                            variant="danger"
+                            label="删除"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveField(section.id, field.id);
+                            }}
+                          >
+                            <TrashIcon />
+                          </IconButton>
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

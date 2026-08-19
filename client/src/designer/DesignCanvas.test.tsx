@@ -86,6 +86,32 @@ describe("DesignCanvas", () => {
     expect(onAddSection).toHaveBeenCalled();
   });
 
+  it("readonly mode hides field and section editing tools", () => {
+    renderCanvas({ readonly: true });
+    expect(screen.queryByRole("button", { name: "删除" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "复制" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "删除章节" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("readonly mode hides the empty-state add-section button", () => {
+    renderCanvas({
+      schema: { schemaVersion: "1.0.0", sections: [] },
+      readonly: true,
+    });
+    expect(screen.getByText(/画布为空/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "添加章节" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("readonly mode still renders sections and fields (preview only)", () => {
+    renderCanvas({ readonly: true });
+    expect(screen.getByText("基础信息")).toBeInTheDocument();
+    expect(screen.getByText(/姓名/)).toBeInTheDocument();
+  });
+
   it("test mode renders the interactive Form engine inside the canvas-form wrapper", () => {
     const { container } = render(
       <DesignCanvas

@@ -155,6 +155,39 @@ describe("PropertyPanel", () => {
     expect(screen.getByRole("checkbox", { name: "可折叠" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "默认折叠" })).toBeInTheDocument();
   });
+
+  it("readonly mode disables section property inputs", async () => {
+    renderPanel({ schema: sectionSchema, selected: selectedSection, readonly: true });
+    await userEvent.click(screen.getByRole("tab", { name: "属性" }));
+    expect(screen.getByLabelText("章节标题")).toBeDisabled();
+    expect(screen.getByLabelText("章节描述")).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "可折叠" })).toBeDisabled();
+  });
+
+  it("readonly mode hides structure tree editing tools", () => {
+    renderPanel({
+      schema: {
+        schemaVersion: "1.0.0",
+        sections: [
+          {
+            id: "sec-1",
+            title: "基础信息",
+            fields: [{ id: "fld-1", type: "text", label: "姓名", required: false }],
+          },
+        ],
+      },
+      readonly: true,
+    });
+    expect(screen.queryByRole("button", { name: "添加字段" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "删除章节" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "删除" })).not.toBeInTheDocument();
+  });
+
+  it("readonly mode disables the approval chain add button", async () => {
+    renderPanel({ readonly: true });
+    await userEvent.click(screen.getByRole("tab", { name: "审批链" }));
+    expect(screen.getByRole("button", { name: /添加审批节点/ })).toBeDisabled();
+  });
 });
 
 describe("resolveSelected", () => {

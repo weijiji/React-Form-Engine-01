@@ -11,6 +11,8 @@ export interface DesignCanvasProps {
   /** Selected field id or section id, or null. */
   selectedId: string | null;
   mode: "static" | "test";
+  /** 只读模式：隐藏字段/章节编辑工具、禁用画布拖放（未签出 / 他人锁定 / 已归档）。 */
+  readonly?: boolean;
   onSelect: (id: string | null) => void;
   onDropField: (type: FieldType) => void;
   onRemoveField: (sectionId: string, fieldId: string) => void;
@@ -33,6 +35,7 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
   templateName,
   selectedId,
   mode,
+  readonly = false,
   onSelect,
   onDropField,
   onRemoveField,
@@ -42,6 +45,7 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
 }) => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (readonly) return;
     const type = e.dataTransfer.getData(FIELD_TYPE_MIME) as FieldType;
     if (type) onDropField(type);
   };
@@ -50,8 +54,8 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
     <div
       className="canvas"
       onClick={() => onSelect(null)}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={handleDrop}
+      onDragOver={readonly ? undefined : (e) => e.preventDefault()}
+      onDrop={readonly ? undefined : handleDrop}
     >
       <div className="canvas-inner" onClick={(e) => e.stopPropagation()}>
         <div className="canvas-head">
@@ -70,11 +74,13 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
             {schema.sections.length === 0 && (
               <div className="empty-canvas">
                 画布为空。从左侧「组件面板」点击或拖拽组件到此处开始设计。
-                <div>
-                  <Button size="sm" className="empty-canvas-btn" onClick={onAddSection}>
-                    添加章节
-                  </Button>
-                </div>
+                {!readonly && (
+                  <div>
+                    <Button size="sm" className="empty-canvas-btn" onClick={onAddSection}>
+                      添加章节
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -93,18 +99,20 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
                   <span className="sec-dot" />
                   <span className="sec-title">{section.title}</span>
                   <span className="sec-count">{section.fields.length} 个字段</span>
-                  <div className="sec-tools">
-                    <IconButton
-                      size="sm"
-                      label="删除章节"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveSection(section.id);
-                      }}
-                    >
-                      <TrashIcon />
-                    </IconButton>
-                  </div>
+                  {!readonly && (
+                    <div className="sec-tools">
+                      <IconButton
+                        size="sm"
+                        label="删除章节"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveSection(section.id);
+                        }}
+                      >
+                        <TrashIcon />
+                      </IconButton>
+                    </div>
+                  )}
                 </div>
 
                 {section.fields.map((field) => (
@@ -112,6 +120,7 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
                     key={field.id}
                     field={field}
                     selected={field.id === selectedId}
+                    readonly={readonly}
                     onSelect={onSelect}
                     onRemove={() => onRemoveField(section.id, field.id)}
                     onDuplicate={() => onDuplicateField(section.id, field.id)}
@@ -135,12 +144,14 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
 function FieldCard({
   field,
   selected,
+  readonly,
   onSelect,
   onRemove,
   onDuplicate,
 }: {
   field: FieldSchema;
   selected: boolean;
+  readonly: boolean;
   onSelect: (id: string) => void;
   onRemove: () => void;
   onDuplicate: () => void;
@@ -153,28 +164,30 @@ function FieldCard({
         onSelect(field.id);
       }}
     >
-      <div className="fld-tools">
-        <IconButton
-          size="sm"
-          label="删除"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-        >
-          <TrashIcon />
-        </IconButton>
-        <IconButton
-          size="sm"
-          label="复制"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDuplicate();
-          }}
-        >
-          <CopyIcon />
-        </IconButton>
-      </div>
+      {!readonly && (
+        <div className="fld-tools">
+          <IconButton
+            size="sm"
+            label="删除"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+          >
+            <TrashIcon />
+          </IconButton>
+          <IconButton
+            size="sm"
+            label="复制"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+          >
+            <CopyIcon />
+          </IconButton>
+        </div>
+      )}
 
       <label>
         {field.label}

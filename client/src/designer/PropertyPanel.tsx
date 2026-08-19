@@ -42,6 +42,8 @@ export interface PropertyPanelProps {
   selectedId: string | null;
   selected: PanelSelection;
   chain: ApprovalChain;
+  /** 只读模式：结构树/属性/审批链全部禁用编辑（未签出 / 他人锁定 / 已归档）。 */
+  readonly?: boolean;
   onChangeField: (
     sectionId: string,
     fieldId: string,
@@ -67,6 +69,7 @@ export interface PropertyPanelProps {
  * center canvas is the live preview, so there is no separate 预览 tab here.
  */
 export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
+  const readonly = props.readonly ?? false;
   const [tab, setTab] = useState<TabKey>("tree");
 
   const tabs: { key: TabKey; label: string }[] = [
@@ -98,6 +101,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
             <StructureTree
               schema={props.schema}
               selectedId={props.selectedId}
+              readonly={readonly}
               onSelect={props.onSelect}
               onAddFieldToSection={props.onAddFieldToSection}
               onRemoveSection={props.onRemoveSection}
@@ -111,6 +115,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
           <div className="side-pane active">
             <PropsTab
               selected={props.selected}
+              readonly={readonly}
               onChangeField={props.onChangeField}
               onChangeSection={props.onChangeSection}
             />
@@ -120,6 +125,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
           <div className="side-pane active">
             <ChainTab
               chain={props.chain}
+              readonly={readonly}
               onAdd={props.onAddChainNode}
               onRemove={props.onRemoveChainNode}
               onMove={props.onMoveChainNode}
@@ -136,10 +142,12 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
 
 function PropsTab({
   selected,
+  readonly,
   onChangeField,
   onChangeSection,
 }: {
   selected: PropertyPanelProps["selected"];
+  readonly: boolean;
   onChangeField: PropertyPanelProps["onChangeField"];
   onChangeSection: PropertyPanelProps["onChangeSection"];
 }) {
@@ -167,7 +175,13 @@ function PropsTab({
   }
 
   if (selected.kind === "section") {
-    return <SectionEditor section={selected.section} onChangeSection={onChangeSection} />;
+    return (
+      <SectionEditor
+        section={selected.section}
+        readonly={readonly}
+        onChangeSection={onChangeSection}
+      />
+    );
   }
 
   const { sectionId, field } = selected;
@@ -187,6 +201,7 @@ function PropsTab({
         <Input
           inputClassName="prop-input"
           value={field.label}
+          disabled={readonly}
           onChange={(e) => update({ label: e.target.value })}
         />
       </div>
@@ -197,6 +212,7 @@ function PropsTab({
           <Input
             inputClassName="prop-input"
             value={field.placeholder ?? ""}
+            disabled={readonly}
             onChange={(e) => update({ placeholder: e.target.value })}
           />
         </div>
@@ -208,6 +224,7 @@ function PropsTab({
           <Input
             inputClassName="prop-input"
             value={field.defaultValue == null ? "" : String(field.defaultValue)}
+            disabled={readonly}
             onChange={(e) => update({ defaultValue: e.target.value })}
           />
         </div>
@@ -219,6 +236,7 @@ function PropsTab({
           <textarea
             className="textarea"
             value={field.helpText ?? ""}
+            disabled={readonly}
             onChange={(e) => update({ helpText: e.target.value })}
           />
         </div>
@@ -229,22 +247,25 @@ function PropsTab({
         hint="填写者必须填写此字段"
         checked={field.required}
         ariaLabel="必填"
+        disabled={readonly}
         onChange={(v) => update({ required: v })}
       />
 
       {(field.type === "select" ||
         field.type === "radio" ||
         field.type === "checkbox") && (
-        <OptionsEditor options={field.options ?? []} onChange={update} />
+        <OptionsEditor options={field.options ?? []} readonly={readonly} onChange={update} />
       )}
 
       {(field.type === "text" ||
         field.type === "textarea" ||
         field.type === "number") && (
-        <ValidationEditor field={field} onChange={update} />
+        <ValidationEditor field={field} readonly={readonly} onChange={update} />
       )}
 
-      {field.type === "file" && <FileEditor field={field} onChange={update} />}
+      {field.type === "file" && (
+        <FileEditor field={field} readonly={readonly} onChange={update} />
+      )}
     </div>
   );
 }
@@ -255,12 +276,14 @@ function SwitchRow({
   hint,
   checked,
   ariaLabel,
+  disabled,
   onChange,
 }: {
   label: string;
   hint: string;
   checked: boolean;
   ariaLabel: string;
+  disabled?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
@@ -274,6 +297,7 @@ function SwitchRow({
           type="checkbox"
           aria-label={ariaLabel}
           checked={checked}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
         />
         <span className="track" />
@@ -286,9 +310,11 @@ function SwitchRow({
 
 function SectionEditor({
   section,
+  readonly,
   onChangeSection,
 }: {
   section: SectionSchema;
+  readonly: boolean;
   onChangeSection: PropertyPanelProps["onChangeSection"];
 }) {
   const update = (patch: Partial<SectionSchema>) =>
@@ -304,6 +330,7 @@ function SectionEditor({
           inputClassName="prop-input"
           aria-label="章节标题"
           value={section.title}
+          disabled={readonly}
           onChange={(e) => update({ title: e.target.value })}
         />
       </div>
@@ -314,6 +341,7 @@ function SectionEditor({
           className="textarea"
           aria-label="章节描述"
           value={section.description ?? ""}
+          disabled={readonly}
           onChange={(e) => update({ description: e.target.value })}
         />
       </div>
@@ -323,6 +351,7 @@ function SectionEditor({
         hint="允许填写者折叠 / 展开此章节"
         checked={section.collapsible ?? false}
         ariaLabel="可折叠"
+        disabled={readonly}
         onChange={(v) =>
           // Turning collapse off also clears any remembered default-collapsed
           // state, so re-enabling later starts from an explicit off.
@@ -336,6 +365,7 @@ function SectionEditor({
           hint="填写者打开表单时章节默认收起"
           checked={section.defaultCollapsed ?? false}
           ariaLabel="默认折叠"
+          disabled={readonly}
           onChange={(v) => update({ defaultCollapsed: v })}
         />
       )}
@@ -345,9 +375,11 @@ function SectionEditor({
 
 function OptionsEditor({
   options,
+  readonly,
   onChange,
 }: {
   options: SelectOption[];
+  readonly: boolean;
   onChange: (patch: Partial<FieldSchema>) => void;
 }) {
   const setLabel = (index: number, label: string) =>
@@ -373,26 +405,33 @@ function OptionsEditor({
             inputClassName="prop-input"
             aria-label={`选项${index + 1}`}
             value={option.label}
+            disabled={readonly}
             onChange={(e) => setLabel(index, e.target.value)}
           />
-          <IconButton variant="danger" label="删除选项" onClick={() => remove(index)}>
-            <CloseIcon />
-          </IconButton>
+          {!readonly && (
+            <IconButton variant="danger" label="删除选项" onClick={() => remove(index)}>
+              <CloseIcon />
+            </IconButton>
+          )}
         </div>
       ))}
-      <button type="button" className="chip-add" onClick={add}>
-        <PlusIcon />
-        添加选项
-      </button>
+      {!readonly && (
+        <button type="button" className="chip-add" onClick={add}>
+          <PlusIcon />
+          添加选项
+        </button>
+      )}
     </>
   );
 }
 
 function ValidationEditor({
   field,
+  readonly,
   onChange,
 }: {
   field: FieldSchema;
+  readonly: boolean;
   onChange: (patch: Partial<FieldSchema>) => void;
 }) {
   const isNumber = field.type === "number";
@@ -431,6 +470,7 @@ function ValidationEditor({
               type="number"
               placeholder="最小"
               value={ruleValue("min")}
+              disabled={readonly}
               onChange={(e) => setNumberRule("min", e.target.value)}
             />
             <Input
@@ -438,6 +478,7 @@ function ValidationEditor({
               type="number"
               placeholder="最大"
               value={ruleValue("max")}
+              disabled={readonly}
               onChange={(e) => setNumberRule("max", e.target.value)}
             />
           </div>
@@ -452,6 +493,7 @@ function ValidationEditor({
                 type="number"
                 placeholder="最小"
                 value={ruleValue("minLength")}
+                disabled={readonly}
                 onChange={(e) => setNumberRule("minLength", e.target.value)}
               />
               <Input
@@ -459,6 +501,7 @@ function ValidationEditor({
                 type="number"
                 placeholder="最大"
                 value={ruleValue("maxLength")}
+                disabled={readonly}
                 onChange={(e) => setNumberRule("maxLength", e.target.value)}
               />
             </div>
@@ -469,6 +512,7 @@ function ValidationEditor({
               inputClassName="prop-input mono"
               placeholder="例如 ^1\\d{10}$"
               value={ruleValue("regex")}
+              disabled={readonly}
               onChange={(e) => setRegex({ value: e.target.value })}
             />
             <div className="hint">
@@ -478,6 +522,7 @@ function ValidationEditor({
                 style={{ marginTop: 6 }}
                 placeholder="自定义提示（可选）"
                 value={ruleMessage()}
+                disabled={readonly}
                 onChange={(e) => setRegex({ message: e.target.value })}
               />
             </div>
@@ -490,9 +535,11 @@ function ValidationEditor({
 
 function FileEditor({
   field,
+  readonly,
   onChange,
 }: {
   field: FieldSchema;
+  readonly: boolean;
   onChange: (patch: Partial<FieldSchema>) => void;
 }) {
   const allowTypes = field.allowTypes ?? [];
@@ -513,6 +560,7 @@ function FileEditor({
         <select
           className="select"
           value={typeLabel}
+          disabled={readonly}
           onChange={(e) => {
             const v = e.target.value;
             const map: Record<string, string[]> = {
@@ -533,6 +581,7 @@ function FileEditor({
         <select
           className="select"
           value={`${field.maxSizeMB ?? 10}MB`}
+          disabled={readonly}
           onChange={(e) => onChange({ maxSizeMB: Number(e.target.value.replace("MB", "")) })}
         >
           {["5MB", "10MB", "20MB", "50MB"].map((s) => (
@@ -576,12 +625,14 @@ function ruleValueKey(rule: ApproverRule): string {
 
 function ChainTab({
   chain,
+  readonly,
   onAdd,
   onRemove,
   onMove,
   onChange,
 }: {
   chain: ApprovalChain;
+  readonly: boolean;
   onAdd: () => void;
   onRemove: (id: string) => void;
   onMove: (id: string, delta: -1 | 1) => void;
@@ -599,37 +650,40 @@ function ChainTab({
           <div className="chain-card">
             <div className="cc-head">
               <span className="cc-title">{node.label ?? "审批节点"}</span>
-              <span className="cc-tools">
-                <IconButton
-                  size="sm"
-                  label="上移"
-                  disabled={i === 0}
-                  onClick={() => onMove(node.id, -1)}
-                >
-                  <UpIcon />
-                </IconButton>
-                <IconButton
-                  size="sm"
-                  label="下移"
-                  disabled={i === nodes.length - 1}
-                  onClick={() => onMove(node.id, 1)}
-                >
-                  <DownIcon />
-                </IconButton>
-                <IconButton
-                  size="sm"
-                  variant="danger"
-                  label="删除节点"
-                  onClick={() => onRemove(node.id)}
-                >
-                  <TrashIcon />
-                </IconButton>
-              </span>
+              {!readonly && (
+                <span className="cc-tools">
+                  <IconButton
+                    size="sm"
+                    label="上移"
+                    disabled={i === 0}
+                    onClick={() => onMove(node.id, -1)}
+                  >
+                    <UpIcon />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    label="下移"
+                    disabled={i === nodes.length - 1}
+                    onClick={() => onMove(node.id, 1)}
+                  >
+                    <DownIcon />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    variant="danger"
+                    label="删除节点"
+                    onClick={() => onRemove(node.id)}
+                  >
+                    <TrashIcon />
+                  </IconButton>
+                </span>
+              )}
             </div>
             <div className="rule-select-row">
               <select
                 className="select"
                 value={node.approverRule.type}
+                disabled={readonly}
                 onChange={(e) => {
                   const type = e.target.value as ApproverRule["type"];
                   const value = RULE_VALUE_OPTIONS[type][0].key;
@@ -647,6 +701,7 @@ function ChainTab({
               <select
                 className="select"
                 value={ruleValueKey(node.approverRule)}
+                disabled={readonly}
                 onChange={(e) =>
                   onChange(node.id, {
                     approverRule: buildRule(node.approverRule.type, e.target.value),
@@ -664,7 +719,7 @@ function ChainTab({
         </div>
       ))}
 
-      <button type="button" className="chain-add" onClick={onAdd}>
+      <button type="button" className="chain-add" disabled={readonly} onClick={onAdd}>
         <PlusIcon />
         添加审批节点
       </button>
