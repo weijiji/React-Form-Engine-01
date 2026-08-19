@@ -44,16 +44,32 @@
   border-radius: 999px;
 }
 
+/* 状态徽章语义配色（BUG-05）— 按 status.kind 派生 `.is-*` 变体；
+   dot 改用 currentColor 随文案同色。中性态（draft/archived）走基类默认灰。 */
+.et-status.is-holder {
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-color: var(--brand-line);
+}
+
+.et-status.is-locked {
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-color: transparent;
+}
+
+.et-status.is-published {
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: transparent;
+}
+
 .et-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--success);
+  background: currentColor;
   display: inline-block;
-}
-
-.et-dot.gray {
-  background: var(--text-3);
 }
 
 .editor-top .et-actions {
