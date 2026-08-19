@@ -11,6 +11,12 @@ import { signAccessToken } from "../services/jwt";
  * These hit the real app (`createApp()`) through supertest against the configured
  * database, exercising the full designer lifecycle and the lock-conflict paths.
  * Identity is injected via a minted access-token cookie (work order 17).
+ *
+ * Ownership + permission gating (BUG-06 / ADR-0012): the canonical creator is the
+ * `designer` (设计者, holds template:create/edit/delete/publish/force_unlock but NOT
+ * template:view_all). `admin` holds every code including view_all (read-only over
+ * others' templates); `ops` holds view_all without any write codes; `zhangsan`/`lisi`
+ * are fillers with no template:* codes.
  */
 
 const app = createApp();
@@ -21,10 +27,11 @@ function authCookie(userId: string): string {
   return COOKIE + "=" + signAccessToken(userId);
 }
 
-let zhangsanId: string;
-let lisiId: string;
 let adminId: string;
 let designerId: string;
+let opsId: string;
+let zhangsanId: string;
+let lisiId: string;
 const createdIds: string[] = [];
 
 beforeAll(async () => {
@@ -35,14 +42,16 @@ beforeAll(async () => {
   const byEmail = (email: string) =>
     users.find((u) => u.email === email)?.id as string;
 
-  zhangsanId = byEmail("zhangsan@example.com");
-  lisiId = byEmail("lisi@example.com");
   adminId = byEmail("admin@example.com");
   designerId = byEmail("designer@example.com");
-  expect(zhangsanId).toBeTruthy();
-  expect(lisiId).toBeTruthy();
+  opsId = byEmail("ops@example.com");
+  zhangsanId = byEmail("zhangsan@example.com");
+  lisiId = byEmail("lisi@example.com");
   expect(adminId).toBeTruthy();
   expect(designerId).toBeTruthy();
+  expect(opsId).toBeTruthy();
+  expect(zhangsanId).toBeTruthy();
+  expect(lisiId).toBeTruthy();
 });
 
 afterAll(async () => {
@@ -53,11 +62,12 @@ afterAll(async () => {
   await closeDb();
 });
 
+/** Create a template as the canonical creator (设计者). */
 function newTemplate(name = "集成测试模板"): Promise<request.Response> {
-  return newTemplateAs(zhangsanId, name);
+  return newTemplateAs(designerId, name);
 }
 
-/** Create a template as a specific user (used by the DELETE permission/lock tests). */
+/** Create a template as a specific user (used by the isolation/permission tests). */
 function newTemplateAs(
   userId: string,
   name = "集成测试模板",
@@ -74,7 +84,7 @@ describe("POST /api/v1/templates (create + auto-checkout)", () => {
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("集成测试模板");
     expect(res.body.status).toBe("draft");
-    expect(res.body.locked_by).toBe(zhangsanId);
+    expect(res.body.locked_by).toBe(designerId);
     expect(res.body.version).toBe(1);
     createdIds.push(res.body.id);
   });
@@ -82,10 +92,19 @@ describe("POST /api/v1/templates (create + auto-checkout)", () => {
   it("rejects a missing or blank name", async () => {
     const res = await request(app)
       .post("/api/v1/templates")
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ name: "   " });
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects creation without template:create (403)", async () => {
+    const res = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(lisiId))
+      .send({ name: "越权创建" });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
   });
 });
 
@@ -101,7 +120,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("lists the created template (searchable)", async () => {
     const res = await request(app)
       .get("/api/v1/templates")
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .query({ search: "全流程" });
     expect(res.status).toBe(200);
     expect(res.body.total).toBeGreaterThanOrEqual(1);
@@ -113,7 +132,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("returns detail with schema and approval_chain", async () => {
     const res = await request(app)
       .get(`/api/v1/templates/${templateId}`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(200);
     expect(res.body.schema).toEqual({ schemaVersion: "1.0.0", sections: [] });
     expect(res.body.approval_chain).toBeNull();
@@ -123,42 +142,25 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
     const schema = { schemaVersion: "1.0.0", sections: [{ id: "s1", title: "章节", fields: [] }] };
     const res = await request(app)
       .put(`/api/v1/templates/${templateId}/schema`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ schema, approval_chain: { nodes: [] } });
     expect(res.status).toBe(200);
     expect(res.body.version).toBe(2);
     expect(res.body.schema).toEqual(schema);
   });
 
-  it("rejects a schema save by a non-holder (409)", async () => {
-    const res = await request(app)
-      .put(`/api/v1/templates/${templateId}/schema`)
-      .set("Cookie", authCookie(lisiId))
-      .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
-  });
-
-  it("rejects a checkout by another user while locked (409)", async () => {
-    const res = await request(app)
-      .post(`/api/v1/templates/${templateId}/checkout`)
-      .set("Cookie", authCookie(lisiId));
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
-  });
-
   it("is idempotent when the holder re-checks-out", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/checkout`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(200);
-    expect(res.body.locked_by).toBe(zhangsanId);
+    expect(res.body.locked_by).toBe(designerId);
   });
 
   it("releases the lock on checkin", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/checkin`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(200);
     expect(res.body.locked_by).toBeNull();
   });
@@ -166,7 +168,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("rejects a schema save when not checked out (409)", async () => {
     const res = await request(app)
       .put(`/api/v1/templates/${templateId}/schema`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
@@ -175,7 +177,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
   it("publishes the template (draft → published)", async () => {
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("published");
   });
@@ -185,7 +187,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
     // re-publish attempt must be refused (model B requires a checkout first).
     const res = await request(app)
       .post(`/api/v1/templates/${templateId}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("TEMPLATE_LOCKED");
   });
@@ -196,13 +198,13 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
     createdIds.push(id);
     await request(app)
       .post(`/api/v1/templates/${id}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     await request(app)
       .post(`/api/v1/templates/${id}/checkout`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     const res = await request(app)
       .post(`/api/v1/templates/${id}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("published");
     expect(res.body.locked_by).toBeNull();
@@ -215,7 +217,7 @@ describe("template lifecycle: create → checkout → edit → checkin → publi
     await getDb()("form_templates").where({ id }).update({ status: "archived" });
     const res = await request(app)
       .post(`/api/v1/templates/${id}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("TEMPLATE_ARCHIVED");
   });
@@ -228,12 +230,12 @@ describe("published template editing (model B: checkout → edit → re-publish)
     createdIds.push(id);
     await request(app)
       .post(`/api/v1/templates/${id}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     const res = await request(app)
       .post(`/api/v1/templates/${id}/checkout`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(200);
-    expect(res.body.locked_by).toBe(zhangsanId);
+    expect(res.body.locked_by).toBe(designerId);
     expect(res.body.status).toBe("published");
   });
 
@@ -243,13 +245,13 @@ describe("published template editing (model B: checkout → edit → re-publish)
     createdIds.push(id);
     await request(app)
       .post(`/api/v1/templates/${id}/publish`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     await request(app)
       .post(`/api/v1/templates/${id}/checkout`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     const res = await request(app)
       .put(`/api/v1/templates/${id}/schema`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
     expect(res.status).toBe(200);
   });
@@ -261,7 +263,7 @@ describe("published template editing (model B: checkout → edit → re-publish)
     await getDb()("form_templates").where({ id }).update({ status: "archived" });
     const res = await request(app)
       .post(`/api/v1/templates/${id}/checkout`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("TEMPLATE_ARCHIVED");
   });
@@ -273,7 +275,7 @@ describe("published template editing (model B: checkout → edit → re-publish)
     await getDb()("form_templates").where({ id }).update({ status: "archived" });
     const res = await request(app)
       .put(`/api/v1/templates/${id}/schema`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("TEMPLATE_ARCHIVED");
@@ -288,7 +290,7 @@ describe("PATCH /api/v1/templates/:id/meta (edit basic info)", () => {
 
     const patch = await request(app)
       .patch(`/api/v1/templates/${id}/meta`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ name: "改名后", description: "新描述", category: "财务" });
 
     expect(patch.status).toBe(200);
@@ -305,7 +307,7 @@ describe("PATCH /api/v1/templates/:id/meta (edit basic info)", () => {
 
     const patch = await request(app)
       .patch(`/api/v1/templates/${id}/meta`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ category: "IT" });
 
     expect(patch.status).toBe(200);
@@ -320,25 +322,11 @@ describe("PATCH /api/v1/templates/:id/meta (edit basic info)", () => {
 
     const patch = await request(app)
       .patch(`/api/v1/templates/${id}/meta`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ name: "   " });
 
     expect(patch.status).toBe(422);
     expect(patch.body.error.code).toBe("VALIDATION_ERROR");
-  });
-
-  it("rejects a meta edit by a non-holder (409)", async () => {
-    const res = await newTemplate("他人改meta");
-    const id = res.body.id;
-    createdIds.push(id);
-
-    const patch = await request(app)
-      .patch(`/api/v1/templates/${id}/meta`)
-      .set("Cookie", authCookie(lisiId))
-      .send({ name: "越权改名" });
-
-    expect(patch.status).toBe(409);
-    expect(patch.body.error.code).toBe("TEMPLATE_LOCKED");
   });
 
   it("rejects a meta edit when not checked out (409)", async () => {
@@ -348,11 +336,11 @@ describe("PATCH /api/v1/templates/:id/meta (edit basic info)", () => {
 
     await request(app)
       .post(`/api/v1/templates/${id}/checkin`)
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
 
     const patch = await request(app)
       .patch(`/api/v1/templates/${id}/meta`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ name: "未签出改名" });
 
     expect(patch.status).toBe(409);
@@ -367,7 +355,7 @@ describe("PATCH /api/v1/templates/:id/meta (edit basic info)", () => {
 
     const patch = await request(app)
       .patch(`/api/v1/templates/${id}/meta`)
-      .set("Cookie", authCookie(zhangsanId))
+      .set("Cookie", authCookie(designerId))
       .send({ name: "归档改名" });
 
     expect(patch.status).toBe(400);
@@ -375,22 +363,120 @@ describe("PATCH /api/v1/templates/:id/meta (edit basic info)", () => {
   });
 });
 
+describe("template data isolation (BUG-06 / ADR-0012)", () => {
+  let designerTemplate: string;
+  let adminTemplate: string;
+
+  beforeAll(async () => {
+    const d = await newTemplateAs(designerId, "设计者私有模板");
+    designerTemplate = d.body.id;
+    createdIds.push(designerTemplate);
+    const a = await newTemplateAs(adminId, "管理员模板");
+    adminTemplate = a.body.id;
+    createdIds.push(adminTemplate);
+  });
+
+  it("lists only the caller's own templates by default (scope=mine)", async () => {
+    const res = await request(app)
+      .get("/api/v1/templates")
+      .set("Cookie", authCookie(designerId));
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBeGreaterThan(0);
+    expect(
+      res.body.items.every((t: { created_by: string }) => t.created_by === designerId),
+    ).toBe(true);
+  });
+
+  it("rejects scope=all without template:view_all (403)", async () => {
+    const res = await request(app)
+      .get("/api/v1/templates")
+      .set("Cookie", authCookie(designerId))
+      .query({ scope: "all" });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("allows scope=all for a view_all holder and includes others' templates", async () => {
+    const res = await request(app)
+      .get("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .query({ scope: "all" });
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((t: { id: string }) => t.id);
+    expect(ids).toContain(designerTemplate);
+    expect(ids).toContain(adminTemplate);
+  });
+
+  it("allows scope=all for ops (view_all, read-only)", async () => {
+    const res = await request(app)
+      .get("/api/v1/templates")
+      .set("Cookie", authCookie(opsId))
+      .query({ scope: "all" });
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBeGreaterThan(0);
+  });
+
+  it("hides a non-owned template from a non-view_all user (404 on detail)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/templates/${designerTemplate}`)
+      .set("Cookie", authCookie(lisiId));
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("lets a view_all holder read (but not write) another's template", async () => {
+    const read = await request(app)
+      .get(`/api/v1/templates/${designerTemplate}`)
+      .set("Cookie", authCookie(adminId));
+    expect(read.status).toBe(200);
+
+    const write = await request(app)
+      .put(`/api/v1/templates/${designerTemplate}/schema`)
+      .set("Cookie", authCookie(adminId))
+      .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
+    expect(write.status).toBe(403);
+    expect(write.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("rejects a write by a non-owner without view_all (404, hides existence)", async () => {
+    // admin owns `adminTemplate`; designer has template:edit but not view_all.
+    const res = await request(app)
+      .put(`/api/v1/templates/${adminTemplate}/schema`)
+      .set("Cookie", authCookie(designerId))
+      .send({ schema: { schemaVersion: "1.0.0", sections: [] } });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+});
+
 describe("force-unlock", () => {
-  it("clears the lock regardless of holder", async () => {
-    const res = await newTemplate("待解锁模板");
+  it("lets an admin force-unlock another user's template (ownership exception)", async () => {
+    const res = await newTemplateAs(designerId, "待解锁模板");
     const templateId = res.body.id;
     createdIds.push(templateId);
-    expect(res.body.locked_by).toBe(zhangsanId);
+    expect(res.body.locked_by).toBe(designerId);
+
+    const unlock = await request(app)
+      .post(`/api/v1/templates/${templateId}/force-unlock`)
+      .set("Cookie", authCookie(adminId));
+    expect(unlock.status).toBe(200);
+    expect(unlock.body.locked_by).toBeNull();
+  });
+
+  it("rejects force-unlock without template:force_unlock (403)", async () => {
+    const res = await newTemplateAs(designerId, "无权解锁模板");
+    const templateId = res.body.id;
+    createdIds.push(templateId);
 
     const unlock = await request(app)
       .post(`/api/v1/templates/${templateId}/force-unlock`)
       .set("Cookie", authCookie(lisiId));
-    expect(unlock.status).toBe(200);
-    expect(unlock.body.locked_by).toBeNull();
+    expect(unlock.status).toBe(403);
+    expect(unlock.body.error.code).toBe("FORBIDDEN");
   });
 });
 
-describe("DELETE /api/v1/templates/:id (template:delete + lock holder)", () => {
+describe("DELETE /api/v1/templates/:id (template:delete + owner + lock holder)", () => {
   it("deletes a draft template the caller holds (204) and it is gone afterwards", async () => {
     const res = await newTemplateAs(adminId, "待删除模板");
     const templateId = res.body.id;
@@ -432,7 +518,7 @@ describe("DELETE /api/v1/templates/:id (template:delete + lock holder)", () => {
     expect(res.body.error.code).toBe("NOT_FOUND");
   });
 
-  it("rejects a delete by a non-holder who has the permission (409)", async () => {
+  it("rejects a delete by a non-owner with template:delete but no view_all (404)", async () => {
     const res = await newTemplateAs(adminId, "他人签出不可删");
     const templateId = res.body.id;
     createdIds.push(templateId);
@@ -440,8 +526,8 @@ describe("DELETE /api/v1/templates/:id (template:delete + lock holder)", () => {
     const del = await request(app)
       .delete(`/api/v1/templates/${templateId}`)
       .set("Cookie", authCookie(designerId));
-    expect(del.status).toBe(409);
-    expect(del.body.error.code).toBe("TEMPLATE_LOCKED");
+    expect(del.status).toBe(404);
+    expect(del.body.error.code).toBe("NOT_FOUND");
   });
 
   it("rejects a delete by a user without template:delete (403)", async () => {
@@ -478,7 +564,7 @@ describe("GET /api/v1/templates/:id (missing)", () => {
   it("returns 404 for an unknown template", async () => {
     const res = await request(app)
       .get("/api/v1/templates/00000000-0000-0000-0000-000000000000")
-      .set("Cookie", authCookie(zhangsanId));
+      .set("Cookie", authCookie(designerId));
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });

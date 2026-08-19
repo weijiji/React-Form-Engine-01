@@ -63,11 +63,11 @@ async function adminSession(): Promise<{ agent: request.Agent; csrf: string }> {
 }
 
 describe("GET /api/v1/permissions", () => {
-  it("returns the 20 predefined permission codes", async () => {
+  it("returns the 21 predefined permission codes", async () => {
     const { agent } = await adminSession();
     const res = await agent.get("/api/v1/permissions");
     expect(res.status).toBe(200);
-    expect(res.body.items).toHaveLength(20);
+    expect(res.body.items).toHaveLength(21);
     expect(res.body.items[0]).toMatchObject({ code: expect.any(String), name: expect.any(String), category: expect.any(String) });
   });
 });

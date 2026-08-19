@@ -109,6 +109,7 @@ export async function seed(knex: Knex): Promise<void> {
     { code: "template:export", name: "导出配置", category: "设计器" },
     { code: "template:import", name: "导入配置", category: "设计器" },
     { code: "template:force_unlock", name: "强制解锁", category: "设计器" },
+    { code: "template:view_all", name: "查看全部模板", category: "设计器" },
     // 填写器
     { code: "form:fill", name: "填写表单", category: "填写器" },
     { code: "form:submit", name: "提交表单", category: "填写器" },
@@ -176,7 +177,7 @@ export async function seed(knex: Knex): Promise<void> {
       "approval:return",
       "approval:transfer",
     ],
-    运维: ["template:import", "template:export", "data:view", "data:view_stats"],
+    运维: ["template:import", "template:export", "template:view_all", "data:view", "data:view_stats"],
   };
 
   const roleIdByName: Record<string, string> = {

@@ -26,6 +26,7 @@ import { AuthenticatedShell } from "../auth/AuthenticatedShell";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { LoginPage } from "../pages/LoginPage";
 import { ForbiddenPage } from "../pages/ForbiddenPage";
+import { AllTemplatesPage } from "../pages/AllTemplatesPage";
 import { TemplatesPage } from "../pages/designer/TemplatesPage";
 import { CreateTemplatePage } from "../pages/designer/CreateTemplatePage";
 import { CreateBlankPage } from "../pages/designer/CreateBlankPage";
@@ -47,8 +48,8 @@ import { UsersPage } from "../pages/admin/UsersPage";
 
 const TEMPLATE_EDIT = ["template:edit"];
 const TEMPLATE_CREATE = ["template:create"];
-const TEMPLATE_PUBLISH = ["template:publish"];
 const TEMPLATE_IMPORT = ["template:import"];
+const TEMPLATE_VIEW_ALL = ["template:view_all"];
 const FORM_FILL = ["form:fill"];
 const FORM_SUBMIT = ["form:submit"];
 const APPROVAL_PENDING = ["approval:view_pending"];
@@ -74,10 +75,10 @@ export const ROUTE_CODES: Record<string, string[]> = {
   "/admin/roles": ADMIN_ROLES,
   "/admin/data": DATA_VIEW,
   "/admin/statistics": DATA_STATS,
-  "/admin/templates": TEMPLATE_PUBLISH,
+  "/admin/templates": TEMPLATE_VIEW_ALL,
   "/ops/import": TEMPLATE_IMPORT,
   "/ops/migrations": DATA_VIEW,
-  "/ops/templates": DATA_VIEW,
+  "/ops/templates": TEMPLATE_VIEW_ALL,
 };
 
 // ── One unified sidebar (ADR-0010) ─────────────────────────────────────────
@@ -354,7 +355,7 @@ export const routes: RouteObject[] = [
             path: "/admin/templates",
             element: (
               <RequirePermission codes={ROUTE_CODES["/admin/templates"]!}>
-                <PlaceholderPage />
+                <AllTemplatesPage />
               </RequirePermission>
             ),
             handle: { title: "模板管理", crumb: "系统管理" } satisfies ShellHandle,
@@ -384,7 +385,7 @@ export const routes: RouteObject[] = [
             path: "/ops/templates",
             element: (
               <RequirePermission codes={ROUTE_CODES["/ops/templates"]!}>
-                <PlaceholderPage />
+                <AllTemplatesPage />
               </RequirePermission>
             ),
             handle: { title: "模板查看", crumb: "运维" } satisfies ShellHandle,
