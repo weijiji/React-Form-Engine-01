@@ -108,7 +108,6 @@ export const DesignerPage: React.FC = () => {
   const [schema, setSchema] = useState<DesignerSchema>(createEmptySchema());
   const [chain, setChain] = useState<ApprovalChain>({ nodes: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mode, setMode] = useState<"static" | "test">("static");
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -150,16 +149,6 @@ export const DesignerPage: React.FC = () => {
   isHolderRef.current = isHolder;
 
   const status = useMemo(() => resolveStatus(template, isHolder), [template, isHolder]);
-
-  // Model B: a draft publishes without a lock; a published template only
-  // re-publishes when the caller holds the checkout lock.
-  const canPublish = useMemo(
-    () =>
-      template != null &&
-      (template.status === "draft" ||
-        (template.status === "published" && isHolder)),
-    [template, isHolder],
-  );
 
   // selectedId may be a field OR a section id (canvas/tree both select sections).
   const selected = useMemo<PanelSelection>(
@@ -357,10 +346,11 @@ export const DesignerPage: React.FC = () => {
     const isRepublish = template?.status === "published";
     void runAction(
       async () => {
-        // 重发布：先把当前设计落库再翻状态。已发布模板的「保存草稿」是禁用的
-        // （修改只能随发布生效），而 publish 只翻状态+清锁、不携带 schema——
-        // 不先 PUT 的话修改只存在本地 state，发布后即丢失。
-        if (isRepublish) {
+        // 发布前先把当前设计落库，再翻状态。publish 只翻状态+清锁、不携带
+        // schema——不先 PUT 的话修改只存在于本地 state，发布后再次打开即丢失。
+        // 首次发布（草稿）和重发布（已发布）都要落库；未持锁的草稿只读、无
+        // 未保存改动，跳过 PUT 直接发布（服务端 publish 对草稿不要求锁）。
+        if (isHolder) {
           await apiClient<FormTemplate>(`/templates/${id}/schema`, {
             method: "PUT",
             body: JSON.stringify({ schema, approval_chain: chain }),
@@ -514,15 +504,9 @@ export const DesignerPage: React.FC = () => {
         </span>
 
         <div className="et-actions">
-          <Segmented
-            label="预览模式"
-            options={[
-              { value: "static", label: "静态预览" },
-              { value: "test", label: "交互测试" },
-            ]}
-            value={mode}
-            onChange={setMode}
-          />
+            {/* 工具栏按「签出 = 编辑前提」收敛：未签出只给「签出并编辑」一个主动作；
+              签出后按状态显示编辑动作（保存/发布/删除），「签入」作为「结束编辑」
+              放末尾并用分隔线与编辑动作隔开。 */}
           {template.status !== "archived" && template.locked_by == null && (
             <Button
               variant="primary"
@@ -533,36 +517,25 @@ export const DesignerPage: React.FC = () => {
               签出并编辑
             </Button>
           )}
-          {isHolder && (
+          {isHolder && template.status === "draft" && (
             <Button
-              variant="ghost"
               disabled={busy}
-              icon={<UnlockIcon />}
-              onClick={handleCheckin}
+              icon={<SaveIcon />}
+              onClick={handleSave}
             >
-              签入
+              保存草稿
             </Button>
           )}
-          <Button
-            disabled={!isHolder || busy || template.status === "published"}
-            title={
-              template.status === "published"
-                ? "已发布模板的修改需重新发布生效"
-                : undefined
-            }
-            icon={<SaveIcon />}
-            onClick={handleSave}
-          >
-            保存草稿
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!canPublish || busy}
-            icon={<SendIcon />}
-            onClick={handlePublish}
-          >
-            {template.status === "published" && isHolder ? "重新发布" : "发布"}
-          </Button>
+          {isHolder && template.status !== "archived" && (
+            <Button
+              variant="primary"
+              disabled={busy}
+              icon={<SendIcon />}
+              onClick={handlePublish}
+            >
+              {template.status === "published" ? "重新发布" : "发布"}
+            </Button>
+          )}
           {isHolder && template.status === "draft" && (
             <Button
               variant="danger"
@@ -572,6 +545,19 @@ export const DesignerPage: React.FC = () => {
             >
               删除
             </Button>
+          )}
+          {isHolder && (
+            <>
+              <span className="et-divider" aria-hidden="true" />
+              <Button
+                variant="primary"
+                disabled={busy}
+                icon={<UnlockIcon />}
+                onClick={handleCheckin}
+              >
+                签入
+              </Button>
+            </>
           )}
         </div>
       </header>
@@ -596,7 +582,6 @@ export const DesignerPage: React.FC = () => {
           schema={schema}
           templateName={template.name}
           selectedId={selectedId}
-          mode={mode}
           readonly={readonly}
           onSelect={setSelectedId}
           onDropField={handleAddField}

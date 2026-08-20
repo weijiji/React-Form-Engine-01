@@ -44,6 +44,14 @@
     .canvas .canvas-inner {
       position: relative;
     }
+    .canvas .canvas-top {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
     .cv-drop-zone {
       display: none;
     }
@@ -216,11 +224,7 @@
         <span class="et-dot"></span>
         已签出 · 正在编辑
       </span>
-      <div class="et-actions">
-        <div class="seg" id="modeSeg">
-          <button class="active" data-m="static" onclick="setMode('static',this)">静态预览</button>
-          <button data-m="test" onclick="setMode('test',this)">交互测试</button>
-        </div>
+      <div class="et-actions">        
         <span class="test-badge hide" id="testBadge">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
           独立测试 Store，改动不影响模板
@@ -246,6 +250,12 @@
 
       <!-- 中：实时预览 -->
       <div class="canvas" id="canvas" onclick="clearSelection()">
+        <div class="canvas-top">
+          <div class="seg" id="modeSeg">
+          <button class="active" data-m="static" onclick="setMode('static',this)">静态预览</button>
+          <button data-m="test" onclick="setMode('test',this)">交互测试</button>
+        </div>
+        </div>
         <div class="canvas-inner" id="canvasInner" onclick="event.stopPropagation()">
           <div class="canvas-mask" id="canvasMask"></div>
           <div class="canvas-head">

@@ -1,17 +1,16 @@
 import type { FieldSchema, FieldType } from "form-engine-core";
-import { Button, IconButton } from "../components";
+import { Button, IconButton, Segmented } from "../components";
 import { Form } from "../form/Form";
 import { CopyIcon, FileIcon, TrashIcon, UserIcon } from "./icons";
 import { FIELD_TYPE_MIME } from "./palette";
 import type { DesignerSchema } from "./schemaModel";
+import { useState } from "react";
 
 export interface DesignCanvasProps {
   schema: DesignerSchema;
   templateName: string;
   /** Selected field id or section id, or null. */
   selectedId: string | null;
-  mode: "static" | "test";
-  /** 只读模式：隐藏字段/章节编辑工具、禁用画布拖放（未签出 / 他人锁定 / 已归档）。 */
   readonly?: boolean;
   onSelect: (id: string | null) => void;
   onDropField: (type: FieldType) => void;
@@ -34,7 +33,6 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
   schema,
   templateName,
   selectedId,
-  mode,
   readonly = false,
   onSelect,
   onDropField,
@@ -49,93 +47,108 @@ export const DesignCanvas: React.FC<DesignCanvasProps> = ({
     const type = e.dataTransfer.getData(FIELD_TYPE_MIME) as FieldType;
     if (type) onDropField(type);
   };
-
+  // mode: "static" | "test";
+  /** 只读模式：隐藏字段/章节编辑工具、禁用画布拖放（未签出 / 他人锁定 / 已归档）。 */
+  const [mode, setMode] = useState<"static" | "test">("static");
   return (
-    <div
-      className="canvas"
-      onClick={() => onSelect(null)}
-      onDragOver={readonly ? undefined : (e) => e.preventDefault()}
-      onDrop={readonly ? undefined : handleDrop}
-    >
-      <div className="canvas-inner" onClick={(e) => e.stopPropagation()}>
-        <div className="canvas-head">
-          <h2>{templateName}</h2>
-          <p>
-            请完整填写以下信息，带{" "}
-            <span style={{ color: "var(--danger)" }}>*</span> 为必填项
-          </p>
-        </div>
-        {mode === "test" ? (
-          <div className="canvas-form">
-            <Form schema={schema} />
+    <div className="canvas-container">
+      <div className="canvas-top">
+        <Segmented
+            label="预览模式"
+            options={[
+              { value: "static", label: "静态预览" },
+              { value: "test", label: "交互测试" },
+            ]}
+            value={mode}
+            onChange={setMode}
+          />
+      </div>
+      <div
+        className="canvas"
+        onClick={() => onSelect(null)}
+        onDragOver={readonly ? undefined : (e) => e.preventDefault()}
+        onDrop={readonly ? undefined : handleDrop}
+      >
+        <div className="canvas-inner" onClick={(e) => e.stopPropagation()}>
+          <div className="canvas-head">
+            <h2>{templateName}</h2>
+            <p>
+              请完整填写以下信息，带{" "}
+              <span style={{ color: "var(--danger)" }}>*</span> 为必填项
+            </p>
           </div>
-        ) : (
-          <>
-            {schema.sections.length === 0 && (
-              <div className="empty-canvas">
-                画布为空。从左侧「组件面板」点击或拖拽组件到此处开始设计。
-                {!readonly && (
-                  <div>
-                    <Button size="sm" className="empty-canvas-btn" onClick={onAddSection}>
-                      添加章节
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {schema.sections.map((section) => (
-              <div
-                key={section.id}
-                className={
-                  section.id === selectedId ? "fld-section selected" : "fld-section"
-                }
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(section.id);
-                }}
-              >
-                <div className="sec-head">
-                  <span className="sec-dot" />
-                  <span className="sec-title">{section.title}</span>
-                  <span className="sec-count">{section.fields.length} 个字段</span>
+          {mode === "test" ? (
+            <div className="canvas-form">
+              <Form schema={schema} />
+            </div>
+          ) : (
+            <>
+              {schema.sections.length === 0 && (
+                <div className="empty-canvas">
+                  画布为空。从左侧「组件面板」点击或拖拽组件到此处开始设计。
                   {!readonly && (
-                    <div className="sec-tools">
-                      <IconButton
-                        size="sm"
-                        label="删除章节"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemoveSection(section.id);
-                        }}
-                      >
-                        <TrashIcon />
-                      </IconButton>
+                    <div>
+                      <Button size="sm" className="empty-canvas-btn" onClick={onAddSection}>
+                        添加章节
+                      </Button>
                     </div>
                   )}
                 </div>
+              )}
 
-                {section.fields.map((field) => (
-                  <FieldCard
-                    key={field.id}
-                    field={field}
-                    selected={field.id === selectedId}
-                    readonly={readonly}
-                    onSelect={onSelect}
-                    onRemove={() => onRemoveField(section.id, field.id)}
-                    onDuplicate={() => onDuplicateField(section.id, field.id)}
-                  />
-                ))}
-
-                {section.fields.length === 0 && (
-                  <div className="empty-canvas" style={{ padding: 20 }}>
-                    该章节暂无字段，点击左侧组件添加
+              {schema.sections.map((section) => (
+                <div
+                  key={section.id}
+                  className={
+                    section.id === selectedId ? "fld-section selected" : "fld-section"
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(section.id);
+                  }}
+                >
+                  <div className="sec-head">
+                    <span className="sec-dot" />
+                    <span className="sec-title">{section.title}</span>
+                    <span className="sec-count">{section.fields.length} 个字段</span>
+                    {!readonly && (
+                      <div className="sec-tools">
+                        <IconButton
+                          size="sm"
+                          label="删除章节"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemoveSection(section.id);
+                          }}
+                        >
+                          <TrashIcon />
+                        </IconButton>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </>
-        )}
+
+                  {section.fields.map((field) => (
+                    <FieldCard
+                      key={field.id}
+                      field={field}
+                      selected={field.id === selectedId}
+                      readonly={readonly}
+                      onSelect={onSelect}
+                      onRemove={() => onRemoveField(section.id, field.id)}
+                      onDuplicate={() => onDuplicateField(section.id, field.id)}
+                    />
+                  ))}
+
+                  {section.fields.length === 0 && (
+                    <div className="empty-canvas" style={{ padding: 20 }}>
+                      该章节暂无字段，点击左侧组件添加
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

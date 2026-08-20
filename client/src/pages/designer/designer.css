@@ -85,6 +85,14 @@
   gap: 10px;
 }
 
+/* 「签入」前的一根细竖线：把「结束编辑」与左侧编辑动作（保存/发布/删除）视觉分隔开。 */
+.et-actions .et-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-strong);
+  flex: none;
+}
+
 .editor-body {
   flex: 1;
   display: flex;
@@ -275,6 +283,7 @@ textarea.mono {
   font-weight: 650;
   border-bottom: 1px solid var(--border);
   flex: none;
+  height: 46px;
 }
 
 .panel-scroll {
@@ -340,6 +349,27 @@ textarea.mono {
 }
 
 /* ── 中：实时预览画布 ──────────────────────────────────────────────────── */
+
+.canvas-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 0;
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  height: 46px;
+  border-bottom: 1px solid var(--border);
+}
 
 .canvas {
   flex: 1;
@@ -587,6 +617,7 @@ textarea.mono {
   font-size: 13.5px;
   border-radius: 8px;
   border-color: var(--border-strong);
+  font-family: inherit;
 }
 
 .canvas-form .form-help {
