@@ -11,6 +11,7 @@ export * from "./visibilityEngine";
 export * from "./formStateManager";
 export * from "./approvalStateMachine";
 export * from "./approvalResolver";
+export * from "./nlSuggestion";
 
 export { compareValues, fieldValue, isEmptyValue } from "./values";
 export { childFields, topLevelFields } from "./fields";

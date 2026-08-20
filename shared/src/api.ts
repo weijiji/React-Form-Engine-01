@@ -686,6 +686,52 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/api/v1/nl/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a form-structure suggestion from a natural-language request
+         * @description Asks the LLM to turn a natural-language description into a
+         *     FormStructureSuggestion. When the LLM is unconfigured, fails, or returns
+         *     an unusable structure, the server falls back to the local rule engine;
+         *     when that also misses, `suggestion` is `null` and the client guides the
+         *     user (ADR-0013). Requires `template:create`.
+         */
+        post: operations["generateSuggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nl/refine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refine a suggestion with a follow-up message
+         * @description Sends the current suggestion plus a follow-up message to the LLM and
+         *     returns a revised suggestion. Requires the LLM to be configured
+         *     (503 NL_UNAVAILABLE otherwise) and `template:create`.
+         */
+        post: operations["refineSuggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1079,6 +1125,45 @@ export interface components {
             field_values: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * @description AI 生成的、用户可编辑确认的中间结构（CONTEXT.md「表单结构建议」）。
+         *     不是引擎 schema —— 不含 schemaVersion、字段 id、验证规则；type 为受限枚举，
+         *     翻译时未识别一律落为 text（ADR-0013）。
+         */
+        FormStructureSuggestion: {
+            /** @description Template name suggested by the AI (editable in the preview). */
+            name: string;
+            description?: string | null;
+            sections: components["schemas"]["NlSection"][];
+        };
+        NlSection: {
+            title: string;
+            fields: components["schemas"]["NlField"][];
+        };
+        NlField: {
+            label: string;
+            /** @enum {string} */
+            type: "text" | "textarea" | "number" | "select" | "radio" | "checkbox" | "date" | "datetime" | "file" | "user-picker";
+            required: boolean;
+            /** @description Choice types only (select/radio/checkbox). */
+            options?: string[];
+        };
+        NlGenerateRequest: {
+            /** @description The natural-language form description. */
+            message: string;
+        };
+        NlGenerateResponse: {
+            /** @description The generated suggestion, or null when nothing matched. */
+            suggestion: components["schemas"]["FormStructureSuggestion"] | null;
+        };
+        NlRefineRequest: {
+            /** @description The follow-up instruction (e.g. "去掉附件、加上到货日期"). */
+            message: string;
+            suggestion: components["schemas"]["FormStructureSuggestion"];
+        };
+        NlRefineResponse: {
+            suggestion: components["schemas"]["FormStructureSuggestion"];
         };
     };
     responses: never;
@@ -2560,6 +2645,108 @@ export interface operations {
             };
             /** @description Invalid name or email */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    generateSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NlGenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Suggestion generated (or null when nothing matched) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NlGenerateResponse"];
+                };
+            };
+            /** @description Caller lacks the template:create permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing or blank `message` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    refineSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NlRefineRequest"];
+            };
+        };
+        responses: {
+            /** @description Revised suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NlRefineResponse"];
+                };
+            };
+            /** @description Caller lacks the template:create permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing/blank `message`, or a malformed `suggestion` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The LLM call failed (NL_GENERATION_FAILED) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The LLM is not configured (NL_UNAVAILABLE) */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

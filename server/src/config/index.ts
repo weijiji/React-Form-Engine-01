@@ -45,6 +45,14 @@ export const config = {
     level: process.env.LOG_LEVEL || "info",
   },
 
+  // NL 表单生成（ADR-0013）。ANTHROPIC_API_KEY 可选 —— 未配置时 NL 生成降级到
+  // 本地规则引擎；refine（追加修正）无 key 时返回 503 NL_UNAVAILABLE。
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY || "",
+    model: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
+    maxTokens: 1024,
+  },
+
   get isDev(): boolean {
     return this.env === "development";
   },

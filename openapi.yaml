@@ -35,6 +35,8 @@ tags:
     description: The predefined permission-code catalog
   - name: users
     description: User administration and role assignment
+  - name: nl
+    description: Natural-language form generation (ADR-0013)
 
 paths:
   /api/v1/health:
@@ -1195,6 +1197,90 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /api/v1/nl/generate:
+    post:
+      tags: [nl]
+      summary: Generate a form-structure suggestion from a natural-language request
+      description: |
+        Asks the LLM to turn a natural-language description into a
+        FormStructureSuggestion. When the LLM is unconfigured, fails, or returns
+        an unusable structure, the server falls back to the local rule engine;
+        when that also misses, `suggestion` is `null` and the client guides the
+        user (ADR-0013). Requires `template:create`.
+      operationId: generateSuggestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NlGenerateRequest"
+      responses:
+        "200":
+          description: Suggestion generated (or null when nothing matched)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NlGenerateResponse"
+        "422":
+          description: Missing or blank `message`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Caller lacks the template:create permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/nl/refine:
+    post:
+      tags: [nl]
+      summary: Refine a suggestion with a follow-up message
+      description: |
+        Sends the current suggestion plus a follow-up message to the LLM and
+        returns a revised suggestion. Requires the LLM to be configured
+        (503 NL_UNAVAILABLE otherwise) and `template:create`.
+      operationId: refineSuggestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NlRefineRequest"
+      responses:
+        "200":
+          description: Revised suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NlRefineResponse"
+        "422":
+          description: Missing/blank `message`, or a malformed `suggestion`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: The LLM call failed (NL_GENERATION_FAILED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: The LLM is not configured (NL_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Caller lacks the template:create permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     ErrorEnvelope:
@@ -1907,6 +1993,87 @@ components:
         field_values:
           type: object
           additionalProperties: true
+
+    FormStructureSuggestion:
+      type: object
+      description: |
+        AI 生成的、用户可编辑确认的中间结构（CONTEXT.md「表单结构建议」）。
+        不是引擎 schema —— 不含 schemaVersion、字段 id、验证规则；type 为受限枚举，
+        翻译时未识别一律落为 text（ADR-0013）。
+      required: [name, sections]
+      properties:
+        name:
+          type: string
+          description: Template name suggested by the AI (editable in the preview).
+        description:
+          type: [string, "null"]
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/NlSection"
+
+    NlSection:
+      type: object
+      required: [title, fields]
+      properties:
+        title:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/NlField"
+
+    NlField:
+      type: object
+      required: [label, type, required]
+      properties:
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, textarea, number, select, radio, checkbox, date, datetime, file, user-picker]
+        required:
+          type: boolean
+        options:
+          type: array
+          items:
+            type: string
+          description: Choice types only (select/radio/checkbox).
+
+    NlGenerateRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: The natural-language form description.
+
+    NlGenerateResponse:
+      type: object
+      required: [suggestion]
+      properties:
+        suggestion:
+          oneOf:
+            - $ref: "#/components/schemas/FormStructureSuggestion"
+            - type: "null"
+          description: The generated suggestion, or null when nothing matched.
+
+    NlRefineRequest:
+      type: object
+      required: [message, suggestion]
+      properties:
+        message:
+          type: string
+          description: The follow-up instruction (e.g. "去掉附件、加上到货日期").
+        suggestion:
+          $ref: "#/components/schemas/FormStructureSuggestion"
+
+    NlRefineResponse:
+      type: object
+      required: [suggestion]
+      properties:
+        suggestion:
+          $ref: "#/components/schemas/FormStructureSuggestion"
 
   parameters:
     TraceId:

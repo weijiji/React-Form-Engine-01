@@ -23,7 +23,6 @@ function renderCanvas(overrides: Partial<Parameters<typeof DesignCanvas>[0]> = {
     schema,
     templateName: "员工入职信息登记表",
     selectedId: null,
-    mode: "static" as const,
     onSelect: vi.fn(),
     onDropField: vi.fn(),
     onRemoveField: vi.fn(),
@@ -112,13 +111,13 @@ describe("DesignCanvas", () => {
     expect(screen.getByText(/姓名/)).toBeInTheDocument();
   });
 
-  it("test mode renders the interactive Form engine inside the canvas-form wrapper", () => {
+  it("test mode renders the interactive Form engine inside the canvas-form wrapper", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <DesignCanvas
         schema={schema}
         templateName="员工入职信息登记表"
         selectedId={null}
-        mode="test"
         onSelect={vi.fn()}
         onDropField={vi.fn()}
         onRemoveField={vi.fn()}
@@ -127,6 +126,8 @@ describe("DesignCanvas", () => {
         onAddSection={vi.fn()}
       />,
     );
+    // 预览模式是画布内部的 Segmented 状态（预览模式 → 交互测试）
+    await user.click(screen.getByRole("button", { name: "交互测试" }));
     // 画布头部与静态预览共用（含模板名 + 必填提示）
     expect(screen.getByText(/请完整填写以下信息/)).toBeInTheDocument();
     // 真 Form 引擎在 .canvas-form 作用域内渲染（对齐静态预览视觉）

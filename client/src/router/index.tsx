@@ -30,6 +30,7 @@ import { AllTemplatesPage } from "../pages/AllTemplatesPage";
 import { TemplatesPage } from "../pages/designer/TemplatesPage";
 import { CreateTemplatePage } from "../pages/designer/CreateTemplatePage";
 import { CreateBlankPage } from "../pages/designer/CreateBlankPage";
+import { NlCreatePage } from "../pages/designer/NlCreatePage";
 import { DesignerPage } from "../pages/designer/DesignerPage";
 import { PreviewPage } from "../pages/PreviewPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
@@ -229,7 +230,7 @@ export const routes: RouteObject[] = [
             path: "/designer/create/nl",
             element: (
               <RequirePermission codes={ROUTE_CODES["/designer/create/nl"]!}>
-                <PlaceholderPage />
+                <NlCreatePage />
               </RequirePermission>
             ),
             handle: { title: "自然语言创建", crumb: "创建模板" } satisfies ShellHandle,

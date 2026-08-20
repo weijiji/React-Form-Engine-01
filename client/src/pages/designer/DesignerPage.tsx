@@ -10,7 +10,7 @@ import type {
 } from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
 import { useAuth } from "../../auth/AuthContext";
-import { Button, IconButton, Segmented } from "../../components";
+import { Button, IconButton } from "../../components";
 import { ComponentPalette } from "../../designer/ComponentPalette";
 import { DesignCanvas } from "../../designer/DesignCanvas";
 import {

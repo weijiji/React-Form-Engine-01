@@ -106,6 +106,16 @@ MVP 仅支持单层 AND 条件（平铺条件行，不支持 OR 和嵌套）。�
 
 ---
 
+## NL 创建
+
+### 表单结构建议（FormStructureSuggestion）
+
+NL 创建流程中，AI 根据用户自然语言描述生成的中间结构，用户预览、编辑并确认后由服务端翻译为 `FormTemplate` 的 schema。它**不是**模板 schema——不含 `schemaVersion`、字段 id、验证规则；仅含模板名、可选描述与章节（章节内为字段清单：标签 / 类型 / 必填 / 选项）。字段类型为受限枚举（text / textarea / number / select / radio / checkbox / date / datetime / file / user-picker），未识别一律落为 `text`。
+
+_Avoid_: 生成 schema、AI 结构
+
+---
+
 ## 并发控制
 
 ### 乐观锁（Optimistic Locking）
