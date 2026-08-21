@@ -3,10 +3,10 @@ import { hashPassword } from "../../services/password";
 
 export async function seed(knex: Knex): Promise<void> {
   // Truncate all tables in dependency order
+  // (drafts table was dropped in ADR-0014 — 草稿即草稿状态实例)
   await knex("audit_logs").del();
   await knex("idempotency_keys").del();
   await knex("notifications").del();
-  await knex("drafts").del();
   await knex("approval_records").del();
   await knex("form_instances").del();
   await knex("form_templates").del();

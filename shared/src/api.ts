@@ -396,63 +396,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/drafts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List my drafts
-         * @description Offset-paginated drafts owned by the acting user, newest first.
-         */
-        get: operations["listDrafts"];
-        put?: never;
-        /**
-         * Create a draft
-         * @description Saves a lightweight draft for a published template.
-         */
-        post: operations["createDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/drafts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Draft UUID. */
-                id: components["parameters"]["DraftId"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Resume a draft
-         * @description Returns the draft with best-effort fieldId migration against the current
-         *     template schema (ADR-0004): still-valid fields are kept, removed fields
-         *     move to `_orphaned`, and `version_mismatch` flags when anything moved.
-         */
-        get: operations["getDraft"];
-        /**
-         * Update a draft
-         * @description Replaces the draft's field values.
-         */
-        put: operations["updateDraft"];
-        post?: never;
-        /**
-         * Discard a draft
-         * @description Deletes the draft. Returns 204 on success.
-         */
-        delete: operations["deleteDraft"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -976,27 +919,6 @@ export interface components {
             /** Format: date-time */
             acted_at?: string | null;
         };
-        /** @description A partially-filled, unsaved form. Independent of FormInstance's draft status (CONTEXT.md "Draft"). */
-        Draft: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            template_id: string;
-            /** Format: uuid */
-            user_id: string;
-            field_values: {
-                [key: string]: unknown;
-            };
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-            /**
-             * Format: date-time
-             * @description 2-year retention, after which drafts are purged.
-             */
-            expires_at: string;
-        };
         /** @description A message triggered by a business event. Mirrors the notifications table. */
         Notification: {
             /** Format: uuid */
@@ -1068,6 +990,12 @@ export interface components {
         InstanceDetail: components["schemas"]["FormInstance"] & {
             approval_records: components["schemas"]["ApprovalRecordSummary"][];
             template: components["schemas"]["TemplateSummary"];
+            /** @description Draft-status only. Field values moved out after best-effort fieldId migration (ADR-0004). Absent otherwise. */
+            _orphaned?: {
+                [key: string]: unknown;
+            };
+            /** @description Draft-status only. True when fieldId migration moved any values (ADR-0004). Absent otherwise. */
+            version_mismatch?: boolean;
         };
         /** @description A FormInstance with the template display name resolved. */
         InstanceListItem: components["schemas"]["FormInstance"] & {
@@ -1101,38 +1029,6 @@ export interface components {
         WithdrawRequest: {
             /** @description Expected optimistic-lock version (required); a mismatch yields 409 VERSION_CONFLICT. */
             version: number;
-        };
-        /** @description A draft after version-mismatch migration, with the live template attached. */
-        DraftDetail: components["schemas"]["Draft"] & {
-            /** @description Values whose fieldId no longer exists in the current schema. */
-            _orphaned?: {
-                [key: string]: unknown;
-            };
-            /** @description True when at least one value was orphaned by migration. */
-            version_mismatch: boolean;
-            template: components["schemas"]["TemplateSummary"];
-        };
-        /** @description A draft with the template display name resolved. */
-        DraftListItem: components["schemas"]["Draft"] & {
-            template_name?: string | null;
-        };
-        DraftListResponse: {
-            items: components["schemas"]["DraftListItem"][];
-            total: number;
-            page: number;
-            pageSize: number;
-        };
-        CreateDraftRequest: {
-            /** Format: uuid */
-            template_id: string;
-            field_values?: {
-                [key: string]: unknown;
-            };
-        };
-        UpdateDraftRequest: {
-            field_values: {
-                [key: string]: unknown;
-            };
         };
         /**
          * @description AI 生成的、用户可编辑确认的中间结构（CONTEXT.md「表单结构建议」）。
@@ -1186,8 +1082,6 @@ export interface components {
         TemplateId: string;
         /** @description Form instance UUID. */
         InstanceId: string;
-        /** @description Draft UUID. */
-        DraftId: string;
         /** @description Role UUID. */
         RoleId: string;
         /** @description User UUID. */
@@ -1974,169 +1868,6 @@ export interface operations {
             };
             /** @description Optimistic-lock version conflict */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    listDrafts: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Paginated list of drafts */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DraftListResponse"];
-                };
-            };
-        };
-    };
-    createDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateDraftRequest"];
-            };
-        };
-        responses: {
-            /** @description Draft created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Draft"];
-                };
-            };
-            /** @description Template not published */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Template not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    getDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Draft UUID. */
-                id: components["parameters"]["DraftId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Draft (migrated) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DraftDetail"];
-                };
-            };
-            /** @description Draft not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    updateDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Draft UUID. */
-                id: components["parameters"]["DraftId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateDraftRequest"];
-            };
-        };
-        responses: {
-            /** @description Draft updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Draft"];
-                };
-            };
-            /** @description Draft not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    deleteDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Draft UUID. */
-                id: components["parameters"]["DraftId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Draft deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Draft not found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };

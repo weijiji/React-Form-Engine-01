@@ -26,7 +26,6 @@ export function migrateFieldValues(
   const currentIds = new Set(topLevelFields(schema).map((f) => f.id));
   const values: FormValues = {};
   const orphaned: Record<string, unknown> = {};
-  let changed = false;
 
   for (const [key, value] of Object.entries(fieldValues)) {
     if (key === "_orphaned") {
@@ -37,9 +36,12 @@ export function migrateFieldValues(
       values[key] = value;
     } else {
       orphaned[key] = value;
-      changed = true;
     }
   }
 
-  return { values, orphaned, changed };
+  // `changed` = "there is orphan data to surface", whether it moved during THIS
+  // migration run or was preserved from an earlier one (the client echoes
+  // `_orphaned` back on autosave). The filler keys its banner off this flag, so
+  // a reload after autosave must keep showing it.
+  return { values, orphaned, changed: Object.keys(orphaned).length > 0 };
 }

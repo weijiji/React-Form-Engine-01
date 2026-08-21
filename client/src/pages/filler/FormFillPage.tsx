@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { parseSchema, type ApprovalChain, type FormValues } from "form-engine-core";
+import type { FormValues } from "form-engine-core";
 import { apiClient, ApiError } from "../../config/api";
 import { Button } from "../../components";
 import { Form } from "../../form";
-import type { ApprovalRecordSummary, InstanceDetail } from "./types";
-import { ACTION_LABEL, formatDate, statusLabel } from "./labels";
+import type { InstanceDetail } from "./types";
+import { statusLabel } from "./labels";
 import { useAutosave } from "./useAutosave";
+import { resolveInstanceSchema } from "./resolveSchema";
+import { ApprovalChainSidebar } from "./approvalSidebar";
 import "./filler.css";
 
 /**
@@ -14,13 +16,18 @@ import "./filler.css";
  * autosaves values to `PUT /instances/:id/values`, and submits atomically via
  * `POST /instances/:id/submit`. A right-hand sidebar shows the approval chain;
  * for a submitted instance the form is read-only (frozen snapshot).
+ *
+ * Drafts (ADR-0014: an instance IS the draft) edit the live template and run a
+ * best-effort fieldId migration on load (ADR-0004): removed fields' values are
+ * kept in `_orphaned`, shown as a collapsible banner, and written back with each
+ * autosave so nothing is lost if the user later re-submits.
  */
 export const FormFillPage: React.FC = () => {
   const { id = "" } = useParams();
   const [detail, setDetail] = useState<InstanceDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [draftNotice, setDraftNotice] = useState(false);
+  const [orphansOpen, setOrphansOpen] = useState(false);
   const latestValuesRef = useRef<FormValues>({});
 
   useEffect(() => {
@@ -43,37 +50,31 @@ export const FormFillPage: React.FC = () => {
 
   // Drafts edit the live template; submitted instances render the frozen
   // snapshot so later template edits can't change what was approved.
-  const rawSchema = useMemo(() => {
-    if (!detail) return null;
-    if (isDraft) return detail.template.schema;
-    const snapshot = detail.template_snapshot as
-      | { schema?: unknown; approval_chain?: unknown }
-      | undefined;
-    return snapshot?.schema ?? detail.template.schema;
-  }, [detail, isDraft]);
+  const parsedSchema = useMemo(
+    () => (detail ? resolveInstanceSchema(detail) : null),
+    [detail],
+  );
 
-  const parsedSchema = useMemo(() => {
-    if (!rawSchema) return null;
-    const chain = (detail?.template.approval_chain ?? null) as
-      | ApprovalChain
-      | Record<string, never>
-      | null;
-    try {
-      return parseSchema(rawSchema, chain ?? null);
-    } catch {
-      return null;
-    }
-  }, [rawSchema, detail?.template.approval_chain]);
-
+  // Autosave must carry `_orphaned` back (ADR-0004): the GET stripped it out of
+  // field_values, so without this merge a later autosave would drop the values
+  // the migration preserved.
   const saveValues = useMemo(
     () =>
       async (values: FormValues): Promise<void> => {
+        const orphan = detail?._orphaned;
+        // Echo `_orphaned` back so autosave preserves it (ADR-0004), but only
+        // when there actually is orphan data — a clean draft must not store an
+        // empty `_orphaned: {}`.
+        const body: FormValues =
+          orphan && Object.keys(orphan).length > 0
+            ? { ...values, _orphaned: orphan }
+            : values;
         await apiClient(`/instances/${id}/values`, {
           method: "PUT",
-          body: JSON.stringify({ field_values: values }),
+          body: JSON.stringify({ field_values: body }),
         });
       },
-    [id],
+    [id, detail?._orphaned],
   );
   const autosave = useAutosave(saveValues, detail?.field_values ?? {});
 
@@ -84,24 +85,6 @@ export const FormFillPage: React.FC = () => {
     },
     [autosave],
   );
-
-  const saveDraft = async (): Promise<void> => {
-    setDraftNotice(false);
-    try {
-      await apiClient("/drafts", {
-        method: "POST",
-        body: JSON.stringify({
-          template_id: detail?.template_id,
-          field_values: latestValuesRef.current,
-        }),
-      });
-      setDraftNotice(true);
-    } catch (err: unknown) {
-      setSubmitError(
-        err instanceof ApiError ? err.message : "保存草稿失败，请稍后重试",
-      );
-    }
-  };
 
   const handleSubmit = async (values: FormValues): Promise<void> => {
     setSubmitError(null);
@@ -155,19 +138,32 @@ export const FormFillPage: React.FC = () => {
         </div>
         <div className="fill-top-right">
           {isDraft && (
-            <>
-              <span className="fill-save-indicator" aria-live="polite">
-                {autosave.label}
-              </span>
-              <Button size="sm" onClick={() => void saveDraft()}>
-                保存草稿
-              </Button>
-            </>
+            <span className="fill-save-indicator" aria-live="polite">
+              {autosave.label}
+            </span>
           )}
         </div>
       </div>
 
-      {draftNotice && <p className="fill-draft-notice">已保存到「我的草稿」</p>}
+      {isDraft && detail.version_mismatch && (
+        <div className="orphan-banner" role="alert">
+          <div className="orphan-banner-head">
+            <strong>模板已更新，部分字段内容可能无法匹配</strong>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setOrphansOpen((v) => !v)}
+            >
+              {orphansOpen ? "收起" : "查看孤儿数据"}
+            </Button>
+          </div>
+          {orphansOpen && (
+            <pre className="orphan-banner-data">
+              {JSON.stringify(detail._orphaned ?? {}, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
       {submitError && <p className="fill-submit-error">{submitError}</p>}
 
       <div className="fill-body">
@@ -190,57 +186,3 @@ export const FormFillPage: React.FC = () => {
   );
 };
 
-function ApprovalChainSidebar({ detail }: { detail: InstanceDetail }) {
-  const chain = detail.template.approval_chain as
-    | { nodes?: Array<{ id: string; order: number; label?: string }> }
-    | null
-    | undefined;
-  const nodes = chain?.nodes ?? [];
-  const recordByNode = new Map<string, ApprovalRecordSummary>(
-    (detail.approval_records ?? []).map((r) => [r.node_id, r]),
-  );
-
-  return (
-    <div className="chain-side">
-      <h3 className="chain-side-title">审批流程</h3>
-      {nodes.length === 0 ? (
-        <p className="chain-side-empty">该表单无需审批</p>
-      ) : (
-        <ol className="chain-side-list">
-          {nodes.map((node) => {
-            const record = recordByNode.get(node.id);
-            return (
-              <li key={node.id} className="chain-side-node">
-                <span className="chain-side-dot" aria-hidden="true">
-                  {node.order}
-                </span>
-                <div className="chain-side-card">
-                  <div className="chain-side-label">
-                    {node.label ?? `第 ${node.order} 级审批`}
-                  </div>
-                  <div className="chain-side-approver">
-                    {record?.approver_name ?? (record ? "—" : "提交后解析")}
-                  </div>
-                  {record && (
-                    <div className="chain-side-action">
-                      <span
-                        className={`chain-side-badge chain-side-badge--${record.action}`}
-                      >
-                        {ACTION_LABEL[record.action] ?? record.action}
-                      </span>
-                      {record.acted_at && (
-                        <span className="chain-side-time">
-                          {formatDate(record.acted_at)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-    </div>
-  );
-}

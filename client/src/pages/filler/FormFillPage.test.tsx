@@ -123,4 +123,31 @@ describe("FormFillPage", () => {
     // After a successful submit the instance becomes read-only ("已提交").
     expect(await screen.findByText("已提交")).toBeInTheDocument();
   });
+
+  it("shows a collapsible orphan banner when the template version mismatched (ADR-0004)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/instances/inst-1")) {
+          return jsonResponse(
+            instanceDetail({
+              field_values: { name: "李四" },
+              _orphaned: { "fld-removed": "旧值" },
+              version_mismatch: true,
+            }),
+          );
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderAt();
+    expect(
+      await screen.findByText("模板已更新，部分字段内容可能无法匹配"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看孤儿数据" }));
+    expect(await screen.findByText(/fld-removed/)).toBeInTheDocument();
+  });
 });

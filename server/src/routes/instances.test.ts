@@ -230,3 +230,191 @@ describe("submit atomicity on approver-resolution failure", () => {
     expect(detail.body.approval_records).toHaveLength(0);
   });
 });
+
+describe("owner-only instance reads (ADR-0014)", () => {
+  it("forbids a non-owner from reading an instance (403)", async () => {
+    const created = await createDraftInstance(publishedTemplateId, lisiId);
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const res = await request(app)
+      .get(`/api/v1/instances/${instanceId}`)
+      .set("Cookie", authCookie(zhangsanId));
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+  });
+});
+
+describe("draft/template version mismatch (ADR-0004)", () => {
+  it("migrates removed field values to _orphaned and flags version_mismatch", async () => {
+    const created = await createDraftInstance();
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const save = await request(app)
+      .put(`/api/v1/instances/${instanceId}/values`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: { "fld-001": "李四", "fld-removed": "旧值" } });
+    expect(save.status).toBe(200);
+
+    const res = await request(app)
+      .get(`/api/v1/instances/${instanceId}`)
+      .set("Cookie", authCookie(lisiId));
+    expect(res.status).toBe(200);
+    expect(res.body.version_mismatch).toBe(true);
+    expect(res.body._orphaned).toEqual({ "fld-removed": "旧值" });
+    // Still-valid fields stay in field_values; the removed field does not.
+    expect(res.body.field_values["fld-001"]).toBe("李四");
+    expect(res.body.field_values["fld-removed"]).toBeUndefined();
+  });
+
+  it("preserves _orphaned through autosave when the client sends it back", async () => {
+    const created = await createDraftInstance();
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    // Simulate the filler: it receives `_orphaned` on GET and merges it back
+    // into field_values on PUT /values (FormFillPage).
+    const save = await request(app)
+      .put(`/api/v1/instances/${instanceId}/values`)
+      .set("Cookie", authCookie(lisiId))
+      .send({
+        field_values: { "fld-001": "李四", _orphaned: { "fld-removed": "旧值" } },
+      });
+    expect(save.status).toBe(200);
+
+    const res = await request(app)
+      .get(`/api/v1/instances/${instanceId}`)
+      .set("Cookie", authCookie(lisiId));
+    expect(res.body.version_mismatch).toBe(true);
+    expect(res.body._orphaned).toEqual({ "fld-removed": "旧值" });
+  });
+
+  it("submit with _orphaned in field_values still passes validation", async () => {
+    const created = await createDraftInstance();
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const res = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({
+        field_values: { ...validValues, _orphaned: { "fld-removed": "旧值" } },
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("submitted");
+    // `_orphaned` never participates in the written record (ADR-0014 §3).
+    expect(res.body.field_values["_orphaned"]).toBeUndefined();
+  });
+});
+
+describe("draft retention (BR-15, ADR-0014)", () => {
+  async function backdate(id: string, days: number) {
+    await getDb()("form_instances")
+      .where({ id })
+      .update({ updated_at: new Date(Date.now() - days * 24 * 60 * 60 * 1000) });
+  }
+
+  it("returns 410 DRAFT_EXPIRED for an expired draft on GET/PUT/submit", async () => {
+    const created = await createDraftInstance();
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+    await backdate(instanceId, 800); // > 2 years
+
+    const get = await request(app)
+      .get(`/api/v1/instances/${instanceId}`)
+      .set("Cookie", authCookie(lisiId));
+    expect(get.status).toBe(410);
+    expect(get.body.error.code).toBe("DRAFT_EXPIRED");
+
+    const put = await request(app)
+      .put(`/api/v1/instances/${instanceId}/values`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: validValues });
+    expect(put.status).toBe(410);
+    expect(put.body.error.code).toBe("DRAFT_EXPIRED");
+
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: validValues });
+    expect(submit.status).toBe(410);
+    expect(submit.body.error.code).toBe("DRAFT_EXPIRED");
+  });
+
+  it("hides expired drafts from /instances/my (they disappear entirely)", async () => {
+    const fresh = await createDraftInstance();
+    createdInstanceIds.push(fresh.body.id);
+
+    const expired = await createDraftInstance();
+    createdInstanceIds.push(expired.body.id);
+    await backdate(expired.body.id, 800);
+
+    const res = await request(app)
+      .get("/api/v1/instances/my?page=1&pageSize=100")
+      .set("Cookie", authCookie(lisiId));
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((i: { id: string }) => i.id);
+    expect(ids).toContain(fresh.body.id);
+    expect(ids).not.toContain(expired.body.id);
+  });
+});
+
+describe("no-chain template", () => {
+  it("submits straight to approved when the approval chain is empty", async () => {
+    const tpl = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .send({ name: "无审批流程模板" });
+    createdTemplateIds.push(tpl.body.id);
+
+    const publish = await request(app)
+      .post(`/api/v1/templates/${tpl.body.id}/publish`)
+      .set("Cookie", authCookie(adminId));
+    expect(publish.status).toBe(200);
+
+    const created = await createDraftInstance(tpl.body.id, lisiId);
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: {} });
+    expect(submit.status).toBe(200);
+    expect(submit.body.status).toBe("approved");
+    expect(submit.body.approval_records).toHaveLength(0);
+  });
+});
+
+describe("my-instances list filter", () => {
+  it("filters /instances/my by status", async () => {
+    const draft = await createDraftInstance();
+    createdInstanceIds.push(draft.body.id);
+
+    const submitted = await createDraftInstance();
+    createdInstanceIds.push(submitted.body.id);
+    const sub = await request(app)
+      .post(`/api/v1/instances/${submitted.body.id}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: validValues });
+    expect(sub.status).toBe(200);
+
+    const drafts = await request(app)
+      .get("/api/v1/instances/my?page=1&pageSize=100&status=draft")
+      .set("Cookie", authCookie(lisiId));
+    expect(
+      drafts.body.items.map((i: { id: string }) => i.id),
+    ).toContain(draft.body.id);
+    expect(
+      drafts.body.items.map((i: { id: string }) => i.id),
+    ).not.toContain(submitted.body.id);
+
+    const submittedList = await request(app)
+      .get("/api/v1/instances/my?page=1&pageSize=100&status=submitted")
+      .set("Cookie", authCookie(lisiId));
+    expect(
+      submittedList.body.items.map((i: { id: string }) => i.id),
+    ).toContain(submitted.body.id);
+  });
+});

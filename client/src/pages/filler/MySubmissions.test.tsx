@@ -7,6 +7,17 @@ function jsonResponse(body: unknown) {
   return { ok: true, status: 200, json: async () => body };
 }
 
+const schema = {
+  schemaVersion: "1.0.0",
+  sections: [
+    {
+      id: "s1",
+      title: "基本信息",
+      fields: [{ id: "name", type: "text", label: "姓名", required: true }],
+    },
+  ],
+};
+
 function list(overrides: Record<string, unknown> = {}) {
   return {
     items: [
@@ -32,12 +43,39 @@ function list(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function detail(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "inst-1",
+    template_id: "tpl-1",
+    template_snapshot: {},
+    field_values: { name: "李四" },
+    status: "submitted",
+    current_node_index: 0,
+    version: 2,
+    submitted_by: "u-lisi",
+    submitted_at: "2026-01-01T00:00:00Z",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    approval_records: [],
+    template: {
+      id: "tpl-1",
+      name: "IT设备申领表",
+      status: "published",
+      schema,
+      approval_chain: null,
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    ...overrides,
+  };
+}
+
 describe("MySubmissions", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
+        if (url.includes("/instances/inst-1")) return jsonResponse(detail());
         if (url.includes("/instances/my")) return jsonResponse(list());
         if (url.includes("/instances/inst-1/withdraw")) return jsonResponse(list());
         throw new Error(`unexpected fetch: ${url}`);
@@ -47,7 +85,7 @@ describe("MySubmissions", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("lists my submissions with status", async () => {
+  it("lists my forms with status badge", async () => {
     render(
       <MemoryRouter>
         <MySubmissions />
@@ -55,11 +93,43 @@ describe("MySubmissions", () => {
     );
 
     expect(await screen.findByText("IT设备申领表")).toBeInTheDocument();
-    // "已提交" also appears as a filter option in the toolbar, so assert the
-    // status badge specifically.
     expect(document.querySelector(".fill-status--submitted")).toHaveTextContent(
       "已提交",
     );
+  });
+
+  it("filters by status via the Segmented control", async () => {
+    render(
+      <MemoryRouter>
+        <MySubmissions />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "草稿" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "/api/v1/instances/my?page=1&pageSize=100&status=draft",
+        ),
+        expect.any(Object),
+      );
+    });
+  });
+
+  it("opens a read-only preview modal when a row is clicked", async () => {
+    render(
+      <MemoryRouter>
+        <MySubmissions />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByText("IT设备申领表"));
+
+    expect(await screen.findByRole("dialog", { name: "表单预览" })).toBeInTheDocument();
+    // Read-only preview renders the field value; the fill page is not entered.
+    expect(await screen.findByDisplayValue("李四")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "关闭" })).toBeInTheDocument();
   });
 
   it("withdraws a pending submission", async () => {

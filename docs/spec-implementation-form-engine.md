@@ -203,6 +203,7 @@ TEMPLATE_NOT_PUBLISHED    → 400  模板未发布或已下线
 APPROVAL_NOT_PENDING      → 400  审批已处理，无法操作
 APPROVER_RESOLUTION_FAILED → 500  审批人解析失败
 SCHEMA_VERSION_UNKNOWN    → 400  Schema 版本不被引擎支持
+DRAFT_EXPIRED             → 410  草稿已过期，无法继续（保留策略 BR-15，仅草稿状态实例）
 RATE_LIMITED              → 429  触发速率限制
 ```
 

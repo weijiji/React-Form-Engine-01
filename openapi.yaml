@@ -25,8 +25,6 @@ tags:
     description: Form center — published forms a filler can start
   - name: instances
     description: Form instance lifecycle — create, autosave, submit, withdraw
-  - name: drafts
-    description: Lightweight unsaved drafts with template version-mismatch migration
   - name: auth
     description: JWT login/refresh/logout and the current-user endpoint
   - name: roles
@@ -686,127 +684,6 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "409":
           description: Optimistic-lock version conflict
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
-  /api/v1/drafts:
-    get:
-      tags: [drafts]
-      summary: List my drafts
-      description: Offset-paginated drafts owned by the acting user, newest first.
-      operationId: listDrafts
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-      responses:
-        "200":
-          description: Paginated list of drafts
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DraftListResponse"
-    post:
-      tags: [drafts]
-      summary: Create a draft
-      description: Saves a lightweight draft for a published template.
-      operationId: createDraft
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDraftRequest"
-      responses:
-        "201":
-          description: Draft created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Draft"
-        "400":
-          description: Template not published
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-        "404":
-          description: Template not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
-  /api/v1/drafts/{id}:
-    parameters:
-      - $ref: "#/components/parameters/DraftId"
-    get:
-      tags: [drafts]
-      summary: Resume a draft
-      description: |
-        Returns the draft with best-effort fieldId migration against the current
-        template schema (ADR-0004): still-valid fields are kept, removed fields
-        move to `_orphaned`, and `version_mismatch` flags when anything moved.
-      operationId: getDraft
-      responses:
-        "200":
-          description: Draft (migrated)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DraftDetail"
-        "404":
-          description: Draft not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-    put:
-      tags: [drafts]
-      summary: Update a draft
-      description: Replaces the draft's field values.
-      operationId: updateDraft
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateDraftRequest"
-      responses:
-        "200":
-          description: Draft updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Draft"
-        "404":
-          description: Draft not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-    delete:
-      tags: [drafts]
-      summary: Discard a draft
-      description: Deletes the draft. Returns 204 on success.
-      operationId: deleteDraft
-      responses:
-        "204":
-          description: Draft deleted
-        "404":
-          description: Draft not found
           content:
             application/json:
               schema:
@@ -1715,34 +1592,6 @@ components:
           type: [string, "null"]
           format: date-time
 
-    Draft:
-      type: object
-      description: A partially-filled, unsaved form. Independent of FormInstance's draft status (CONTEXT.md "Draft").
-      required: [id, template_id, user_id, field_values, created_at, updated_at, expires_at]
-      properties:
-        id:
-          type: string
-          format: uuid
-        template_id:
-          type: string
-          format: uuid
-        user_id:
-          type: string
-          format: uuid
-        field_values:
-          type: object
-          additionalProperties: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        expires_at:
-          type: string
-          format: date-time
-          description: 2-year retention, after which drafts are purged.
-
     Notification:
       type: object
       description: A message triggered by a business event. Mirrors the notifications table.
@@ -1880,6 +1729,13 @@ components:
                 $ref: "#/components/schemas/ApprovalRecordSummary"
             template:
               $ref: "#/components/schemas/TemplateSummary"
+            _orphaned:
+              type: object
+              additionalProperties: true
+              description: Draft-status only. Field values moved out after best-effort fieldId migration (ADR-0004). Absent otherwise.
+            version_mismatch:
+              type: boolean
+              description: Draft-status only. True when fieldId migration moved any values (ADR-0004). Absent otherwise.
 
     InstanceListItem:
       type: object
@@ -1941,68 +1797,6 @@ components:
         version:
           type: integer
           description: Expected optimistic-lock version (required); a mismatch yields 409 VERSION_CONFLICT.
-
-    DraftDetail:
-      type: object
-      description: A draft after version-mismatch migration, with the live template attached.
-      allOf:
-        - $ref: "#/components/schemas/Draft"
-        - type: object
-          required: [field_values, version_mismatch, template]
-          properties:
-            _orphaned:
-              type: object
-              additionalProperties: true
-              description: Values whose fieldId no longer exists in the current schema.
-            version_mismatch:
-              type: boolean
-              description: True when at least one value was orphaned by migration.
-            template:
-              $ref: "#/components/schemas/TemplateSummary"
-
-    DraftListItem:
-      type: object
-      description: A draft with the template display name resolved.
-      allOf:
-        - $ref: "#/components/schemas/Draft"
-        - type: object
-          properties:
-            template_name:
-              type: [string, "null"]
-
-    DraftListResponse:
-      type: object
-      required: [items, total, page, pageSize]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/DraftListItem"
-        total:
-          type: integer
-        page:
-          type: integer
-        pageSize:
-          type: integer
-
-    CreateDraftRequest:
-      type: object
-      required: [template_id]
-      properties:
-        template_id:
-          type: string
-          format: uuid
-        field_values:
-          type: object
-          additionalProperties: true
-
-    UpdateDraftRequest:
-      type: object
-      required: [field_values]
-      properties:
-        field_values:
-          type: object
-          additionalProperties: true
 
     FormStructureSuggestion:
       type: object
@@ -2117,14 +1911,6 @@ components:
       in: path
       required: true
       description: Form instance UUID.
-      schema:
-        type: string
-        format: uuid
-    DraftId:
-      name: id
-      in: path
-      required: true
-      description: Draft UUID.
       schema:
         type: string
         format: uuid

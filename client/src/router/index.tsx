@@ -36,7 +36,6 @@ import { PreviewPage } from "../pages/PreviewPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { FormCenter } from "../pages/filler/FormCenter";
 import { FormFillPage } from "../pages/filler/FormFillPage";
-import { MyDrafts } from "../pages/filler/MyDrafts";
 import { MySubmissions } from "../pages/filler/MySubmissions";
 import { RolesPage } from "../pages/admin/RolesPage";
 import { UsersPage } from "../pages/admin/UsersPage";
@@ -68,7 +67,6 @@ export const ROUTE_CODES: Record<string, string[]> = {
   "/designer/drafts": TEMPLATE_EDIT,
   "/filler/forms": FORM_FILL,
   "/filler/instances/:id": FORM_FILL, // inherits /filler/forms
-  "/filler/drafts": FORM_FILL,
   "/filler/submissions": FORM_SUBMIT,
   "/approver/pending": APPROVAL_PENDING,
   "/approver/history": APPROVAL_PENDING,
@@ -118,8 +116,7 @@ const fillerNav: NavGroup = {
   label: "表单",
   items: [
     { to: "/filler/forms", label: "表单中心", icon: <LayoutIcon />, codes: ROUTE_CODES["/filler/forms"] },
-    { to: "/filler/drafts", label: "我的草稿", icon: <DraftIcon />, codes: ROUTE_CODES["/filler/drafts"] },
-    { to: "/filler/submissions", label: "我的提交", icon: <SendIcon />, codes: ROUTE_CODES["/filler/submissions"] },
+    { to: "/filler/submissions", label: "我的表单", icon: <SendIcon />, codes: ROUTE_CODES["/filler/submissions"] },
   ],
 };
 
@@ -275,22 +272,13 @@ export const routes: RouteObject[] = [
             handle: { title: "填写表单", crumb: "表单填写" } satisfies ShellHandle,
           },
           {
-            path: "/filler/drafts",
-            element: (
-              <RequirePermission codes={ROUTE_CODES["/filler/drafts"]!}>
-                <MyDrafts />
-              </RequirePermission>
-            ),
-            handle: { title: "我的草稿", crumb: "表单填写" } satisfies ShellHandle,
-          },
-          {
             path: "/filler/submissions",
             element: (
               <RequirePermission codes={ROUTE_CODES["/filler/submissions"]!}>
                 <MySubmissions />
               </RequirePermission>
             ),
-            handle: { title: "我的提交", crumb: "表单填写" } satisfies ShellHandle,
+            handle: { title: "我的表单", crumb: "表单填写" } satisfies ShellHandle,
           },
 
           // ── 审批人 /approver ──

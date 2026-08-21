@@ -9,8 +9,17 @@ import {
 } from "form-engine-core";
 import { asyncHandler, clampInt, parseJsonb, parseStatusList, requireObject } from "./helpers";
 import { resolveApprovalChain } from "../services/approval";
+import { migrateFieldValues } from "../services/fieldMigration";
+import { DRAFT_RETENTION_MS, draftExpiredAt } from "../services/draftRetention";
 import { createDbOrgDataSource } from "../services/orgDataSource";
 import { notifyApprovers } from "../services/notifications";
+
+/** A draft-status instance idle past the retention window is expired (BR-15). */
+function assertDraftNotExpired(instance: InstanceRow): void {
+  if (instance.status === "draft" && draftExpiredAt(instance.updated_at)) {
+    throw new AppError("DRAFT_EXPIRED", "草稿已过期，无法继续", 410);
+  }
+}
 
 const router = Router();
 
@@ -151,6 +160,15 @@ router.get(
     const pageSize = clampInt(req.query.pageSize, 20, 1, 100);
 
     const base = db("form_instances").where({ submitted_by: user.id });
+    // Expired drafts (BR-15) never surface in "我的表单" — hidden, not shown as
+    // a gray entry (ADR-0014).
+    base.where(function () {
+      this.whereNot({ status: "draft" }).orWhere(
+        "updated_at",
+        ">=",
+        new Date(Date.now() - DRAFT_RETENTION_MS),
+      );
+    });
     if (statuses.length > 0) {
       base.whereIn("status", statuses);
     }
@@ -214,11 +232,34 @@ router.post(
 );
 
 // ── GET /api/v1/instances/:id — detail (snapshot + approval progress) ──────
+// Owner-only (ADR-0014 §5); approver read access arrives with work order 06.
+// A draft-status instance runs the best-effort fieldId migration (ADR-0004):
+// values for removed fields move to `_orphaned`, and `version_mismatch` flags
+// when anything moved — the filler shows the yellow banner off that flag.
 router.get(
   "/:id",
   asyncHandler(async (req: Request, res: Response) => {
+    const user = req.auth!;
     const instance = await findInstance(req.params.id);
-    res.json(await toInstanceDetail(instance));
+    requireOwner(instance, user.id);
+
+    const detail = await toInstanceDetail(instance);
+    if (instance.status === "draft") {
+      assertDraftNotExpired(instance);
+      const schema = parseSchema(
+        detail.template.schema,
+        detail.template.approval_chain,
+      );
+      const migration = migrateFieldValues(instance.field_values, schema);
+      res.json({
+        ...detail,
+        field_values: migration.values,
+        _orphaned: migration.orphaned,
+        version_mismatch: migration.changed,
+      });
+      return;
+    }
+    res.json(detail);
   }),
 );
 
@@ -229,6 +270,7 @@ router.put(
     const user = req.auth!;
     const instance = await findInstance(req.params.id);
     requireOwner(instance, user.id);
+    assertDraftNotExpired(instance);
 
     if (instance.status !== "draft") {
       throw new AppError(
@@ -261,6 +303,7 @@ router.post(
     const user = req.auth!;
     const instance = await findInstance(req.params.id);
     requireOwner(instance, user.id);
+    assertDraftNotExpired(instance);
 
     if (instance.status !== "draft" && instance.status !== "withdrawn") {
       throw new AppError(
@@ -282,8 +325,15 @@ router.post(
       (req.body?.field_values as FormValues | undefined) ??
       instance.field_values;
 
+    // `_orphaned` is draft-internal bookkeeping (ADR-0014 §3) and never
+    // participates in validation or the written submitted record. The filler
+    // echoes it back on autosave, so a stale stored copy can reach this path
+    // via instance.field_values — strip it before persisting.
+    const cleanValues: FormValues = { ...values };
+    delete cleanValues["_orphaned"];
+
     const parsedSchema = parseSchema(template.schema, template.approval_chain);
-    const errors = validateAll(parsedSchema, values);
+    const errors = validateAll(parsedSchema, cleanValues);
     if (Object.keys(errors).length > 0) {
       throw new AppError("VALIDATION_ERROR", "字段值校验失败，请修正后再提交", 422, {
         errors,
@@ -314,7 +364,7 @@ router.post(
         .whereIn("status", ["draft", "withdrawn"])
         .update({
           template_snapshot: snapshot,
-          field_values: values,
+          field_values: cleanValues,
           status: nextStatus,
           current_node_index: 0,
           submitted_at: trx.fn.now(),

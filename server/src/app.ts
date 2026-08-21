@@ -10,7 +10,6 @@ import healthRouter from "./routes/health";
 import templatesRouter from "./routes/templates";
 import formsRouter from "./routes/forms";
 import instancesRouter from "./routes/instances";
-import draftsRouter from "./routes/drafts";
 import nlRouter from "./routes/nl";
 import authRouter from "./routes/auth";
 import rolesRouter from "./routes/roles";
@@ -59,7 +58,6 @@ export function createApp(): express.Application {
   app.use("/api/v1/templates", templatesRouter);
   app.use("/api/v1/forms", formsRouter);
   app.use("/api/v1/instances", instancesRouter);
-  app.use("/api/v1/drafts", draftsRouter);
   app.use("/api/v1/nl", nlRouter);
 
   // ── 404 catch-all ─────────────────────────────────────────

@@ -250,7 +250,7 @@ describe("permission-driven routing (ADR-0010)", () => {
       // 设计工作台
       "我的模板", "创建模板", "草稿模板",
       // 表单
-      "表单中心", "我的草稿", "我的提交",
+      "表单中心", "我的表单",
       // 审批
       "待审批", "已审批",
       // 运维
@@ -278,7 +278,7 @@ describe("permission-driven routing (ADR-0010)", () => {
     }
     for (const label of [
       "用户管理", "角色管理", "数据管理", "统计看板", "模板管理",
-      "表单中心", "我的草稿", "我的提交",
+      "表单中心", "我的表单",
       "待审批", "已审批", "迁移记录", "模板查看",
     ]) {
       expect(screen.queryByRole("link", { name: new RegExp(label) })).not.toBeInTheDocument();

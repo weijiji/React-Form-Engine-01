@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { getDb, closeDb } from "./db/connection";
 import { runMigrations, runSeedIfEmpty } from "./db/migrate";
+import { startDraftPurge } from "./services/draftPurge";
 import { config } from "./config";
 import { logger } from "./middleware/logger";
 
@@ -29,6 +30,10 @@ async function main(): Promise<void> {
   const app = createApp();
 
   await initializeDatabase();
+
+  // BR-15 (ADR-0014): 12h purge of expired draft-status instances. Best-effort;
+  // instances.ts hides/rejects expired drafts even if the purge lags.
+  startDraftPurge();
 
   const server = app.listen(config.port, () => {
     logger.info(
