@@ -15,6 +15,8 @@
 | ⑤ | [BUG-05](./05-designer-et-status-color.md) | `et-status` 状态徽章缺语义配色 | UI | 低-中 | **P2** | 建议与 ① 同批（同在设计器状态区） |
 | ⑥ | [BUG-02](./02-shell-sidebar-overflow.md) | 侧边栏导航溢出 sidebar 边界 | UI | 低-中 | **P2** | 无（独立小修） |
 | ⑦ | [BUG-03](./03-page-layout-consistency.md) | 全站布局缺乏统一（大整顿） | UI 专项 | 低 | **P3** | 🎨 需 UI/UX 设计师介入；可吸收 ⑤⑥ |
+| ⑧ | [BUG-09](./09-privilege-escalation-role-grant.md) | 越权提权：仅 `admin:manage_users` 可自授「管理员」角色 | 越权/安全 | 高 | **P0** | 与 ⑨ 同场景，hotfix 同批 |
+| ⑨ | [BUG-08](./08-users-page-limited-admin-crash.md) | 仅持 `admin:manage_users` 打开用户管理页整页崩溃 | 权限/页面错误 | 中 | **P1** | 与 ⑧ 同源，hotfix 同批 |
 
 ## 批次打包
 

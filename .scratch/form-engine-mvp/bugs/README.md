@@ -7,8 +7,8 @@
 
 ## 统计
 
-- 总数：7（fixed 4 / open 3）
-- 最近更新：2026-08-19
+- 总数：9（fixed 4 / open 5）
+- 最近更新：2026-08-21
 
 ## 清单
 
@@ -21,6 +21,8 @@
 | [BUG-05](./05-designer-et-status-color.md) | 设计器 `et-status` 状态徽章缺少语义配色，签出前后颜色区分弱 | UI | 低-中 | 🟢 fixed |
 | [BUG-06](./06-template-list-no-isolation.md) | 「我的模板」列表无数据隔离：不同账号可看到全部模板 | 数据隔离/越权可见 | 中-高 | 🟡 open |
 | [BUG-07](./07-designer-no-readonly-guard.md) | 设计器「未签出」时仍可编辑：组件面板可拖拽到画布，无只读保护 | 编辑权限守卫缺失 | 中-高 | 🟢 fixed |
+| [BUG-08](./08-users-page-limited-admin-crash.md) | 仅持 `admin:manage_users` 打开用户管理页整页报「加载用户失败」（页面误拉 `/roles` 被 403 拖垮） | 权限/页面错误 | 中 | 🟡 open |
+| [BUG-09](./09-privilege-escalation-role-grant.md) | 越权提权：仅 `admin:manage_users` 可自授「管理员」角色（分配接口无授权范围校验） | 越权/安全 | 高 | 🟡 open |
 
 ## 图例
 
