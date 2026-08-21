@@ -121,3 +121,22 @@ export function requirePermission(...codes: string[]) {
     next();
   };
 }
+
+/**
+ * Gate a route on ANY of the required permission codes (OR semantics) — holding
+ * at least one declared code passes. Used where two different codes unlock the
+ * same operation, e.g. `GET /roles`: role managers see the full catalog while
+ * user managers see the grantable subset (BUG-08/09).
+ */
+export function requireAnyPermission(...codes: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const permissions = req.auth?.permissions ?? [];
+    if (!codes.some((code) => permissions.includes(code))) {
+      res.status(403).json({
+        error: { code: "FORBIDDEN", message: "无权限执行此操作" },
+      });
+      return;
+    }
+    next();
+  };
+}

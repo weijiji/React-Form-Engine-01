@@ -544,7 +544,10 @@ export interface paths {
         };
         /**
          * List roles
-         * @description All roles with their permission codes. Requires admin:manage_roles.
+         * @description All roles with their permission codes. Requires admin:manage_roles OR
+         *     admin:manage_users. Callers holding only admin:manage_users receive a
+         *     reduced catalog — roles whose permission set is a subset of their own
+         *     (the roles they may grant).
          */
         get: operations["listRoles"];
         put?: never;
@@ -623,7 +626,9 @@ export interface paths {
         /**
          * Create a user
          * @description Creates a user with an initial password and optional initial roles.
-         *     Requires admin:manage_users.
+         *     Requires admin:manage_users. Every initial role must be grantable by
+         *     the caller: its permission set must be a subset of the caller's own
+         *     permissions (403 FORBIDDEN otherwise).
          */
         post: operations["createUser"];
         delete?: never;
@@ -647,7 +652,10 @@ export interface paths {
         put?: never;
         /**
          * Replace a user's roles
-         * @description Replaces the user's role set (capabilities are the union).
+         * @description Replaces the user's role set (capabilities are the union). Requires
+         *     admin:manage_users. Every assigned role must be grantable by the caller:
+         *     its permission set must be a subset of the caller's own permissions
+         *     (403 FORBIDDEN otherwise — prevents privilege escalation).
          */
         post: operations["setUserRoles"];
         delete?: never;
@@ -2283,7 +2291,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoleListResponse"];
                 };
             };
-            /** @description Missing admin:manage_roles */
+            /** @description Missing admin:manage_roles or admin:manage_users */
             403: {
                 headers: {
                     [name: string]: unknown;

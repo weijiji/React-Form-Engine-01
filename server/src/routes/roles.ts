@@ -1,14 +1,18 @@
 import { Router, Request, Response } from "express";
 import { getDb } from "../db/connection";
 import { AppError } from "../middleware/errorHandler";
-import { authenticate, requirePermission } from "../middleware/auth";
+import { authenticate, requireAnyPermission, requirePermission } from "../middleware/auth";
 import { asyncHandler } from "./helpers";
 
 /**
  * Role CRUD (work order 09). Mounted at `/api/v1/roles`.
  *
  * A role bundles a set of permission codes (roles_permissions). Creating a role
- * requires at least one permission. All routes require `admin:manage_roles`.
+ * requires at least one permission. Mutations require `admin:manage_roles`;
+ * the read-only catalog (`GET /`) is additionally available to
+ * `admin:manage_users` holders so the user-management page can drive its role
+ * picker — those callers receive only the roles they are allowed to grant
+ * (permission-subset rule, BUG-08/09).
  */
 
 const router = Router();
@@ -70,13 +74,21 @@ function assertRoleName(name: unknown): string {
 }
 
 // ── GET /api/v1/roles — list roles with permission codes ────────────────────
+// `admin:manage_roles` callers see the full catalog; `admin:manage_users`
+// callers (limited admins) see only roles whose permission set is a subset of
+// their own — the exact set they may grant (BUG-08/09).
 router.get(
   "/",
   authenticate,
-  requirePermission("admin:manage_roles"),
-  asyncHandler(async (_req: Request, res: Response) => {
+  requireAnyPermission("admin:manage_roles", "admin:manage_users"),
+  asyncHandler(async (req: Request, res: Response) => {
     const rows = (await getDb()("roles").orderBy("created_at", "asc")) as RoleRow[];
-    const items = await Promise.all(rows.map(toRole));
+    const items = (await Promise.all(rows.map(toRole))).filter((role) => {
+      if (req.auth!.permissions.includes("admin:manage_roles")) return true;
+      return role.permissions.every((code) =>
+        req.auth!.permissions.includes(code),
+      );
+    });
     res.json({ items });
   }),
 );

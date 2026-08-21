@@ -47,13 +47,17 @@ export const UsersPage: React.FC = () => {
     if (search.trim()) params.set("search", search.trim());
     if (roleId) params.set("roleId", roleId);
     if (status) params.set("status", status);
+    // BUG-08: the user list is the page's core; the role catalog is only
+    // auxiliary (filter dropdown + assignment picker). A /roles failure — e.g.
+    // the caller lacks admin:manage_roles — must degrade to an empty picker
+    // rather than take the whole page down via Promise.all.
     Promise.all([
       apiClient<UserListResponse>(`/users?${params.toString()}`),
-      apiClient<RoleListResponse>("/roles"),
+      apiClient<RoleListResponse>("/roles").catch(() => null),
     ])
       .then(([userRes, roleRes]) => {
         setData(userRes);
-        setRoles(roleRes.items ?? []);
+        setRoles(roleRes?.items ?? []);
       })
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "加载失败"),
