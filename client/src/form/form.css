@@ -70,9 +70,9 @@
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 14px;
   color: var(--text);
   box-sizing: border-box;
+  font-family: inherit;
 }
 
 .form-control:focus {
