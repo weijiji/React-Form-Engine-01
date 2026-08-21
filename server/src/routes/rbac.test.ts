@@ -17,6 +17,7 @@ let zhangsanId: string;
 let adminRoleId: string;
 let userRoleId: string;
 const createdRoleIds: string[] = [];
+const createdUserIds: string[] = [];
 
 // Login is rate-limited per IP; each session logs in from a distinct IP so the
 // many admin logins below never collide with the 5/min bucket.
@@ -45,6 +46,9 @@ afterAll(async () => {
   const db = getDb();
   for (const id of createdRoleIds) {
     await db("roles").where({ id }).del();
+  }
+  for (const id of createdUserIds) {
+    await db("users").where({ id }).del();
   }
   // Restore 张三's roles in case the immediate-effect test was interrupted.
   await db("users_roles").where({ user_id: zhangsanId }).del();
@@ -223,5 +227,67 @@ describe("role changes take effect immediately", () => {
       .post(`/api/v1/users/${zhangsanId}/roles`)
       .set("X-CSRF-Token", csrf)
       .send({ roleIds: [userRoleId] });
+  });
+});
+
+describe("privilege escalation guard — limited admin (only admin:manage_users)", () => {
+  it("a manage_users-only admin must NOT be able to assign the 管理员 role", async () => {
+    // 1) 管理员创建一个仅含 admin:manage_users 的「有限权限的管理员」角色。
+    //    角色名带递增后缀，避免与现场/历史残留的同名角色冲突（422）。
+    const roleName = `有限权限的管理员-${ipSeed}`;
+    const { agent: adminAgent, csrf: adminCsrf } = await adminSession();
+    const roleRes = await adminAgent
+      .post("/api/v1/roles")
+      .set("X-CSRF-Token", adminCsrf)
+      .send({
+        name: roleName,
+        description: "BUG 测试角色",
+        permissionCodes: ["admin:manage_users"],
+      });
+    expect(roleRes.status).toBe(201);
+    const limitedRoleId = roleRes.body.id;
+    createdRoleIds.push(limitedRoleId);
+
+    // 2) 管理员创建一个仅持有该角色的测试账号。
+    const email = `limited-${nextIp().replace(/\./g, "-")}@example.com`;
+    const userRes = await adminAgent
+      .post("/api/v1/users")
+      .set("X-CSRF-Token", adminCsrf)
+      .send({ name: "有限管理员", email, password: "temp123", roleIds: [limitedRoleId] });
+    expect(userRes.status).toBe(201);
+    const limitedUserId = userRes.body.id;
+    createdUserIds.push(limitedUserId);
+
+    // 3) 该账号登录：能管用户；角色目录（GET /roles）只返回「可授予」的角色
+    //    （BUG-08 修复后：manage_users 调用者可读目录，但仅见权限集 ⊆ 自己的）。
+    const limitedAgent = request.agent(app);
+    const login = await limitedAgent
+      .post("/api/v1/auth/login")
+      .set("X-Forwarded-For", nextIp())
+      .send({ email, password: "temp123" });
+    expect(login.status).toBe(200);
+    expect(login.body.permissions).toContain("admin:manage_users");
+    expect(login.body.permissions).not.toContain("admin:manage_roles");
+    expect((await limitedAgent.get("/api/v1/users")).status).toBe(200);
+
+    const catalog = await limitedAgent.get("/api/v1/roles");
+    expect(catalog.status).toBe(200);
+    const catalogNames = catalog.body.items.map((r: { name: string }) => r.name);
+    expect(catalogNames).not.toContain("管理员"); // 全权限角色不可见
+    expect(catalogNames).toContain(roleName); // 自身角色（⊆ 自己权限）可见
+
+    // 4) 越权尝试：给自己授予「管理员」角色 → 403（权限集越界，BUG-09 修复后）。
+    const exploit = await limitedAgent
+      .post(`/api/v1/users/${limitedUserId}/roles`)
+      .set("X-CSRF-Token", login.body.csrfToken as string)
+      .send({ roleIds: [adminRoleId] });
+    expect(exploit.status).toBe(403);
+
+    // 5) 合法授予：授予权限集 ⊆ 自己的角色仍被允许（200）。
+    const legit = await limitedAgent
+      .post(`/api/v1/users/${limitedUserId}/roles`)
+      .set("X-CSRF-Token", login.body.csrfToken as string)
+      .send({ roleIds: [limitedRoleId] });
+    expect(legit.status).toBe(200);
   });
 });

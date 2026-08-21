@@ -49,6 +49,43 @@ async function assertKnownRoles(db: ReturnType<typeof getDb>, roleIds: string[])
   }
 }
 
+/**
+ * Reject granting any role whose permission set is not a subset of the caller's
+ * own permissions (BUG-09, vertical privilege escalation guard). A caller may
+ * only assign roles they could hold themselves — so a user manager holding only
+ * `admin:manage_users` can never hand out the all-powerful 管理员 role.
+ */
+async function assertGrantableRoles(
+  db: ReturnType<typeof getDb>,
+  roleIds: string[],
+  callerPermissions: string[],
+) {
+  if (roleIds.length === 0) return;
+  const rows = await db("roles")
+    .join("roles_permissions", "roles.id", "roles_permissions.role_id")
+    .join("permissions", "roles_permissions.permission_id", "permissions.id")
+    .whereIn("roles.id", roleIds)
+    .select("roles.id as role_id", "permissions.code");
+  const codesByRole = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const key = String(row.role_id);
+    const set = codesByRole.get(key) ?? new Set<string>();
+    set.add(String(row.code));
+    codesByRole.set(key, set);
+  }
+  for (const roleId of roleIds) {
+    for (const code of codesByRole.get(String(roleId)) ?? new Set<string>()) {
+      if (!callerPermissions.includes(code)) {
+        throw new AppError(
+          "FORBIDDEN",
+          `无权授予该角色：角色包含您不具备的权限（${code}）`,
+          403,
+        );
+      }
+    }
+  }
+}
+
 /** True when `userId` is an active user holding the `admin:manage_users` code. */
 async function isActiveAdmin(db: ReturnType<typeof getDb>, userId: string) {
   const row = await db("users")
@@ -160,6 +197,7 @@ router.post(
     }
     const ids: string[] = (roleIds ?? []).map(String);
     await assertKnownRoles(db, ids);
+    await assertGrantableRoles(db, ids, req.auth!.permissions);
 
     const existing = await db("users").where({ email: email.trim() }).first();
     if (existing) {
@@ -221,6 +259,7 @@ router.post(
 
     const db = getDb();
     await assertKnownRoles(db, roleIds.map(String));
+    await assertGrantableRoles(db, roleIds.map(String), req.auth!.permissions);
 
     await db("users_roles").where({ user_id: req.params.id }).del();
     if (roleIds.length > 0) {
