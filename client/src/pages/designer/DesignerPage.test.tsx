@@ -107,6 +107,15 @@ describe("DesignerPage publish persists the schema", () => {
           return jsonResponse({ error: { code: "UNAUTHORIZED" } }, 401);
         }
 
+        // Approver catalog: real users/roles for the chain editor's 指定人员 /
+        // 指定角色 dropdowns (bugfix: they used to be hardcoded pseudo-ids).
+        if (url.includes("/approvers/options")) {
+          return jsonResponse({
+            users: [{ id: "u-zhangsan", name: "张三" }],
+            roles: [{ id: "r-designer", name: "设计者" }],
+          });
+        }
+
         // GET the template: return the current stored schema + state.
         if (method === "GET" && /\/templates\/tpl-1$/.test(url)) {
           return jsonResponse(template(stored, storedState));

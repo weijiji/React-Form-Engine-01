@@ -50,7 +50,10 @@ import {
   type DesignerSchema,
 } from "../../designer/schemaModel";
 import { resolveStatus } from "../../designer/statusModel";
-import type { FormTemplate } from "../../designer/types";
+import type {
+  ApproverOptionListResponse,
+  FormTemplate,
+} from "../../designer/types";
 import "./designer.css";
 
 /** Normalize a stored template `schema` JSONB into a DesignerSchema (safe on miss). */
@@ -72,7 +75,7 @@ function toRule(rule: unknown): ApproverRule {
       return r;
     }
   }
-  return { type: "specific", userId: "zhangsan" };
+  return { type: "org_structure", relation: "direct_manager" };
 }
 
 /** Normalize a stored `approval_chain` JSONB into an ApprovalChain (safe on miss). */
@@ -116,6 +119,21 @@ export const DesignerPage: React.FC = () => {
   const [metaOpen, setMetaOpen] = useState(false);
   const [metaSaving, setMetaSaving] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
+  // Real users/roles for the chain editor's 指定人员 / 指定角色 dropdowns
+  // (bugfix: the options used to be hardcoded fake ids that could not resolve).
+  const [approverOptions, setApproverOptions] =
+    useState<ApproverOptionListResponse>({ users: [], roles: [] });
+
+  // Fetch approver options once on mount — the chain editor needs them even
+  // while creating a brand-new template (no template id to key off).
+  useEffect(() => {
+    apiClient<ApproverOptionListResponse>("/approvers/options")
+      .then(setApproverOptions)
+      .catch((err: unknown) => {
+        // 拉取失败时保持空选项：下拉退化为空，不阻塞模板编辑。
+        console.warn("加载审批人选项失败", err);
+      });
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -261,7 +279,7 @@ export const DesignerPage: React.FC = () => {
           id: newId("c"),
           order: prev.nodes.length,
           label: "新增审批节点",
-          approverRule: { type: "specific", userId: "zhangsan" },
+          approverRule: { type: "org_structure", relation: "direct_manager" },
         },
       ],
     }));
@@ -597,6 +615,7 @@ export const DesignerPage: React.FC = () => {
           selectedId={selectedId}
           selected={selected}
           chain={chain}
+          approverOptions={approverOptions}
           readonly={readonly}
           onChangeField={handleChangeField}
           onChangeSection={handleChangeSection}

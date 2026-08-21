@@ -552,6 +552,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/approvers/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List approver options (users + roles)
+         * @description Real active users and roles the designer's approval-chain editor offers
+         *     for 指定人员 / 指定角色 rules, so designed chains carry real UUIDs.
+         *     Requires template:create or template:edit.
+         */
+        get: operations["getApproverOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -833,6 +855,15 @@ export interface components {
         };
         PermissionListResponse: {
             items: components["schemas"]["Permission"][];
+        };
+        ApproverOption: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        ApproverOptionListResponse: {
+            users: components["schemas"]["ApproverOption"][];
+            roles: components["schemas"]["ApproverOption"][];
         };
         AdminUser: {
             /** Format: uuid */
@@ -2157,6 +2188,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionListResponse"];
+                };
+            };
+        };
+    };
+    getApproverOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Users and roles available as approvers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApproverOptionListResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Lacks template:create / template:edit */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };

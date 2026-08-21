@@ -12,6 +12,7 @@ import { findField, removeRule, setRule, type DesignerSchema } from "./schemaMod
 import { IconButton, Input } from "../components";
 import { CloseIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from "./icons";
 import { StructureTree } from "./StructureTree";
+import type { ApproverOptionListResponse } from "./types";
 
 type TabKey = "tree" | "props" | "chain";
 
@@ -42,6 +43,8 @@ export interface PropertyPanelProps {
   selectedId: string | null;
   selected: PanelSelection;
   chain: ApprovalChain;
+  /** 真实用户/角色选项（审批链「指定人员 / 指定角色」下拉的数据源）。 */
+  approverOptions?: ApproverOptionListResponse;
   /** 只读模式：结构树/属性/审批链全部禁用编辑（未签出 / 他人锁定 / 已归档）。 */
   readonly?: boolean;
   onChangeField: (
@@ -125,6 +128,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = (props) => {
           <div className="side-pane active">
             <ChainTab
               chain={props.chain}
+              approverOptions={props.approverOptions ?? { users: [], roles: [] }}
               readonly={readonly}
               onAdd={props.onAddChainNode}
               onRemove={props.onRemoveChainNode}
@@ -601,21 +605,11 @@ const RULE_TYPE_OPTIONS: { key: ApproverRule["type"]; label: string }[] = [
   { key: "specific", label: "指定人员" },
 ];
 
-const RULE_VALUE_OPTIONS: Record<ApproverRule["type"], { key: string; label: string }[]> = {
-  org_structure: [
-    { key: "direct_manager", label: "直属上级" },
-    { key: "department_manager", label: "部门负责人" },
-  ],
-  role: [
-    { key: "it-manager", label: "IT 负责人" },
-    { key: "finance", label: "财务审批人" },
-    { key: "hr", label: "HR 负责人" },
-  ],
-  specific: [
-    { key: "zhangsan", label: "张三" },
-    { key: "lisi", label: "李四" },
-  ],
-};
+/** 组织架构规则的下拉值（静态）；指定人员 / 指定角色来自 approverOptions。 */
+const ORG_STRUCTURE_OPTIONS: { key: string; label: string }[] = [
+  { key: "direct_manager", label: "直属上级" },
+  { key: "department_manager", label: "部门负责人" },
+];
 
 function ruleValueKey(rule: ApproverRule): string {
   if (rule.type === "org_structure") return rule.relation;
@@ -625,6 +619,7 @@ function ruleValueKey(rule: ApproverRule): string {
 
 function ChainTab({
   chain,
+  approverOptions,
   readonly,
   onAdd,
   onRemove,
@@ -632,6 +627,7 @@ function ChainTab({
   onChange,
 }: {
   chain: ApprovalChain;
+  approverOptions: ApproverOptionListResponse;
   readonly: boolean;
   onAdd: () => void;
   onRemove: (id: string) => void;
@@ -639,6 +635,15 @@ function ChainTab({
   onChange: (id: string, patch: Partial<ApprovalNode>) => void;
 }) {
   const nodes = chain.nodes;
+  // 真实用户/角色承载「指定人员 / 指定角色」规则；组织架构选项保持静态。
+  const ruleOptions: Record<
+    ApproverRule["type"],
+    { key: string; label: string }[]
+  > = {
+    org_structure: ORG_STRUCTURE_OPTIONS,
+    role: approverOptions.roles.map((r) => ({ key: r.id, label: r.name })),
+    specific: approverOptions.users.map((u) => ({ key: u.id, label: u.name })),
+  };
   return (
     <div className="chain">
       {nodes.map((node, i) => (
@@ -686,14 +691,21 @@ function ChainTab({
                 disabled={readonly}
                 onChange={(e) => {
                   const type = e.target.value as ApproverRule["type"];
-                  const value = RULE_VALUE_OPTIONS[type][0].key;
+                  // 该类型暂无可用选项（approverOptions 尚未加载 / 拉取失败）
+                  // 时拒绝切换，避免把空 userId/roleId 写进模板——那与「伪 ID
+                  // 硬编码」同属不可解析的坏规则。
+                  if (ruleOptions[type].length === 0) return;
                   onChange(node.id, {
-                    approverRule: buildRule(type, value),
+                    approverRule: buildRule(type, ruleOptions[type][0].key),
                   });
                 }}
               >
                 {RULE_TYPE_OPTIONS.map((o) => (
-                  <option key={o.key} value={o.key}>
+                  <option
+                    key={o.key}
+                    value={o.key}
+                    disabled={ruleOptions[o.key].length === 0}
+                  >
                     {o.label}
                   </option>
                 ))}
@@ -701,14 +713,16 @@ function ChainTab({
               <select
                 className="select"
                 value={ruleValueKey(node.approverRule)}
-                disabled={readonly}
+                disabled={
+                  readonly || ruleOptions[node.approverRule.type].length === 0
+                }
                 onChange={(e) =>
                   onChange(node.id, {
                     approverRule: buildRule(node.approverRule.type, e.target.value),
                   })
                 }
               >
-                {RULE_VALUE_OPTIONS[node.approverRule.type].map((o) => (
+                {ruleOptions[node.approverRule.type].map((o) => (
                   <option key={o.key} value={o.key}>
                     {o.label}
                   </option>

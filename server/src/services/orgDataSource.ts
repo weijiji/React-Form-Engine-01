@@ -13,6 +13,19 @@ import { getDb } from "../db/connection";
  */
 type Queryable = Knex | Knex.Transaction;
 
+/**
+ * `users.id`, `roles.id` and the related FKs are UUID columns; Postgres raises
+ * `invalid input syntax for type uuid` if handed an arbitrary string. These ids
+ * are rule-driven (e.g. a `specific`/`role` approver rule stored in a template
+ * JSONB), so a malformed value must resolve to "not found" — a clean
+ * `APPROVER_RESOLUTION_FAILED` reason from the engine — rather than surfacing a
+ * raw DB type error.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
 function toEngineUser(row: Record<string, unknown>): User {
   return {
     id: row.id as string,
@@ -27,6 +40,7 @@ function toEngineUser(row: Record<string, unknown>): User {
 export function createDbOrgDataSource(db: Queryable = getDb()): OrgDataSource {
   return {
     async getUser(id: string) {
+      if (!isUuid(id)) return null;
       const row = await db("users").where({ id }).first();
       return row ? toEngineUser(row) : null;
     },
@@ -39,6 +53,7 @@ export function createDbOrgDataSource(db: Queryable = getDb()): OrgDataSource {
     },
 
     async getUserManager(userId: string) {
+      if (!isUuid(userId)) return null;
       const user = await db("users").where({ id: userId }).first();
       if (!user?.manager_id) return null;
       const manager = await db("users")
@@ -48,11 +63,13 @@ export function createDbOrgDataSource(db: Queryable = getDb()): OrgDataSource {
     },
 
     async getUsersByDepartment(departmentId: string) {
+      if (!isUuid(departmentId)) return [];
       const rows = await db("users").where({ department_id: departmentId });
       return rows.map(toEngineUser);
     },
 
     async getUsersByRole(roleId: string) {
+      if (!isUuid(roleId)) return [];
       const rows = await db("users_roles")
         .join("users", "users.id", "users_roles.user_id")
         .where("users_roles.role_id", roleId)

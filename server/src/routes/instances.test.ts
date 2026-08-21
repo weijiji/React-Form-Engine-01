@@ -231,6 +231,102 @@ describe("submit atomicity on approver-resolution failure", () => {
   });
 });
 
+describe("approver-resolution hardening (non-UUID rule ids)", () => {
+  it("reports a clean reason, not a Postgres uuid type error", async () => {
+    // 设计器曾把伪 ID（"zhangsan"）写进 specific 规则；users.id 是 uuid 列，
+    // 修复前会抛 `invalid input syntax for type uuid`。orgDataSource 现在对
+    // 非 UUID id 短路，报错必须是干净的「指定审批人不存在」。
+    const tpl = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .send({ name: "坏审批人模板" });
+    createdTemplateIds.push(tpl.body.id);
+
+    const put = await request(app)
+      .put(`/api/v1/templates/${tpl.body.id}/schema`)
+      .set("Cookie", authCookie(adminId))
+      .send({
+        schema: { schemaVersion: "1.0.0", sections: [] },
+        approval_chain: {
+          nodes: [
+            {
+              id: "n1",
+              order: 1,
+              label: "直属上级审批",
+              approverRule: { type: "specific", userId: "zhangsan" },
+            },
+          ],
+        },
+      });
+    expect(put.status).toBe(200);
+
+    const publish = await request(app)
+      .post(`/api/v1/templates/${tpl.body.id}/publish`)
+      .set("Cookie", authCookie(adminId));
+    expect(publish.status).toBe(200);
+
+    const created = await createDraftInstance(tpl.body.id, lisiId);
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: {} });
+    expect(submit.status).toBe(500);
+    expect(submit.body.error.code).toBe("APPROVER_RESOLUTION_FAILED");
+    // 干净中文 reason，不再透出 Postgres 的裸类型错误。
+    expect(submit.body.error.message).toContain('指定审批人 "zhangsan" 不存在');
+    expect(submit.body.error.message).not.toContain("invalid input syntax");
+  });
+
+  it("reports a clean reason for a non-UUID role id (role_id is also uuid)", async () => {
+    // 设计器伪 ID 的另一种形态：指定角色 ruleId 硬编码 "it-manager"。
+    // role_id 同样是 uuid 列，修复前 getUsersByRole 同样抛裸类型错误。
+    const tpl = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .send({ name: "坏审批角色模板" });
+    createdTemplateIds.push(tpl.body.id);
+
+    const put = await request(app)
+      .put(`/api/v1/templates/${tpl.body.id}/schema`)
+      .set("Cookie", authCookie(adminId))
+      .send({
+        schema: { schemaVersion: "1.0.0", sections: [] },
+        approval_chain: {
+          nodes: [
+            {
+              id: "n1",
+              order: 1,
+              label: "角色审批",
+              approverRule: { type: "role", roleId: "it-manager" },
+            },
+          ],
+        },
+      });
+    expect(put.status).toBe(200);
+
+    const publish = await request(app)
+      .post(`/api/v1/templates/${tpl.body.id}/publish`)
+      .set("Cookie", authCookie(adminId));
+    expect(publish.status).toBe(200);
+
+    const created = await createDraftInstance(tpl.body.id, lisiId);
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: {} });
+    expect(submit.status).toBe(500);
+    expect(submit.body.error.code).toBe("APPROVER_RESOLUTION_FAILED");
+    expect(submit.body.error.message).toContain('角色 "it-manager" 下无可用用户');
+    expect(submit.body.error.message).not.toContain("invalid input syntax");
+  });
+});
+
 describe("owner-only instance reads (ADR-0014)", () => {
   it("forbids a non-owner from reading an instance (403)", async () => {
     const created = await createDraftInstance(publishedTemplateId, lisiId);

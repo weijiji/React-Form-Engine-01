@@ -127,6 +127,63 @@ describe("PropertyPanel", () => {
     expect(onAddChainNode).toHaveBeenCalled();
   });
 
+  it("populates the 指定人员 dropdown from approverOptions (real user ids)", async () => {
+    const onChangeChainNode = vi.fn();
+    renderPanel({
+      chain: {
+        nodes: [
+          {
+            id: "n1",
+            order: 1,
+            label: "直属上级审批",
+            approverRule: { type: "specific", userId: "u-zhangsan" },
+          },
+        ],
+      },
+      approverOptions: {
+        users: [
+          { id: "u-zhangsan", name: "张三" },
+          { id: "u-lisi", name: "李四" },
+        ],
+        roles: [{ id: "r-designer", name: "设计者" }],
+      },
+      onChangeChainNode,
+    });
+    await userEvent.click(screen.getByRole("tab", { name: "审批链" }));
+
+    // 第二个下拉是「指定人员」的取值：渲染真实用户名，值即真实 UUID。
+    const valueSelect = screen.getAllByRole("combobox")[1] as HTMLSelectElement;
+    expect(valueSelect.options[0].text).toBe("张三");
+    expect(valueSelect.options[0].value).toBe("u-zhangsan");
+
+    await userEvent.selectOptions(valueSelect, "u-lisi");
+    expect(onChangeChainNode).toHaveBeenCalledWith("n1", {
+      approverRule: { type: "specific", userId: "u-lisi" },
+    });
+  });
+
+  it("disables 指定人员/指定角色 until approver options load", async () => {
+    // 无 approverOptions（拉取失败 / 尚未加载）时，这两个类型不可选——
+    // 否则切换会写入空 userId/roleId，与「伪 ID 硬编码」同属坏规则。
+    renderPanel({
+      chain: {
+        nodes: [
+          {
+            id: "n1",
+            order: 1,
+            label: "审批节点",
+            approverRule: { type: "org_structure", relation: "direct_manager" },
+          },
+        ],
+      },
+    });
+    await userEvent.click(screen.getByRole("tab", { name: "审批链" }));
+
+    expect(screen.getByRole("option", { name: "组织架构" })).toBeEnabled();
+    expect(screen.getByRole("option", { name: "指定角色" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "指定人员" })).toBeDisabled();
+  });
+
   it("shows section properties when a section is selected", async () => {
     renderPanel({ schema: sectionSchema, selected: selectedSection });
     await userEvent.click(screen.getByRole("tab", { name: "属性" }));
