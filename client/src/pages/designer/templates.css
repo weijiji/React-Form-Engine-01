@@ -19,9 +19,11 @@
   width: 260px;
 }
 
+/* 卡片网格随容器宽度平滑缩放（BUG-03）：minmax 的百分比对容器宽度解析，
+   卡片在 960 容器 ~304px、1440 容器 ~348px 梯度变大，而非固定 240 只加列数。 */
 .tpl-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 25%, 320px), 1fr));
   gap: 16px;
 }
 
@@ -264,8 +266,15 @@
 
 /* ── 创建入口 ──────────────────────────────────────────────────────────── */
 
-/* .create 不再设宽度：页面容器统一由 Shell 的 .page 提供（960px 居中，
-   BUG-03）。本类仅作为 .create-* 子元素的样式钩子。 */
+/* 创建入口是双卡片决策页（NL / 空白），非数据密集页：Shell .page 的 1440 流体
+   下，auto-fit 会把两张卡各拉宽到 ~660px，卡片异常空旷（BUG-03 决策 #9）。
+   此处收窄为任务页度量 960px 居中（与 .fill 同档），每卡 ~460px 舒适。 */
+.create {
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+
 .create-head {
   margin-bottom: 20px;
 }

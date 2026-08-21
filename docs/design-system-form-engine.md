@@ -87,11 +87,14 @@
 │   └── .sidebar-foot            用户 chip（头像 + 姓名 + 角色）
 └── .main        flex:1
     ├── .topbar  60px            顶栏（--surface，底描边，标题 + 面包屑 + 操作区 + 通知铃）
-    └── .page    padding:24px    页面内容（标准容器 .page-narrow max-width:960px，居中；≤768px 时 padding 收 16px，BUG-03）
+    └── .page    padding:24px    页面内容（标准容器 .page-narrow max-width:1440px，流体居中；≤768px 时 padding 收 16px，BUG-03。表单/任务页收窄内层度量：.fill 960 / .create 960 / .nl 760 / .blank 640）
 ```
 
 - 侧栏宽 **236px**（不是 240px）；顶栏高 **60px**（不是 56px）。
 - 公共页（login / 403 / 404 / notifications）复用 `.auth-bg` / `.error-page` / `.notif-layout`，不使用 shell。
+- 卡片网格（`.tpl-grid` / `.form-grid`）统一流体最小卡宽公式：
+  `repeat(auto-fill, minmax(clamp(240px, 25%, 320px), 1fr))`——`minmax` 的百分比对容器
+  宽度解析，卡片随容器平滑放大（960 容器 ~304px / 1440 容器 ~348px），而非固定 min 只加列数（BUG-03）。
 
 ### 设计器编辑页（例外工作台）
 
@@ -99,7 +102,7 @@
 
 ```
 .editor                          height:100vh，column
-├── .editor-top  58px            工作台顶栏（名称 + 签出/签入状态 + 保存/发布）
+├── .editor-top  58px            工作台顶栏（名称 + 签出/签入状态 + 动作区——按「生产区 | 结束区」分组：保存/发布·primary \| 签入/删除·danger，BUG-03 决策 #8）
 └── .editor-body flex
     ├── .comp-panel  244px       组件面板（左侧）
     ├── .canvas      flex:1      画布（点阵背景 + 居中预览）

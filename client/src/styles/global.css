@@ -86,3 +86,15 @@ a:hover {
 #root {
   min-height: 100vh;
 }
+
+.display-flex {
+  display: flex;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.align-center {
+  align-items: center;
+}

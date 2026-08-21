@@ -192,7 +192,8 @@ describe("DesignerPage publish persists the schema", () => {
   });
 
   // ── 工具栏按钮可见性（UX 收敛）────────────────────────────────────────────
-  // 未签出只给「签出并编辑」一个主动作；签出后按状态显示编辑动作，「签入」放末尾。
+  // 未签出只给「签出并编辑」一个主动作；签出后按状态显示编辑动作，
+  // 生产区（保存/发布）| 结束区（签入/删除）分组，删除 danger 放末尾（BUG-03）。
   describe("toolbar button visibility", () => {
     it("draft + 未签出：只显示「签出并编辑」，隐藏 保存草稿/发布/删除/签入", async () => {
       storedState = { status: "draft", locked_by: null, locked_by_name: null };

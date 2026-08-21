@@ -275,10 +275,12 @@
   padding: 24px;
   flex: 1 1 auto;
   min-width: 0;
-  /* Standard content container (BUG-03): one 960px measure, centered.
-     960 = 12-col grid integer; the workbench (/designer/templates/:id) is a
-     sibling of the shell, so it never passes through this constraint. */
-  max-width: 960px;
+  /* Standard content container (BUG-03): fluid up to a 1440px cap, centered.
+     Data-dense pages (grids/tables) grow with the viewport instead of leaving
+     wide gutters on large screens; form/task pages opt into a narrower inner
+     measure (.fill / .nl / .blank). The workbench (/designer/templates/:id) is
+     a sibling of the shell, so it never passes through this constraint. */
+  max-width: 1440px;
   margin: 0 auto;
   width: 100%;
 }

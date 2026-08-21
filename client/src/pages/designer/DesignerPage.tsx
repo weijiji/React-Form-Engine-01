@@ -504,9 +504,11 @@ export const DesignerPage: React.FC = () => {
         </span>
 
         <div className="et-actions">
-            {/* 工具栏按「签出 = 编辑前提」收敛：未签出只给「签出并编辑」一个主动作；
-              签出后按状态显示编辑动作（保存/发布/删除），「签入」作为「结束编辑」
-              放末尾并用分隔线与编辑动作隔开。 */}
+            {/* 动作分组按「生产区 | 结束区」心智模型（BUG-03 grilling 定稿）：
+              未签出只给「签出并编辑」一个主动作（开锁 = 打开编辑）；
+              签出后「保存草稿 / 发布」为生产动作，「发布」是唯一主色 CTA；
+              分隔线右侧为结束动作：「签入」降为次要（上锁 = 结束编辑），
+              「删除」danger 隔离在末尾防误触。 */}
           {template.status !== "archived" && template.locked_by == null && (
             <Button
               variant="primary"
@@ -536,27 +538,27 @@ export const DesignerPage: React.FC = () => {
               {template.status === "published" ? "重新发布" : "发布"}
             </Button>
           )}
-          {isHolder && template.status === "draft" && (
-            <Button
-              variant="danger"
-              disabled={busy}
-              icon={<TrashIcon />}
-              onClick={handleDelete}
-            >
-              删除
-            </Button>
-          )}
           {isHolder && (
             <>
               <span className="et-divider" aria-hidden="true" />
               <Button
-                variant="primary"
                 disabled={busy}
+                variant="primary"
                 icon={<UnlockIcon />}
                 onClick={handleCheckin}
               >
                 签入
               </Button>
+              {template.status === "draft" && (
+                <Button
+                  variant="danger"
+                  disabled={busy}
+                  icon={<TrashIcon />}
+                  onClick={handleDelete}
+                >
+                  删除
+                </Button>
+              )}
             </>
           )}
         </div>

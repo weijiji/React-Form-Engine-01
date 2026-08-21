@@ -99,7 +99,8 @@
 .form-grid {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* 与 .tpl-grid 同一套流体 min 公式（BUG-03）：卡片随容器宽度梯度变大 */
+  grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 25%, 320px), 1fr));
   gap: 14px;
 }
 
@@ -161,10 +162,16 @@
 
 /* ── Fill page ────────────────────────────────────────────────────────────── */
 
+/* 表单任务页度量（BUG-03）：页面容器默认流体 1440px，填写页属表单类，
+   在此收窄到 960px 居中，保证 .fill-body 双栏（表单 ~590px + 审批链 320px）
+   行宽舒适，不随大屏拉满。 */
 .fill {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .fill-top {
