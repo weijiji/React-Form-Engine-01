@@ -546,8 +546,8 @@ export interface paths {
          * List roles
          * @description All roles with their permission codes. Requires admin:manage_roles OR
          *     admin:manage_users. Callers holding only admin:manage_users receive a
-         *     reduced catalog — roles whose permission set is a subset of their own
-         *     (the roles they may grant).
+         *     reduced catalog — every role carrying no admin-class (管理) permission,
+         *     i.e. the roles they may grant.
          */
         get: operations["listRoles"];
         put?: never;
@@ -626,8 +626,8 @@ export interface paths {
         /**
          * Create a user
          * @description Creates a user with an initial password and optional initial roles.
-         *     Requires admin:manage_users. Every initial role must be grantable by
-         *     the caller: its permission set must be a subset of the caller's own
+         *     Requires admin:manage_users. A full role manager may assign any role;
+         *     other callers may not assign roles carrying admin-class (管理)
          *     permissions (403 FORBIDDEN otherwise).
          */
         post: operations["createUser"];
@@ -653,8 +653,8 @@ export interface paths {
         /**
          * Replace a user's roles
          * @description Replaces the user's role set (capabilities are the union). Requires
-         *     admin:manage_users. Every assigned role must be grantable by the caller:
-         *     its permission set must be a subset of the caller's own permissions
+         *     admin:manage_users. A full role manager may assign any role; other
+         *     callers may not assign roles carrying admin-class (管理) permissions
          *     (403 FORBIDDEN otherwise — prevents privilege escalation).
          */
         post: operations["setUserRoles"];

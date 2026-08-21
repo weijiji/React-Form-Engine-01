@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { getDb } from "../db/connection";
 import { AppError } from "../middleware/errorHandler";
-import { authenticate, requireAnyPermission, requirePermission } from "../middleware/auth";
+import { authenticate, isAdminClassPermission, requireAnyPermission, requirePermission } from "../middleware/auth";
 import { asyncHandler } from "./helpers";
 
 /**
@@ -75,8 +75,8 @@ function assertRoleName(name: unknown): string {
 
 // ── GET /api/v1/roles — list roles with permission codes ────────────────────
 // `admin:manage_roles` callers see the full catalog; `admin:manage_users`
-// callers (limited admins) see only roles whose permission set is a subset of
-// their own — the exact set they may grant (BUG-08/09).
+// callers (limited admins) see every role carrying no admin-class (管理)
+// permission — the exact set they may grant (BUG-08/09 policy).
 router.get(
   "/",
   authenticate,
@@ -85,9 +85,7 @@ router.get(
     const rows = (await getDb()("roles").orderBy("created_at", "asc")) as RoleRow[];
     const items = (await Promise.all(rows.map(toRole))).filter((role) => {
       if (req.auth!.permissions.includes("admin:manage_roles")) return true;
-      return role.permissions.every((code) =>
-        req.auth!.permissions.includes(code),
-      );
+      return !role.permissions.some(isAdminClassPermission);
     });
     res.json({ items });
   }),

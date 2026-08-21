@@ -140,3 +140,14 @@ export function requireAnyPermission(...codes: string[]) {
     next();
   };
 }
+
+/**
+ * Admin-class (管理 category) permission codes — the `admin:*` codes carrying
+ * user/role-management power. Under the BUG-09 grant policy a role containing
+ * any of these may only be assigned by a full role manager
+ * (`admin:manage_roles`); ordinary business roles are assignable by anyone
+ * with `admin:manage_users`.
+ */
+export function isAdminClassPermission(code: string): boolean {
+  return code.startsWith("admin:");
+}

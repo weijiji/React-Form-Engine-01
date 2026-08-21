@@ -259,7 +259,7 @@ describe("privilege escalation guard — limited admin (only admin:manage_users)
     createdUserIds.push(limitedUserId);
 
     // 3) 该账号登录：能管用户；角色目录（GET /roles）只返回「可授予」的角色
-    //    （BUG-08 修复后：manage_users 调用者可读目录，但仅见权限集 ⊆ 自己的）。
+    //    （BUG-08/09 策略：manage_users 调用者可读目录，但仅见无管理类权限的角色）。
     const limitedAgent = request.agent(app);
     const login = await limitedAgent
       .post("/api/v1/auth/login")
@@ -273,21 +273,22 @@ describe("privilege escalation guard — limited admin (only admin:manage_users)
     const catalog = await limitedAgent.get("/api/v1/roles");
     expect(catalog.status).toBe(200);
     const catalogNames = catalog.body.items.map((r: { name: string }) => r.name);
-    expect(catalogNames).not.toContain("管理员"); // 全权限角色不可见
-    expect(catalogNames).toContain(roleName); // 自身角色（⊆ 自己权限）可见
+    expect(catalogNames).not.toContain("管理员"); // 管理类角色不可见
+    expect(catalogNames).not.toContain(roleName); // 含 admin:manage_users 的也是管理类
+    expect(catalogNames).toContain("填写者"); // 普通业务角色可见可授
 
-    // 4) 越权尝试：给自己授予「管理员」角色 → 403（权限集越界，BUG-09 修复后）。
+    // 4) 越权尝试：给自己授予「管理员」角色 → 403（管理类角色，BUG-09 策略）。
     const exploit = await limitedAgent
       .post(`/api/v1/users/${limitedUserId}/roles`)
       .set("X-CSRF-Token", login.body.csrfToken as string)
       .send({ roleIds: [adminRoleId] });
     expect(exploit.status).toBe(403);
 
-    // 5) 合法授予：授予权限集 ⊆ 自己的角色仍被允许（200）。
+    // 5) 合法授予：普通业务角色（填写者）仍被允许（200）。
     const legit = await limitedAgent
       .post(`/api/v1/users/${limitedUserId}/roles`)
       .set("X-CSRF-Token", login.body.csrfToken as string)
-      .send({ roleIds: [limitedRoleId] });
+      .send({ roleIds: [userRoleId] });
     expect(legit.status).toBe(200);
   });
 });

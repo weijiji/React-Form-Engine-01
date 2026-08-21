@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { getDb } from "../db/connection";
 import { AppError } from "../middleware/errorHandler";
-import { authenticate, requirePermission } from "../middleware/auth";
+import { authenticate, isAdminClassPermission, requirePermission } from "../middleware/auth";
 import { asyncHandler, clampInt } from "./helpers";
 import { hashPassword } from "../services/password";
 
@@ -24,6 +24,7 @@ import { hashPassword } from "../services/password";
 const router = Router();
 
 const MANAGE_USERS = "admin:manage_users";
+const MANAGE_ROLES = "admin:manage_roles";
 
 async function rolesForUser(userId: string) {
   return getDb()("roles")
@@ -50,10 +51,11 @@ async function assertKnownRoles(db: ReturnType<typeof getDb>, roleIds: string[])
 }
 
 /**
- * Reject granting any role whose permission set is not a subset of the caller's
- * own permissions (BUG-09, vertical privilege escalation guard). A caller may
- * only assign roles they could hold themselves — so a user manager holding only
- * `admin:manage_users` can never hand out the all-powerful 管理员 role.
+ * BUG-09 grant policy: a full role manager (`admin:manage_roles`) may assign any
+ * role; anyone else may assign any role carrying no admin-class (管理) permission.
+ * This stops a limited admin (e.g. only `admin:manage_users`) from delegating
+ * admin authority, while still letting them hand out ordinary business roles
+ * like 填写者 / 审批者.
  */
 async function assertGrantableRoles(
   db: ReturnType<typeof getDb>,
@@ -61,6 +63,7 @@ async function assertGrantableRoles(
   callerPermissions: string[],
 ) {
   if (roleIds.length === 0) return;
+  if (callerPermissions.includes(MANAGE_ROLES)) return;
   const rows = await db("roles")
     .join("roles_permissions", "roles.id", "roles_permissions.role_id")
     .join("permissions", "roles_permissions.permission_id", "permissions.id")
@@ -75,10 +78,10 @@ async function assertGrantableRoles(
   }
   for (const roleId of roleIds) {
     for (const code of codesByRole.get(String(roleId)) ?? new Set<string>()) {
-      if (!callerPermissions.includes(code)) {
+      if (isAdminClassPermission(code)) {
         throw new AppError(
           "FORBIDDEN",
-          `无权授予该角色：角色包含您不具备的权限（${code}）`,
+          "无权授予管理类角色（角色包含用户/角色管理权限）",
           403,
         );
       }

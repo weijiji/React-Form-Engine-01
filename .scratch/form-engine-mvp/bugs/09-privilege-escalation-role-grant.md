@@ -20,13 +20,17 @@
 
 ## 期望行为
 
-- 授予的目标角色权限集必须是调用者自身权限集的**子集**，否则 403 `FORBIDDEN`
+- **最终落地策略**：禁止授予管理类（`admin:*`）角色，其余角色可授——完整角色管理员
+  （`admin:manage_roles`）可授任意角色；其余调用者可授任何不含管理类权限的角色，
+  否则 403 `FORBIDDEN`
 - UI 上「分配角色」入口与可选角色列表也按此范围裁剪（客户端体验，非安全边界）
+  - 注：初始方案为「权限集 ⊆ 调用者权限集」子集校验，经评审改为上述策略
+    （子集规则会让有限管理员无法授予其角色自身权限之外的普通业务角色，过严）
 
-## 实际行为
+## 实际行为（修复前）
 
 - `POST /users/:id/roles` 仅校验 `admin:manage_users` + 角色存在性（`assertKnownRoles`）
-- 无「被授予角色权限集 ⊆ 调用者权限集」检查 → 有限管理员可自授「管理员」角色（200）
+- 无授权范围校验 → 有限管理员可自授「管理员」角色（200）
 
 ## 涉及范围
 
@@ -45,12 +49,19 @@
 
 高（垂直越权，击穿单租户 MVP 的信任根基；**P0**，先于 BUG-08 修复）
 
-## 建议拆解
+## 建议拆解（已按最终策略落地）
 
-1. `POST /users/:id/roles`、`POST /users`：对每个目标角色做权限集子集校验
-   （目标角色 permissions ⊆ 调用者 permissions），否则 403 `FORBIDDEN`
-2. `GET /roles` 若对 manage_users 放开（BUG-08 方案 B），可选地只返回调用者可授予的角色
-3. 前端「分配角色」对话框按可授予角色过滤（体验，非安全边界）
+1. `server/src/middleware/auth.ts`：新增 `isAdminClassPermission(code)`（`admin:` 前缀）
+   与 `requireAnyPermission(...)`（OR 语义）
+2. `server/src/routes/users.ts`：`assertGrantableRoles` 改写为——
+   `admin:manage_roles` 持有者放行；其余调用者对每个目标角色检查是否含管理类权限码，
+   命中即 403 `FORBIDDEN`（`POST /users` 与 `POST /users/:id/roles` 均生效）
+3. `server/src/routes/roles.ts`：`GET /roles` 用 `requireAnyPermission` 放开给
+   `admin:manage_users`，但非角色管理员的调用者只见「无任何管理类权限」的角色
+   （即其可授予集，配合 BUG-08 前端选单）
+4. 回归测试：`server/src/routes/rbac.test.ts`「privilege escalation guard」——
+   有限管理员角色目录不含「管理员」/自身管理类角色、含「填写者」；自授「管理员」403；
+   授「填写者」200
 
 ## 关联
 

@@ -57,7 +57,8 @@
 1. 方案 A：`UsersPage` 仅在持有 `admin:manage_roles` 时拉取 `/roles`，
    否则隐藏角色相关 UI（角色筛选下拉 / 分配角色 / 初始角色）
 2. 方案 B：把 `GET /roles`（只读目录）放宽到 `admin:manage_users`
-   （配合 BUG-09 的授权范围子集校验才安全）
+   （配合 BUG-09 的授权范围校验才安全——按最终策略，非角色管理员的调用者
+    只见不含管理类权限的角色）
 3. 无论 A/B：`/roles` 失败不应拖垮整页——用 `Promise.allSettled` 或独立
    错误处理解耦两个请求
 
