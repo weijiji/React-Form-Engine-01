@@ -18,7 +18,7 @@
 
 用户提交表单时创建的运行时记录。绑定提交时刻的模板快照（`template_snapshot`），后续模板变更不影响已有实例。
 
-**状态**：`draft` → `submitted` → `in_approval` → `approved` | `rejected` | `returned` | `withdrawn`
+**状态**：`draft` → `submitted` → `in_approval` → `approved` | `rejected` | `returned` | `withdrawn`（`draft` 状态即草稿，见「Draft」）
 
 ### ApprovalRecord（审批记录）
 
@@ -28,11 +28,13 @@
 
 ### Draft（草稿）
 
-用户未完成填写的中间状态。与 Instance 的 `draft` 状态不同：Draft 是独立实体，`field_values` 为部分填写内容。草稿保留 2 年，超期清除。
+用户未完成填写的中间状态，即 `FormInstance` 处于 `draft` 状态——**实例即草稿**，不存在独立草稿实体（ADR-0014）。`field_values` 为部分填写内容，自动保存持续写入。同一模板可有多份草稿（多份填写互不干扰）。
 
-**版本不匹配**：打开草稿时若模板已更新，基于 fieldId 尽力映射——匹配的值迁移，不匹配的移入 `_orphaned` 对象。界面顶部黄色提示。
+**版本不匹配**：打开草稿时若模板已更新，基于 fieldId 尽力映射（幂等，始终执行）——匹配的值迁移，不匹配的移入 `field_values._orphaned` 键保留。界面顶部黄色提示 + 折叠区展示孤儿数据。
 
-**自动保存**：onBlur + 30s 定时兜底 + dirty 检测。无变更时不请求。
+**自动保存**：防抖 + 定时兜底 + 变更检测（无变更时不请求）。
+
+**保留期限**：草稿保留 2 年（按最后活动 `updated_at` 计算）。过期草稿从列表消失，打开/保存/提交返回「草稿已过期」；已提交实例是记录，永久保留。
 
 ### Notification（通知）
 

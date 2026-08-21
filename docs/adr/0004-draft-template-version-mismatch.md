@@ -1,8 +1,9 @@
 # ADR-0004：草稿-模板版本不匹配策略
 
-> 日期：2026-08-12
+> 日期：2026-08-12（修订：2026-08-21）
 > 状态：已采纳
 > 关联问题：设计评审 C6（中）
+> 修订：检测机制改为「始终幂等迁移」；适用范围由独立 Draft 实体改为**草稿状态 FormInstance**（ADR-0014）。原「比较 `draft.template_updated_at` 与 `FormTemplate.updated_at`」检测与 `_meta` 元数据方案废弃。
 
 ---
 
@@ -14,47 +15,49 @@
 - **字段已重命名/移动**：基于字段顺序的旧数据可能错位
 - **验证规则变更**：已填的值可能不满足新规则
 
+草稿即草稿状态的 FormInstance（ADR-0014）——填单途中自动保存，模板可能随时变更。
+
 ## 决策
 
 **检测版本差异 → 警告用户 → 尽力映射 → 孤儿数据保留**
 
-### 流程
+### 流程（始终执行，幂等）
 
-1. 打开草稿时，比较 `draft.template_updated_at` 与 `FormTemplate.updated_at`
-2. 若一致 → 正常加载，无需提示
-3. 若不一致 → 执行字段级映射：
+1. 打开草稿状态实例时，无条件对 `field_values` 执行 fieldId 映射（`migrateFieldValues`，幂等、无状态）：
+   - fieldId 在新 Schema 中存在 → 值迁移保留
+   - fieldId 在新 Schema 中不存在 → 值移入 `_orphaned` 键
+   - 新 Schema 有草稿中不存在的 fieldId → 该字段留空（新增字段）
+   - 迁移前后有值被移入 `_orphaned` → `version_mismatch = true`
+2. 界面行为（填单页，草稿状态实例打开时）：
+   - 表单顶部黄色提示条："表单模板已于 [日期] 更新。部分字段已调整，您的已有数据已尽力匹配。[查看变更详情 ▼]"
+   - `_orphaned` 以折叠区域形式展示，用户可查看和手动复制
+   - 提交时，`_orphaned` 数据不参与验证、不写入正式提交（validateAll 按 schema 字段遍历，未知键忽略，以测试确认）
 
-```
-映射逻辑（按优先级）：
-  1. fieldId 完全匹配 → 值直接迁移
-  2. fieldId 在新 Schema 中不存在 → 值移入 _orphaned 对象
-  3. 新 Schema 中有草稿中不存在的 fieldId → 该字段留空，标记为 "新增字段"
-```
+### 孤儿数据随自动保存持久化
 
-4. 界面行为：
-   - 表单顶部显示黄色提示条："表单模板已于 [日期] 更新。部分字段已调整，您的已有数据已尽力匹配。[查看变更详情 ▼]"
-   - `_orphaned` 数据以折叠区域形式在表单底部展示，用户可查看和手动复制
-   - 提交时，`_orphaned` 数据不写入 `field_values`（仅参与正式提交的字段值）
+`_orphaned` 保留在实例 `field_values` 的 `_orphaned` 键内，随自动保存（`PUT /instances/:id/values`）持续写入，避免迁移后下一次保存覆盖丢失。下次打开时再次幂等迁移并合并既有孤儿（`migrateFieldValues` 保留并合并先前孤儿）。
 
 ### 数据结构
 
 ```json
-// 草稿的 field_values 扩展：
+// 草稿（草稿状态实例）的 field_values：
 {
   "fld-001": "MacBook Pro",        // fieldId 匹配 → 保留
   "fld-002": "office",             // fieldId 匹配 → 保留
   "_orphaned": {
     "fld-old-003": "已删除字段的值",  // 旧字段已不存在
     "fld-old-004": 12345
-  },
-  "_meta": {
-    "templateVersionAtSave": "1.2.0",
-    "templateUpdatedAt": "2026-07-15T10:00:00Z"
   }
 }
 ```
 
+（自 ADR-0014 起，`_meta` / `templateVersionAtSave` / `templateUpdatedAt` 不再使用——检测机制为始终迁移，无需保存快照元数据。）
+
 ## 替代方案
+
+### 时间戳比较检测
+
+打开时比较 `template_updated_at` 与 `FormTemplate.updated_at`，一致则不迁移。**废弃原因**：需额外存储元数据（列或 `_meta`），且"保存后模板又改"的竞态下检测可能失效；始终迁移幂等、无状态、天然覆盖新增/删除字段，代价可忽略。
 
 ### 静默丢弃不匹配数据
 
@@ -68,5 +71,6 @@
 
 - **正面**：用户数据不丢失，能感知模板变更
 - **正面**：基于 fieldId 的映射对字段移动/重排天然鲁棒（只要设计者不改变 fieldId）
+- **正面**：适用于所有草稿状态实例（此前只覆盖独立 Draft 实体，草稿实例静默退化）
 - **负面**：`_orphaned` 数据需要数据库额外空间（JSONB 内的一个 key）
 - **负面**：设计者若删除字段后重建同含义的新 fieldId，系统无法自动关联——需用户手动处理。但这是设计者的操作选择问题，非系统能解决的问题
