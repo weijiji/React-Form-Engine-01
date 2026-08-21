@@ -1,6 +1,6 @@
 # BUG-08 — 仅持 `admin:manage_users` 的有限管理员打开用户管理页报「加载用户失败：无权限执行此操作」
 
-**Status:** open
+**Status:** fixed
 **记录日期:** 2026-08-21
 **来源:** 现场：管理员创建角色「有限权限的管理员」，仅授权码 `admin:manage_users`，分配给测试账号
 
