@@ -1,6 +1,6 @@
-import React from "react";
-import { NavLink, Outlet, useMatches } from "react-router-dom";
-import { LogoutIcon } from "./icons";
+import React, { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useMatches } from "react-router-dom";
+import { LogoutIcon, MenuIcon } from "./icons";
 import "./Shell.css";
 
 export interface NavItem {
@@ -62,9 +62,18 @@ export const Shell: React.FC<ShellProps> = ({
     if (handle?.crumb) crumb = handle.crumb;
   }
 
+  // Mobile off-canvas drawer (BUG-03): ≤768px the sidebar is hidden and slides
+  // in as an overlay via the topbar hamburger. Close on any route change so a
+  // tapped nav item never strands the drawer open.
+  const location = useLocation();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <aside className={drawerOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
           <span className="brand-logo" aria-hidden="true">
             <svg
@@ -93,6 +102,7 @@ export const Shell: React.FC<ShellProps> = ({
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  onClick={() => setDrawerOpen(false)}
                   className={({ isActive }) =>
                     isActive ? "nav-item active" : "nav-item"
                   }
@@ -140,8 +150,25 @@ export const Shell: React.FC<ShellProps> = ({
         )}
       </aside>
 
+      {drawerOpen && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="关闭菜单"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
       <div className="main">
         <header className="topbar">
+          <button
+            type="button"
+            className="nav-toggle"
+            aria-label="打开菜单"
+            onClick={() => setDrawerOpen(true)}
+          >
+            <MenuIcon />
+          </button>
           <div>
             {crumb && <div className="tb-crumb">{crumb}</div>}
             {title && <h1 className="tb-title">{title}</h1>}

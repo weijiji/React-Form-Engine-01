@@ -130,20 +130,15 @@
 
 /* ── 页面骨架 ──────────────────────────────────────────────────────────── */
 
-.rbac {
-  max-width: 980px;
-}
+/* .rbac 不再设宽度：页面容器统一由 Shell 的 .page 提供（960px 居中，
+   BUG-03）。本类仅作为 .rbac-* 子元素的样式钩子。 */
 
+/* 页面标题由 Shell 顶栏提供（BUG-03 砍重复 h2），工具栏只剩操作按钮 → 右对齐 */
 .rbac-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 18px;
-}
-
-.rbac-title {
-  font-size: 19px;
-  margin: 0;
 }
 
 .rbac-empty {

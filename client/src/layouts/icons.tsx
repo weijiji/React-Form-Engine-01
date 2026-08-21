@@ -144,6 +144,15 @@ export const EyeIcon = () => (
   </svg>
 );
 
+/** 移动端导航 — 汉堡（≤768px 抽屉开关） */
+export const MenuIcon = () => (
+  <svg {...svgProps}>
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
+  </svg>
+);
+
 /** 退出登录 — 登出 */
 export const LogoutIcon = () => (
   <svg {...svgProps}>

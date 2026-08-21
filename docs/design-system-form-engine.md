@@ -87,7 +87,7 @@
 │   └── .sidebar-foot            用户 chip（头像 + 姓名 + 角色）
 └── .main        flex:1
     ├── .topbar  60px            顶栏（--surface，底描边，标题 + 面包屑 + 操作区 + 通知铃）
-    └── .page    padding:24px    页面内容（.page-narrow max-width:980px）
+    └── .page    padding:24px    页面内容（标准容器 .page-narrow max-width:960px，居中；≤768px 时 padding 收 16px，BUG-03）
 ```
 
 - 侧栏宽 **236px**（不是 240px）；顶栏高 **60px**（不是 56px）。

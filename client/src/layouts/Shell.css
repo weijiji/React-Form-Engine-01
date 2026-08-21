@@ -275,4 +275,78 @@
   padding: 24px;
   flex: 1 1 auto;
   min-width: 0;
+  /* Standard content container (BUG-03): one 960px measure, centered.
+     960 = 12-col grid integer; the workbench (/designer/templates/:id) is a
+     sibling of the shell, so it never passes through this constraint. */
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Mobile drawer primitives (BUG-03): hamburger + backdrop are desktop-hidden;
+   the ≤768px block below turns the sidebar into an off-canvas overlay. */
+.nav-toggle {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  /* Topbar hamburger opens the drawer. */
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+  }
+
+  .nav-toggle:hover {
+    background: var(--bg-subtle);
+    color: var(--text);
+  }
+
+  .nav-toggle svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Sidebar leaves the flex flow and slides in as a fixed overlay. */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Tap-outside backdrop sits just under the drawer. */
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(24, 28, 45, 0.45);
+    border: none;
+    padding: 0;
+  }
 }

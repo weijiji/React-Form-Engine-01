@@ -1,6 +1,6 @@
 # BUG-03 — 页面布局缺乏统一：仅「创建模板」居中符合原型，其余内容页均居左
 
-**Status:** open
+**Status:** fixed（分支 `hotfix/03-page-layout-consistency`，待手动走查确认）
 **记录日期:** 2026-08-19
 **类型:** UI 建议 / 设计一致性
 **需 UI/UX 设计师介入:** ✅ 是 —— 期望 UI/UX 大整顿（全站布局一致性专项）
@@ -84,3 +84,58 @@
 - `issues/05-form-submission-drafts-filler.md`（表单中心）
 - `issues/09-auth-rbac-permissions.md`（用户/角色管理）
 - `docs/design-system-form-engine.md`（设计系统规范，ADR-0008）
+
+## 解决方案（UI/UX 定稿，2026-08-21，分支 `hotfix/03-page-layout-consistency`）
+
+> 经 UI/UX Lead 走查定稿：**单一标准宽度 960px（12 栅格整数）**，宽度收敛到壳层，
+> 各页不再自设容器宽度。原型 `.page-narrow` 与 DS 文档 980 → 960 同步更新。
+
+### 决策记录（grilling 逐项确认）
+
+| # | 决策 | 结论 |
+|---|---|---|
+| 1 | 宽度体系 | 一律 **960px** 居中（推翻「分层多档」）；仅 Shell 外设计器工作台例外（不动） |
+| 2 | 落位机制 | 宽度收敛到 Shell `.page`（默认 960 居中），异常显式退出 |
+| 3 | 内部表单 | `.blank` 保留 640px 作为**表单内层度量**（页面 960 / 表单 640），避免输入框拉满 |
+| 4 | 重复标题 | 用户/角色管理页重复 h2 **砍掉**（顶栏 h1 单一标题），纳入本专项 |
+| 5 | 间距/响应式 | `.page` 默认 `padding:24px`，`@media ≤768px` 收 16px（复用现有断点） |
+| 6 | 移动端导航 | **汉堡 + off-canvas 抽屉**：≤768px 侧栏移出视口，顶栏汉堡滑入覆盖层 + 遮罩；路由切换/点遮罩/点导航自动关闭（否决底部 tab：5 组权限导航塞不进 tab） |
+| 7 | 回归验证 | check:css + typecheck + client vitest + 三宽度手动走查清单 |
+
+### 改动清单
+
+- `client/src/layouts/Shell.css`：`.page` 加 `max-width:960px; margin:0 auto; width:100%` + 768 断点
+- `client/src/pages/designer/templates.css`：删 `.create` 宽度；`.blank` 改注为表单内层度量
+- `client/src/pages/designer/nl.css`：删 `.nl` 宽度（聊天收 960，气泡 88% 封顶）
+- `client/src/pages/admin/admin.css`：删 `.rbac` 宽度；`.rbac-toolbar` 改 `flex-end`；删死代码 `.rbac-title`
+- `client/src/pages/admin/UsersPage.tsx` / `RolesPage.tsx`：删重复 `<h2>`
+- `client/src/layouts/Shell.tsx`：加抽屉状态（`useState` + 路由切换自动关闭）+ 顶栏汉堡按钮 + 覆盖遮罩
+- `client/src/layouts/icons.tsx`：新增 `MenuIcon`（汉堡）
+- `client/src/layouts/Shell.css`：`.nav-toggle` / `.sidebar-backdrop` 桌面隐藏；`≤768px` 侧栏转 fixed off-canvas 抽屉（`translateX` 过渡 + 遮罩 `z-index` 分层）
+- `client/src/layouts/Shell.test.tsx`：新增 2 用例（汉堡开/遮罩关、路由切换关）
+- `docs/design-system-form-engine.md`：shell 图 `.page-narrow` 980 → 960 + 768 断点说明
+- `prototype/assets/app.css`：`.page-narrow` 980 → 960（保持「原型即源」）
+- 设计器工作台（`/designer/templates/:id`）：Shell 外，**未改动**
+
+### 手动走查清单（回归基线）
+
+三宽度 × 全部 Shell 路由，逐页核对：居中、960 上界、无贴边、标题不重复。
+
+视口：`1440px` / `1024px` / `375px`
+
+| 路由 | 页面 | 走查要点 |
+|---|---|---|
+| `（全站）` | Shell 移动端抽屉 | 375px 下：顶栏出现汉堡；点开 → 侧栏滑入覆盖 + 遮罩；点遮罩 / 导航项 / 路由变化 → 关闭；内容区不再被 236px 侧栏挤压 |
+| `/designer/templates` | 我的模板 | 卡片网格居中，960 内铺开 |
+| `/designer/create` | 创建模板 | 引导语 h2 保留，选项卡居中 |
+| `/designer/create/nl` | 自然语言创建 | 聊天收 960，气泡不拉满 |
+| `/designer/create/blank` | 空白模板 | 页面 960，表单卡 640 居中 |
+| `/designer/drafts` | 草稿模板（占位） | 自动继承 960 |
+| `/filler/forms` | 表单中心 | 卡片网格居中 |
+| `/filler/instances/:id` | 填写表单 | 双栏：表单列 ~576px + 审批链 320px |
+| `/filler/drafts` / `/filler/submissions` | 草稿 / 提交 | 表格居中 |
+| `/approver/pending` / `/approver/history` | 审批（占位） | 自动继承 960 |
+| `/admin/users` / `/admin/roles` | 用户 / 角色管理 | **无重复标题**；工具栏按钮右对齐 |
+| `/admin/*`、`/ops/*` | 占位页 | 自动继承 960 |
+
+验收命令：`npm run check:css` ✓ · `npm run typecheck` ✓ · `cd client && npx vitest run`（177 通过）✓

@@ -21,7 +21,7 @@
 
 .tpl-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
 }
 
@@ -264,11 +264,8 @@
 
 /* ── 创建入口 ──────────────────────────────────────────────────────────── */
 
-.create {
-  max-width: 980px;
-  margin: 0 auto;
-}
-
+/* .create 不再设宽度：页面容器统一由 Shell 的 .page 提供（960px 居中，
+   BUG-03）。本类仅作为 .create-* 子元素的样式钩子。 */
 .create-head {
   margin-bottom: 20px;
 }
@@ -403,6 +400,8 @@
 
 /* ── 空白模板基本信息（prototype designer-create-blank.html）────────────── */
 
+/* 表单内层度量（BUG-03）：页面容器由 Shell 的 .page 提供 960px 居中，
+   空白创建的单列表单在此收窄到舒适行宽 640px，避免输入框拉满 960。 */
 .blank {
   max-width: 640px;
   margin: 0 auto;

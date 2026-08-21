@@ -2,11 +2,8 @@
    预览编辑卡。Tokens from global.css (ADR-0008)。共享控件（.btn/.input/…）在
    client/src/components/（CSS Modules，ADR-0011）—— 本页只定义页面专有类。 */
 
-.nl {
-  max-width: 760px;
-  margin: 0 auto;
-}
-
+/* .nl 不再设宽度：页面容器统一由 Shell 的 .page 提供（960px 居中，
+   BUG-03）；聊天气泡有 .chat-bubble 的 max-width 封顶，页面变宽不伤行宽。 */
 .nl-head {
   margin-bottom: 16px;
 }

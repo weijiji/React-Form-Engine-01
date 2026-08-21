@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Shell, type NavGroup, type ShellUser } from "./Shell";
@@ -150,5 +150,31 @@ describe("Shell — shared portal chrome", () => {
 
     const danger = container.querySelector(".count.danger");
     expect(danger).toHaveTextContent("2");
+  });
+
+  it("opens the mobile drawer via the hamburger and closes on backdrop click", () => {
+    renderShell();
+
+    expect(document.querySelector(".sidebar")).not.toHaveClass("open");
+    fireEvent.click(screen.getByRole("button", { name: "打开菜单" }));
+    expect(document.querySelector(".sidebar")).toHaveClass("open");
+    expect(
+      screen.getByRole("button", { name: "关闭菜单" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭菜单" }));
+    expect(document.querySelector(".sidebar")).not.toHaveClass("open");
+  });
+
+  it("closes the mobile drawer when a nav item navigates", async () => {
+    renderShell();
+
+    fireEvent.click(screen.getByRole("button", { name: "打开菜单" }));
+    expect(document.querySelector(".sidebar")).toHaveClass("open");
+
+    fireEvent.click(screen.getByRole("link", { name: /角色管理/ }));
+    await waitFor(() => {
+      expect(document.querySelector(".sidebar")).not.toHaveClass("open");
+    });
   });
 });

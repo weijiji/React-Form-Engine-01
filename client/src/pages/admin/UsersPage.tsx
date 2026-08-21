@@ -76,7 +76,6 @@ export const UsersPage: React.FC = () => {
   return (
     <div className="rbac">
       <div className="rbac-toolbar">
-        <h2 className="rbac-title">用户管理</h2>
         <button
           type="button"
           className="rbac-btn rbac-btn-primary"
