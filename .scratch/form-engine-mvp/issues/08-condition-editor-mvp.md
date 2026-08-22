@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — 模板 API + 表单设计器
 
-**Status:** ready-for-agent
+**Status:** partial (evaluator + data format + visibility done; condition editor UI missing)
 
 - [ ] **条件编辑器 UI**：
   - 属性面板中每个字段的"显示条件"触发按钮 → 打开条件编辑器面板

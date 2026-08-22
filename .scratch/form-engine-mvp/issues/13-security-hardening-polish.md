@@ -4,7 +4,7 @@
 
 **Blocked by:** 09 — 认证 + RBAC 权限
 
-**Status:** ready-for-agent
+**Status:** partial (login rate-limit + CORS allowlist + unified errors done; file upload, responsive designer, beforeunload missing)
 
 - [ ] **速率限制中间件**：Express 中间件 + 内存计数器。登录 5/min/IP、文件上传 20/min/用户、提交 10/min/用户、导出 5/hour/用户。超限 → 429 + Retry-After Header
 - [ ] **文件上传路径穿越防护**：

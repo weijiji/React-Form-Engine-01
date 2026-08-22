@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — 模板 API + 表单设计器（`POST /templates` 已就绪）；17 — 登录/权限（`template:create` 已就绪）
 
-**Status:** ready-for-agent
+**Status:** done (verified against code 2026-08-22)
 
 **设计依据:** ADR-0013（AI 出简化建议结构 + 确定性翻译 + 规则兜底）；UX 规格 §4.2；sitemap `/designer/create/nl`；CONTEXT.md「表单结构建议（FormStructureSuggestion）」
 

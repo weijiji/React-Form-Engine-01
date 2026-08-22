@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 项目脚手架 + 数据库
 
-**Status:** ready-for-agent
+**Status:** done (verified against code 2026-08-22)
 
 - [X] **认证 API**：
   - `POST /api/v1/auth/login` — 登录。返回 JWT（httpOnly, Secure, SameSite=Strict Cookie）+ CSRF Token（独立非 httpOnly Cookie，JS 可读）。速率限制：5 次/分钟/IP

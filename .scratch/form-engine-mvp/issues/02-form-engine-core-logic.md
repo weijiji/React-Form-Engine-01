@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done (verified against code 2026-08-22)
 
 - [X] **SchemaParser**：Raw JSON → ParsedSchema IR。校验：Schema 结构合法性、fieldType 可识别、审批链完整性、子表单嵌套深度 ≤ 2（≥3 拒绝）、`schemaVersion` 字段必存在。`info-text` 支持 visibilityCondition，文本内容为静态。
 - [X] **ValidationEngine**：`validateField(fieldSchema, value) → FieldError[]` + `validateAll(parsedSchema, values) → AllErrors`。覆盖：必填、minLength/maxLength、min/max、正则、文件类型/大小/数量、跨字段验证（如结束日期 > 开始日期）。对子表单递归验证。

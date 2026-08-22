@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 项目脚手架 + 数据库, 03 — 表单渲染器 + 基础字段组件
 
-**Status:** ready-for-agent
+**Status:** done (verified against code 2026-08-22; right panel is 结构树/属性/审批链 tabs, preview lives in canvas)
 
 - [X] **模板 API**（全部 `/api/v1/` 前缀）：
   - `POST /api/v1/templates` — 创建模板（自动签出给创建者）

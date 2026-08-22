@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — 表单提交 + 草稿 + 填写器
 
-**Status:** ready-for-agent
+**Status:** partial (shared engine + resolver done; server approval routes + approver UI missing)
 
 - [ ] **审批 API**：
   - `GET /api/v1/approvals/pending` — 我的待审批（含 instance 摘要）
