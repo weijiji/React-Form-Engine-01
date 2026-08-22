@@ -7,27 +7,28 @@
 
 ## 统计
 
-- 总数：14（fixed 8 / open 6）
+- 总数：15（fixed 14 / open 1）
 - 最近更新：2026-08-22
 
 ## 清单
 
 | 编号 | 标题 | 类型 | 严重程度 | 状态 |
 | --- | --- | --- | --- | --- |
-| [BUG-01](./01-users-page-crud.md) | 用户管理页缺少增删改查完整能力（无新增/删除/编辑/筛选/分页） | 功能缺口 | 中 | 🟡 open |
+| [BUG-01](./01-users-page-crud.md) | 用户管理页缺少增删改查完整能力（无新增/删除/编辑/筛选/分页） | 功能缺口 | 中 | 🟢 fixed |
 | [BUG-02](./02-shell-sidebar-overflow.md) | Shell 侧边栏导航溢出 `<aside class="sidebar">` 边界 | UI | 低-中 | 🟢 fixed |
-| [BUG-03](./03-page-layout-consistency.md) | 页面布局缺乏统一：仅「创建模板」居中符合原型，其余内容页均居左 | UI 建议/一致性 | 低 | 🟡 open |
+| [BUG-03](./03-page-layout-consistency.md) | 页面布局缺乏统一：仅「创建模板」居中符合原型，其余内容页均居左 | UI 建议/一致性 | 低 | 🟢 fixed |
 | [BUG-04](./04-designer-template-meta-edit.md) | 设计器缺少「模板基本信息」编辑入口（模板名/描述/分类不可修改） | 功能缺口 | 中 | 🟢 fixed |
 | [BUG-05](./05-designer-et-status-color.md) | 设计器 `et-status` 状态徽章缺少语义配色，签出前后颜色区分弱 | UI | 低-中 | 🟢 fixed |
-| [BUG-06](./06-template-list-no-isolation.md) | 「我的模板」列表无数据隔离：不同账号可看到全部模板 | 数据隔离/越权可见 | 中-高 | 🟡 open |
+| [BUG-06](./06-template-list-no-isolation.md) | 「我的模板」列表无数据隔离：不同账号可看到全部模板 | 数据隔离/越权可见 | 中-高 | 🟢 fixed |
 | [BUG-07](./07-designer-no-readonly-guard.md) | 设计器「未签出」时仍可编辑：组件面板可拖拽到画布，无只读保护 | 编辑权限守卫缺失 | 中-高 | 🟢 fixed |
 | [BUG-08](./08-users-page-limited-admin-crash.md) | 仅持 `admin:manage_users` 打开用户管理页整页报「加载用户失败」（页面误拉 `/roles` 被 403 拖垮） | 权限/页面错误 | 中 | 🟢 fixed |
 | [BUG-09](./09-privilege-escalation-role-grant.md) | 越权提权：仅 `admin:manage_users` 可自授「管理员」角色（分配接口无授权范围校验） | 越权/安全 | 高 | 🟢 fixed |
-| [BUG-10](./10-approval-chain-snapshot-mismatch.md) | 已提交实例审批链视图用活模板而非快照（节点与记录错位） | 错误行为 | 高 | 🟡 open |
-| [BUG-11](./11-template-offline-workflow-missing.md) | 系统缺少模板下架/停用流程：发布后无法下线，`archived` 状态无入口 | 功能缺口 | 中-高 | 🟡 open |
-| [BUG-12](./12-fill-click-creates-undeletable-draft.md) | 点击「填写」即创建空草稿实例，且草稿无法删除（误触即产生脏数据） | 错误行为/体验 | 中 | 🟡 open |
+| [BUG-10](./10-approval-chain-snapshot-mismatch.md) | 已提交实例审批链视图用活模板而非快照（节点与记录错位） | 错误行为 | 高 | 🟢 fixed |
+| [BUG-11](./11-template-offline-workflow-missing.md) | 系统缺少模板下架/停用流程：发布后无法下线，`archived` 状态无入口 | 功能缺口 | 中-高 | 🟢 fixed |
+| [BUG-12](./12-fill-click-creates-undeletable-draft.md) | 点击「填写」即创建空草稿实例，且草稿无法删除（误触即产生脏数据） | 错误行为/体验 | 中 | 🟢 fixed |
 | [BUG-13](./13-approval-node-order-off-by-one.md) | 审批操作全部 409「当前审批节点不匹配」：设计器存 0 基 `order` vs 服务端 1 基 `node_order` 差一 | 错误行为/核心功能 | 高 | 🟢 fixed |
 | [BUG-14](./14-pending-list-go-approve-button-dead.md) | 待审批列表「去审批」按钮无响应（无 onClick + 单元格 `stopPropagation` 吞点击） | UI | 中 | 🟢 fixed |
+| [BUG-15](./15-role-approver-first-member-only.md) | 角色型审批节点只取角色内「第一个」成员：多人角色中除首人外永不派发 | 行为错误/功能缺口 | 中-高 | 🟡 open |
 
 ## 图例
 
