@@ -150,4 +150,73 @@ describe("FormFillPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "查看孤儿数据" }));
     expect(await screen.findByText(/fld-removed/)).toBeInTheDocument();
   });
+
+  it("lets a returned instance be edited and resubmitted (work order 06)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/instances/inst-1/submit")) {
+          return jsonResponse(
+            instanceDetail({
+              status: "submitted",
+              current_node_index: 0,
+              version: 3,
+              approval_records: [
+                {
+                  id: "r1",
+                  node_id: "n1",
+                  node_order: 1,
+                  approver_id: "u-zhangsan",
+                  approver_name: "张三",
+                  action: "pending",
+                  comment: "请补充预算编号",
+                  acted_at: null,
+                },
+              ],
+            }),
+          );
+        }
+        if (url.includes("/instances/inst-1")) {
+          return jsonResponse(
+            instanceDetail({
+              status: "returned",
+              current_node_index: 0,
+              version: 2,
+              approval_records: [
+                {
+                  id: "r1",
+                  node_id: "n1",
+                  node_order: 1,
+                  approver_id: "u-zhangsan",
+                  approver_name: "张三",
+                  action: "returned",
+                  comment: "请补充预算编号",
+                  acted_at: "2026-01-02T00:00:00Z",
+                },
+              ],
+            }),
+          );
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderAt();
+    await screen.findByLabelText(/姓名/);
+
+    // Returned instances are editable again and submit as 重新提交.
+    expect(screen.getByLabelText(/姓名/)).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "重新提交" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重新提交" }));
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/instances/inst-1/submit"),
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    // Resubmission restarts the chain from node 1 ("已提交", pending again).
+    expect(await screen.findByText("已提交")).toBeInTheDocument();
+  });
 });

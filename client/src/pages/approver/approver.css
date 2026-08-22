@@ -1,0 +1,138 @@
+/* Approver pages (work order 06) — pending list + approval review page.
+   Reuses the filler pages' shared scaffolding (filler.css is imported alongside):
+   the list table, status badges, the fill-page two-column layout (.fill-body),
+   the chain sidebar (.chain-side-*), and the modal overlay (.filler-modal-overlay).
+   Tokens from global.css (ADR-0008); buttons come from client/src/components/
+   (CSS Modules, ADR-0011). This stylesheet is approval-page-specific only. */
+
+/* ── Action area (right column of the review page) ────────────────────────── */
+
+.approver-actions {
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+}
+
+.approver-actions-title {
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+
+.approver-action-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.approver-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.approver-done {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+/* ── Optimistic-lock conflict banner (409 → explicit hint + auto refresh) ─── */
+
+.approver-conflict {
+  padding: 10px 14px;
+  border: 1px solid var(--danger-border, var(--border));
+  border-radius: var(--r-sm);
+  background: var(--danger-bg, var(--bg-subtle));
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* ── 已转交 marker in the pending list ────────────────────────────────────── */
+
+.approver-transferred {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: var(--brand);
+  background: var(--brand-bg, var(--bg-subtle));
+}
+
+/* ── Action dialog (confirm / comment / transfer target) ──────────────────── */
+
+.approver-dialog {
+  width: 420px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.approver-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.approver-dialog-head h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.approver-dialog-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.approver-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.approver-textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.approver-textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.approver-select {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.approver-error {
+  color: var(--danger);
+  font-size: 13px;
+}

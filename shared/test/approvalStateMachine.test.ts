@@ -35,6 +35,19 @@ describe("ApprovalStateMachine", () => {
       expect(transition("submitted", { type: "withdraw" })).toEqual({ ok: true, state: "withdrawn" });
     });
 
+    // Work order 06: the node-1 approver can return/transfer too — the UI renders
+    // 退回/转交 for every pending node, so `submitted` must allow them.
+    it("submitted → return → returned (node-1 approver can return)", () => {
+      expect(transition("submitted", { type: "return" })).toEqual({ ok: true, state: "returned" });
+    });
+
+    it("submitted → transfer stays submitted (node-1 approver can transfer)", () => {
+      expect(transition("submitted", { type: "transfer", targetUserId: "u2" })).toEqual({
+        ok: true,
+        state: "submitted",
+      });
+    });
+
     it("in_approval → approve (final) → approved", () => {
       expect(transition("in_approval", { type: "approve", isFinal: true })).toEqual({ ok: true, state: "approved" });
     });
@@ -86,9 +99,8 @@ describe("ApprovalStateMachine", () => {
       expect(transition("in_approval", { type: "submit" }).ok).toBe(false);
     });
 
-    it("rejects return/transfer from submitted", () => {
-      expect(transition("submitted", { type: "return" }).ok).toBe(false);
-      expect(transition("submitted", { type: "transfer" }).ok).toBe(false);
+    it("rejects submit from submitted", () => {
+      expect(transition("submitted", { type: "submit" }).ok).toBe(false);
     });
 
     it("leaves the state unchanged on rejection", () => {
@@ -99,7 +111,7 @@ describe("ApprovalStateMachine", () => {
 
   it("getAllowedActions returns the legal action types per state", () => {
     expect(getAllowedActions("draft")).toEqual(["submit"]);
-    expect(getAllowedActions("submitted").sort()).toEqual(["approve", "reject", "withdraw"].sort());
+    expect(getAllowedActions("submitted").sort()).toEqual(["approve", "reject", "return", "transfer", "withdraw"].sort());
     expect(getAllowedActions("in_approval").sort()).toEqual(["approve", "reject", "return", "transfer", "withdraw"].sort());
     expect(getAllowedActions("returned")).toEqual(["submit"]);
     expect(getAllowedActions("withdrawn")).toEqual(["submit"]);

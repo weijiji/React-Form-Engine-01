@@ -46,7 +46,11 @@ export const FormFillPage: React.FC = () => {
     };
   }, [id]);
 
+  // Drafts and returned instances are editable: a draft is in-progress work and
+  // a returned one waits on the submitter to fix + resubmit (work order 06).
   const isDraft = detail?.status === "draft";
+  const isReturned = detail?.status === "returned";
+  const editable = isDraft || isReturned;
 
   // Drafts edit the live template; submitted instances render the frozen
   // snapshot so later template edits can't change what was approved.
@@ -137,7 +141,7 @@ export const FormFillPage: React.FC = () => {
           </span>
         </div>
         <div className="fill-top-right">
-          {isDraft && (
+          {editable && (
             <span className="fill-save-indicator" aria-live="polite">
               {autosave.label}
             </span>
@@ -171,10 +175,10 @@ export const FormFillPage: React.FC = () => {
           <Form
             schema={parsedSchema}
             initialValues={detail.field_values}
-            readOnly={!isDraft}
+            readOnly={!editable}
             onSubmit={handleSubmit}
             onChange={onValues}
-            submitLabel="提交"
+            submitLabel={isReturned ? "重新提交" : "提交"}
           />
         </div>
 

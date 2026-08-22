@@ -10,6 +10,8 @@
  *   submitted    --approve(last)---> approved
  *   submitted    --approve(!last)--> in_approval
  *   submitted    --reject----------> rejected
+ *   submitted    --return----------> returned
+ *   submitted    --transfer--------> submitted   (state unchanged, approver changes)
  *   submitted    --withdraw--------> withdrawn
  *   in_approval  --approve(last)---> approved
  *   in_approval  --approve(!last)--> in_approval
@@ -26,8 +28,11 @@
  * the machine is role-agnostic. `getAllowedActions` exists so an authorization
  * layer can intersect the caller's role with the legal actions for a state.
  *
- * Note: `transfer` does not change state — the transition keeps `in_approval`
- * and the caller swaps the approver separately.
+ * Note: `transfer` does not change state — the transition keeps the current
+ * state (`submitted` / `in_approval`) and the caller swaps the approver
+ * separately. `return`/`transfer` are legal from the first node (`submitted`)
+ * just as from any later node (`in_approval`): every pending approver can hand
+ * the submission back or pass it on.
  */
 
 import type {
@@ -52,6 +57,8 @@ const TRANSITIONS: Transition[] = [
   { from: "submitted", action: "approve", isFinal: false, to: "in_approval" },
   { from: "submitted", action: "approve", isFinal: true, to: "approved" },
   { from: "submitted", action: "reject", to: "rejected" },
+  { from: "submitted", action: "return", to: "returned" },
+  { from: "submitted", action: "transfer", to: "submitted" },
   { from: "submitted", action: "withdraw", to: "withdrawn" },
 
   { from: "in_approval", action: "approve", isFinal: false, to: "in_approval" },

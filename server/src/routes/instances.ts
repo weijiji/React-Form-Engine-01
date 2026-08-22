@@ -7,12 +7,20 @@ import {
   validateAll,
   type FormValues,
 } from "form-engine-core";
-import { asyncHandler, clampInt, parseJsonb, parseStatusList, requireObject } from "./helpers";
+import { asyncHandler, clampInt, parseStatusList, requireObject } from "./helpers";
 import { resolveApprovalChain } from "../services/approval";
 import { migrateFieldValues } from "../services/fieldMigration";
 import { DRAFT_RETENTION_MS, draftExpiredAt } from "../services/draftRetention";
 import { createDbOrgDataSource } from "../services/orgDataSource";
 import { notifyApprovers } from "../services/notifications";
+import {
+  findInstance,
+  findTemplateRow,
+  requireOwner,
+  toInstance,
+  toInstanceDetail,
+  type InstanceRow,
+} from "../services/instances";
 
 /** A draft-status instance idle past the retention window is expired (BR-15). */
 function assertDraftNotExpired(instance: InstanceRow): void {
@@ -36,117 +44,6 @@ router.use(authenticate);
  * notification persist + SSE push are async, after commit (ADR-0001; SSE lands
  * with work order 07).
  */
-
-interface InstanceRow {
-  id: string;
-  template_id: string;
-  template_snapshot: unknown;
-  field_values: FormValues;
-  status: string;
-  current_node_index: number;
-  version: number;
-  submitted_by: string | null;
-  submitted_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
-}
-
-interface TemplateRow {
-  id: string;
-  name: string;
-  status: string;
-  schema: unknown;
-  approval_chain: unknown;
-  updated_at: Date;
-}
-
-function toInstance(row: Record<string, unknown>): InstanceRow {
-  return {
-    id: row.id as string,
-    template_id: row.template_id as string,
-    template_snapshot: parseJsonb(row.template_snapshot),
-    field_values: (parseJsonb(row.field_values) ?? {}) as FormValues,
-    status: row.status as string,
-    current_node_index: Number(row.current_node_index),
-    version: Number(row.version),
-    submitted_by: (row.submitted_by as string | null) ?? null,
-    submitted_at: (row.submitted_at as Date | null) ?? null,
-    created_at: row.created_at as Date,
-    updated_at: row.updated_at as Date,
-  };
-}
-
-async function findInstance(id: string): Promise<InstanceRow> {
-  const row = await getDb()("form_instances").where({ id }).first();
-  if (!row) {
-    throw new AppError("NOT_FOUND", "表单实例不存在", 404);
-  }
-  return toInstance(row);
-}
-
-async function findTemplateRow(id: string): Promise<TemplateRow> {
-  const row = await getDb()("form_templates").where({ id }).first();
-  if (!row) {
-    throw new AppError("NOT_FOUND", "模板不存在", 404);
-  }
-  return {
-    id: row.id as string,
-    name: row.name as string,
-    status: row.status as string,
-    schema: parseJsonb(row.schema),
-    approval_chain: row.approval_chain == null ? null : parseJsonb(row.approval_chain),
-    updated_at: row.updated_at as Date,
-  };
-}
-
-/** Load the approval records for an instance, resolving approver display names. */
-async function loadApprovalRecords(instanceId: string) {
-  const db = getDb();
-  const records = await db("approval_records")
-    .where({ instance_id: instanceId })
-    .orderBy("node_order", "asc");
-  const approverIds = [
-    ...new Set(records.map((r) => r.approver_id).filter(Boolean)),
-  ] as string[];
-  const approvers = approverIds.length
-    ? await db("users").whereIn("id", approverIds).select("id", "name")
-    : [];
-  const nameById = new Map(approvers.map((u) => [u.id, u.name]));
-
-  return records.map((r) => ({
-    id: r.id,
-    node_id: r.node_id,
-    node_order: Number(r.node_order),
-    approver_id: (r.approver_id as string | null) ?? null,
-    approver_name: r.approver_id ? nameById.get(r.approver_id as string) ?? null : null,
-    action: r.action,
-    comment: (r.comment as string | null) ?? null,
-    acted_at: (r.acted_at as Date | null) ?? null,
-  }));
-}
-
-async function toInstanceDetail(instance: InstanceRow) {
-  const template = await findTemplateRow(instance.template_id);
-  const approval_records = await loadApprovalRecords(instance.id);
-  return {
-    ...instance,
-    approval_records,
-    template: {
-      id: template.id,
-      name: template.name,
-      status: template.status,
-      schema: template.schema,
-      approval_chain: template.approval_chain,
-      updated_at: template.updated_at,
-    },
-  };
-}
-
-function requireOwner(instance: InstanceRow, userId: string): void {
-  if (instance.submitted_by !== userId) {
-    throw new AppError("FORBIDDEN", "只能操作自己的表单实例", 403);
-  }
-}
 
 // ── GET /api/v1/instances/my — my instances (drafts + submissions) ─────────
 // Registered before `/:id` so the literal `my` segment is not captured as an id.
@@ -272,7 +169,9 @@ router.put(
     requireOwner(instance, user.id);
     assertDraftNotExpired(instance);
 
-    if (instance.status !== "draft") {
+    // A returned instance is editable too (work order 06): the submitter fixes
+    // the problems and resubmits, restarting the chain from the first node.
+    if (instance.status !== "draft" && instance.status !== "returned") {
       throw new AppError(
         "VALIDATION_ERROR",
         `状态 "${instance.status}" 不允许保存`,
@@ -305,7 +204,11 @@ router.post(
     requireOwner(instance, user.id);
     assertDraftNotExpired(instance);
 
-    if (instance.status !== "draft" && instance.status !== "withdrawn") {
+    if (
+      instance.status !== "draft" &&
+      instance.status !== "withdrawn" &&
+      instance.status !== "returned"
+    ) {
       throw new AppError(
         "VERSION_CONFLICT",
         `状态 "${instance.status}" 已提交，请勿重复提交`,
@@ -361,7 +264,7 @@ router.post(
 
       const [updated] = await trx("form_instances")
         .where({ id: instance.id })
-        .whereIn("status", ["draft", "withdrawn"])
+        .whereIn("status", ["draft", "withdrawn", "returned"])
         .update({
           template_snapshot: snapshot,
           field_values: cleanValues,
@@ -377,11 +280,11 @@ router.post(
         throw new AppError("VERSION_CONFLICT", "该实例已提交，请勿重复提交", 409);
       }
 
-      // Replace any stale pending records (resubmission after withdrawal).
-      await trx("approval_records")
-        .where({ instance_id: instance.id })
-        .where({ action: "pending" })
-        .del();
+      // Restart the chain from the first node: drop every prior record (pending
+      // ones from a withdrawn run, plus the `returned` record from a return —
+      // the timeline restarts clean per "退回后重提从头开始"). Fresh pending
+      // records are inserted below.
+      await trx("approval_records").where({ instance_id: instance.id }).del();
       for (const approver of resolved) {
         await trx("approval_records").insert({
           instance_id: instance.id,
@@ -425,7 +328,9 @@ router.post(
       .whereIn("action", ["approved", "rejected", "returned", "transferred"])
       .first();
     if (acted) {
-      throw new AppError("APPROVAL_NOT_PENDING", "审批人已处理，无法撤回", 400);
+      // The flow has moved under the submitter — a conflict, not a request error
+      // (work order 06: 撤回 vs 审批竞态 → 后操作方 409).
+      throw new AppError("APPROVAL_NOT_PENDING", "审批人已处理，无法撤回", 409);
     }
 
     const expectedVersion = req.body?.version;
@@ -450,12 +355,12 @@ router.post(
       throw new AppError("VERSION_CONFLICT", "该提交已被修改，请刷新后重试", 409);
     }
 
-    // Drop the now-stale pending records so a resubmit starts clean.
-    await db("approval_records")
-      .where({ instance_id: instance.id })
-      .where({ action: "pending" })
-      .del();
-
+    // Keep the pending records: a stale approver action on a withdrawn instance
+    // then resolves the record and hits the `draft`-status guard in
+    // `loadActionContext`, surfacing as a clean 409 INSTANCE_WITHDRAWN ("该提交
+    // 已被撤回") instead of a confusing 404. The records are hidden from the
+    // detail (toInstanceDetail omits them for drafts) and wiped wholesale by the
+    // next submit, so a resubmit still starts clean.
     res.json(await toInstanceDetail(toInstance(updated)));
   }),
 );

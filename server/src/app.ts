@@ -16,6 +16,7 @@ import rolesRouter from "./routes/roles";
 import permissionsRouter from "./routes/permissions";
 import usersRouter from "./routes/users";
 import approversRouter from "./routes/approvers";
+import approvalsRouter from "./routes/approvals";
 
 /**
  * Create and configure the Express application.
@@ -61,6 +62,7 @@ export function createApp(): express.Application {
   app.use("/api/v1/instances", instancesRouter);
   app.use("/api/v1/nl", nlRouter);
   app.use("/api/v1/approvers", approversRouter);
+  app.use("/api/v1/approvals", approvalsRouter);
 
   // ── 404 catch-all ─────────────────────────────────────────
   app.use((_req, res) => {

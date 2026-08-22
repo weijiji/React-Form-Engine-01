@@ -657,7 +657,8 @@ paths:
       description: |
         Reverts a `submitted`/`in_approval` instance back to draft. Optimistic
         locking on `version` (409 VERSION_CONFLICT); rejected if any approver has
-        already acted (400 APPROVAL_NOT_PENDING).
+        already acted (409 APPROVAL_NOT_PENDING — the flow has moved under the
+        submitter).
       operationId: withdrawInstance
       requestBody:
         required: false
@@ -673,7 +674,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/InstanceDetail"
         "400":
-          description: Not a withdrawable status, or an approver already acted
+          description: Not a withdrawable status
           content:
             application/json:
               schema:
@@ -685,7 +686,331 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "409":
-          description: Optimistic-lock version conflict
+          description: Version conflict, or an approver already acted (APPROVAL_NOT_PENDING)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/approvals/options:
+    get:
+      tags: [approvals]
+      summary: List transfer target users
+      description: |
+        Returns the active users a pending approval node can be transferred to —
+        the users who actually hold the `approval:approve` permission, excluding
+        the caller. Powers the approver UI's 转交 target picker.
+      operationId: listApprovalTargets
+      responses:
+        "200":
+          description: Transfer targets found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalTargetListResponse"
+        "401":
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing approval:transfer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/approvals/pending:
+    get:
+      tags: [approvals]
+      summary: List my pending approvals
+      description: |
+        Returns the approval records waiting on the current user — one per
+        approval-chain node, each with the instance and template summary it
+        belongs to. Approver identity comes from the JWT; only `pending`
+        records for instances still in `submitted` / `in_approval` appear.
+      operationId: listPendingApprovals
+      responses:
+        "200":
+          description: Pending approvals found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingApprovalListResponse"
+        "401":
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing approval:view_pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/approvals/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ApprovalRecordId"
+    get:
+      tags: [approvals]
+      summary: Get approval detail
+      description: |
+        Returns the approval record plus the full instance detail (read-only
+        form from the frozen snapshot + approval chain progress), so an
+        approver can review the submission before acting.
+      operationId: getApprovalDetail
+      responses:
+        "200":
+          description: Approval found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDetailResponse"
+        "401":
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing approval:view_pending, or the record is not assigned to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Approval record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/approvals/{id}/approve:
+    parameters:
+      - $ref: "#/components/parameters/ApprovalRecordId"
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [approvals]
+      summary: Approve an approval node
+      description: |
+        Marks the node's record `approved` and advances the instance: if a later
+        node is pending the instance moves to `in_approval`; if this was the last
+        node it becomes `approved`. Optimistic lock on `instanceVersion` (409
+        VERSION_CONFLICT); an already-handled record is a 409 APPROVAL_NOT_PENDING.
+      operationId: approveApproval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Instance detail after the action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDetailResponse"
+        "400":
+          description: Missing required comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing approval:approve, or the record is not assigned to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Approval record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Version conflict, record already handled (APPROVAL_NOT_PENDING), or the instance was withdrawn (INSTANCE_WITHDRAWN)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/approvals/{id}/reject:
+    parameters:
+      - $ref: "#/components/parameters/ApprovalRecordId"
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [approvals]
+      summary: Reject an approval node
+      description: |
+        Terminates the flow: the record becomes `rejected` and the instance
+        becomes `rejected` (terminal). A comment is required. Optimistic lock on
+        `instanceVersion`; an already-handled record is a 409 APPROVAL_NOT_PENDING.
+      operationId: rejectApproval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Instance detail after the action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDetailResponse"
+        "400":
+          description: Missing required comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing approval:reject, or the record is not assigned to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Approval record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Version conflict, record already handled (APPROVAL_NOT_PENDING), or the instance was withdrawn (INSTANCE_WITHDRAWN)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/approvals/{id}/return:
+    parameters:
+      - $ref: "#/components/parameters/ApprovalRecordId"
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [approvals]
+      summary: Return an approval node to the submitter
+      description: |
+        Sends the instance back to the submitter: the record becomes `returned`
+        and the instance becomes `returned`. The submitter edits and resubmits,
+        restarting the chain from the first node. A comment is required.
+        Optimistic lock on `instanceVersion`; an already-handled record is a 409
+        APPROVAL_NOT_PENDING.
+      operationId: returnApproval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Instance detail after the action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDetailResponse"
+        "400":
+          description: Missing required comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing approval:return, or the record is not assigned to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Approval record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Version conflict, record already handled (APPROVAL_NOT_PENDING), or the instance was withdrawn (INSTANCE_WITHDRAWN)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/v1/approvals/{id}/transfer:
+    parameters:
+      - $ref: "#/components/parameters/ApprovalRecordId"
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [approvals]
+      summary: Transfer an approval node to another approver
+      description: |
+        Reassigns the pending record to `targetUserId` and records the original
+        approver in `transferred_from`. The instance state is unchanged.
+        Optimistic lock on `instanceVersion`; an already-handled record is a 409
+        APPROVAL_NOT_PENDING.
+      operationId: transferApproval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalTransferRequest"
+      responses:
+        "200":
+          description: Instance detail after the action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDetailResponse"
+        "400":
+          description: Invalid target user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing approval:transfer, or the record is not assigned to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Approval record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Version conflict, record already handled (APPROVAL_NOT_PENDING), or the instance was withdrawn (INSTANCE_WITHDRAWN)
           content:
             application/json:
               schema:
@@ -1842,6 +2167,10 @@ components:
           enum: [pending, approved, rejected, returned, transferred]
         comment:
           type: [string, "null"]
+        transferred_from:
+          type: [string, "null"]
+          format: uuid
+          description: The original approver when the record was transferred.
         acted_at:
           type: [string, "null"]
           format: date-time
@@ -1867,6 +2196,112 @@ components:
             version_mismatch:
               type: boolean
               description: Draft-status only. True when fieldId migration moved any values (ADR-0004). Absent otherwise.
+
+    ApprovalInstanceSummary:
+      type: object
+      description: A reduced instance view for an approver's pending list (no field values).
+      required: [id, template_id, status, current_node_index, submitted_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        template_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        current_node_index:
+          type: integer
+        submitted_by:
+          type: [string, "null"]
+          format: uuid
+        submitted_at:
+          type: [string, "null"]
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PendingApprovalItem:
+      type: object
+      description: One approval record waiting on the current user, with the instance and template it belongs to.
+      required: [approval, instance, template_name]
+      properties:
+        approval:
+          $ref: "#/components/schemas/ApprovalRecordSummary"
+        instance:
+          $ref: "#/components/schemas/ApprovalInstanceSummary"
+        template_name:
+          type: [string, "null"]
+        submitter_name:
+          type: [string, "null"]
+
+    PendingApprovalListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PendingApprovalItem"
+        total:
+          type: integer
+
+    ApprovalDetailResponse:
+      type: object
+      description: An approval record plus the full read-only instance detail for the approver to review.
+      required: [approval, instance]
+      properties:
+        approval:
+          $ref: "#/components/schemas/ApprovalRecordSummary"
+        instance:
+          $ref: "#/components/schemas/InstanceDetail"
+
+    ApprovalActionRequest:
+      type: object
+      description: Body for approve/reject/return. Optimistic-lock version plus an optional comment.
+      required: [instanceVersion]
+      properties:
+        instanceVersion:
+          type: integer
+          description: The instance.version the action was read against (ADR-0003).
+        comment:
+          type: [string, "null"]
+          description: Required by the handler for reject and return.
+
+    ApprovalTransferRequest:
+      type: object
+      description: Body for transfer — reassign the pending node to another approver.
+      required: [instanceVersion, targetUserId]
+      properties:
+        instanceVersion:
+          type: integer
+          description: The instance.version the action was read against (ADR-0003).
+        targetUserId:
+          type: string
+          format: uuid
+        comment:
+          type: [string, "null"]
+
+    ApprovalTargetOption:
+      type: object
+      description: A user the current approver may transfer a pending node to.
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    ApprovalTargetListResponse:
+      type: object
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApprovalTargetOption"
 
     InstanceListItem:
       type: object
@@ -2042,6 +2477,14 @@ components:
       in: path
       required: true
       description: Form instance UUID.
+      schema:
+        type: string
+        format: uuid
+    ApprovalRecordId:
+      name: id
+      in: path
+      required: true
+      description: Approval record UUID.
       schema:
         type: string
         format: uuid

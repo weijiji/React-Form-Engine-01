@@ -87,6 +87,12 @@ export const MySubmissions: React.FC = () => {
       });
       load();
     } catch (err: unknown) {
+      // A 409 means the flow moved under the submitter (an approver already acted
+      // or the version is stale) — work order 06: surface the message and reload
+      // so the list reflects the new state.
+      if (err instanceof ApiError && err.statusCode === 409) {
+        load();
+      }
       setError(
         err instanceof ApiError ? err.message : "撤回失败，请稍后重试",
       );
@@ -134,12 +140,12 @@ export const MySubmissions: React.FC = () => {
                 </td>
                 <td>{formatDate(item.updated_at)}</td>
                 <td className="filler-actions" onClick={(e) => e.stopPropagation()}>
-                  {item.status === "draft" ? (
+                  {item.status === "draft" || item.status === "returned" ? (
                     <Button
                       size="sm"
                       onClick={() => navigate(`/filler/instances/${item.id}`)}
                     >
-                      继续填写
+                      {item.status === "returned" ? "重新提交" : "继续填写"}
                     </Button>
                   ) : item.status === "submitted" ||
                     item.status === "in_approval" ? (

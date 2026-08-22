@@ -178,14 +178,19 @@ describe("instance lifecycle: create → autosave → submit → withdraw", () =
     expect(res.body.error.code).toBe("VERSION_CONFLICT");
   });
 
-  it("withdraws back to draft and clears pending records", async () => {
+  it("withdraws back to draft (voided records kept but hidden from the detail)", async () => {
     const res = await request(app)
       .post(`/api/v1/instances/${instanceId}/withdraw`)
       .set("Cookie", authCookie(lisiId))
       .send({ version: 2 });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("draft");
+    // The detail hides the voided run's records (the timeline renders the live
+    // chain), but the rows are kept so a stale approver action resolves the
+    // record and surfaces 409 INSTANCE_WITHDRAWN instead of a 404 (工单 06).
     expect(res.body.approval_records).toHaveLength(0);
+    const kept = await getDb()("approval_records").where({ instance_id: instanceId });
+    expect(kept).toHaveLength(2);
   });
 
   it("rejects withdrawing a non-withdrawable draft (400)", async () => {

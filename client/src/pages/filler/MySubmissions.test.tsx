@@ -173,4 +173,29 @@ describe("MySubmissions", () => {
       await screen.findByRole("button", { name: "继续填写" }),
     ).toBeInTheDocument();
   });
+
+  it("offers 重新提交 for a returned instance (work order 06)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/instances/my")) {
+          return jsonResponse(
+            list({ items: [{ ...list().items[0], id: "inst-2", status: "returned" }] }),
+          );
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <MySubmissions />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "重新提交" }),
+    ).toBeInTheDocument();
+  });
 });

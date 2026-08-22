@@ -1148,6 +1148,8 @@ interface OrgDataSource {
               ┌─────│SUBMITTED │─────┐
               │     └────┬─────┘     │
               │          │ approve() │ reject()
+              │          │ return()/ │
+              │          │ transfer()│
               │          ▼           ▼
               │     ┌──────────┐  ┌──────────┐
               │     │IN_APPROVAL│  │ REJECTED │ (终态)

@@ -396,6 +396,192 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/approvals/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List transfer target users
+         * @description Returns the active users a pending approval node can be transferred to —
+         *     the users who actually hold the `approval:approve` permission, excluding
+         *     the caller. Powers the approver UI's 转交 target picker.
+         */
+        get: operations["listApprovalTargets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my pending approvals
+         * @description Returns the approval records waiting on the current user — one per
+         *     approval-chain node, each with the instance and template summary it
+         *     belongs to. Approver identity comes from the JWT; only `pending`
+         *     records for instances still in `submitted` / `in_approval` appear.
+         */
+        get: operations["listPendingApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get approval detail
+         * @description Returns the approval record plus the full instance detail (read-only
+         *     form from the frozen snapshot + approval chain progress), so an
+         *     approver can review the submission before acting.
+         */
+        get: operations["getApprovalDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve an approval node
+         * @description Marks the node's record `approved` and advances the instance: if a later
+         *     node is pending the instance moves to `in_approval`; if this was the last
+         *     node it becomes `approved`. Optimistic lock on `instanceVersion` (409
+         *     VERSION_CONFLICT); an already-handled record is a 409 APPROVAL_NOT_PENDING.
+         */
+        post: operations["approveApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject an approval node
+         * @description Terminates the flow: the record becomes `rejected` and the instance
+         *     becomes `rejected` (terminal). A comment is required. Optimistic lock on
+         *     `instanceVersion`; an already-handled record is a 409 APPROVAL_NOT_PENDING.
+         */
+        post: operations["rejectApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}/return": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Return an approval node to the submitter
+         * @description Sends the instance back to the submitter: the record becomes `returned`
+         *     and the instance becomes `returned`. The submitter edits and resubmits,
+         *     restarting the chain from the first node. A comment is required.
+         *     Optimistic lock on `instanceVersion`; an already-handled record is a 409
+         *     APPROVAL_NOT_PENDING.
+         */
+        post: operations["returnApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transfer an approval node to another approver
+         * @description Reassigns the pending record to `targetUserId` and records the original
+         *     approver in `transferred_from`. The instance state is unchanged.
+         *     Optimistic lock on `instanceVersion`; an already-handled record is a 409
+         *     APPROVAL_NOT_PENDING.
+         */
+        post: operations["transferApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -1063,6 +1249,11 @@ export interface components {
             /** @enum {string} */
             action: "pending" | "approved" | "rejected" | "returned" | "transferred";
             comment?: string | null;
+            /**
+             * Format: uuid
+             * @description The original approver when the record was transferred.
+             */
+            transferred_from?: string | null;
             /** Format: date-time */
             acted_at?: string | null;
         };
@@ -1076,6 +1267,61 @@ export interface components {
             };
             /** @description Draft-status only. True when fieldId migration moved any values (ADR-0004). Absent otherwise. */
             version_mismatch?: boolean;
+        };
+        /** @description A reduced instance view for an approver's pending list (no field values). */
+        ApprovalInstanceSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            template_id: string;
+            status: string;
+            current_node_index: number;
+            /** Format: uuid */
+            submitted_by?: string | null;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        /** @description One approval record waiting on the current user, with the instance and template it belongs to. */
+        PendingApprovalItem: {
+            approval: components["schemas"]["ApprovalRecordSummary"];
+            instance: components["schemas"]["ApprovalInstanceSummary"];
+            template_name: string | null;
+            submitter_name?: string | null;
+        };
+        PendingApprovalListResponse: {
+            items: components["schemas"]["PendingApprovalItem"][];
+            total: number;
+        };
+        /** @description An approval record plus the full read-only instance detail for the approver to review. */
+        ApprovalDetailResponse: {
+            approval: components["schemas"]["ApprovalRecordSummary"];
+            instance: components["schemas"]["InstanceDetail"];
+        };
+        /** @description Body for approve/reject/return. Optimistic-lock version plus an optional comment. */
+        ApprovalActionRequest: {
+            /** @description The instance.version the action was read against (ADR-0003). */
+            instanceVersion: number;
+            /** @description Required by the handler for reject and return. */
+            comment?: string | null;
+        };
+        /** @description Body for transfer — reassign the pending node to another approver. */
+        ApprovalTransferRequest: {
+            /** @description The instance.version the action was read against (ADR-0003). */
+            instanceVersion: number;
+            /** Format: uuid */
+            targetUserId: string;
+            comment?: string | null;
+        };
+        /** @description A user the current approver may transfer a pending node to. */
+        ApprovalTargetOption: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        ApprovalTargetListResponse: {
+            users: components["schemas"]["ApprovalTargetOption"][];
         };
         /** @description A FormInstance with the template display name resolved. */
         InstanceListItem: components["schemas"]["FormInstance"] & {
@@ -1162,6 +1408,8 @@ export interface components {
         TemplateId: string;
         /** @description Form instance UUID. */
         InstanceId: string;
+        /** @description Approval record UUID. */
+        ApprovalRecordId: string;
         /** @description Role UUID. */
         RoleId: string;
         /** @description User UUID. */
@@ -1947,6 +2195,432 @@ export interface operations {
                 };
             };
             /** @description Optimistic-lock version conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listApprovalTargets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Transfer targets found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalTargetListResponse"];
+                };
+            };
+            /** @description Not logged in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing approval:transfer */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPendingApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending approvals found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingApprovalListResponse"];
+                };
+            };
+            /** @description Not logged in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing approval:view_pending */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getApprovalDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approval found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDetailResponse"];
+                };
+            };
+            /** @description Not logged in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing approval:view_pending, or the record is not assigned to the user */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Approval record not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    approveApproval: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Instance detail after the action */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDetailResponse"];
+                };
+            };
+            /** @description Missing required comment */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not logged in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing approval:approve, or the record is not assigned to the user */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Approval record not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version conflict or record already handled (APPROVAL_NOT_PENDING) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rejectApproval: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Instance detail after the action */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDetailResponse"];
+                };
+            };
+            /** @description Missing required comment */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not logged in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing approval:reject, or the record is not assigned to the user */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Approval record not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version conflict or record already handled (APPROVAL_NOT_PENDING) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    returnApproval: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Instance detail after the action */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDetailResponse"];
+                };
+            };
+            /** @description Missing required comment */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not logged in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing approval:return, or the record is not assigned to the user */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Approval record not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version conflict or record already handled (APPROVAL_NOT_PENDING) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    transferApproval: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated key for idempotent writes (24h window, ADR-0002). */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Approval record UUID. */
+                id: components["parameters"]["ApprovalRecordId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description Instance detail after the action */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDetailResponse"];
+                };
+            };
+            /** @description Invalid target user */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not logged in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Missing approval:transfer, or the record is not assigned to the user */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Approval record not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version conflict or record already handled (APPROVAL_NOT_PENDING) */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -37,6 +37,8 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { FormCenter } from "../pages/filler/FormCenter";
 import { FormFillPage } from "../pages/filler/FormFillPage";
 import { MySubmissions } from "../pages/filler/MySubmissions";
+import { ApprovalPendingList } from "../pages/approver/ApprovalPendingList";
+import { ApprovalPage } from "../pages/approver/ApprovalPage";
 import { RolesPage } from "../pages/admin/RolesPage";
 import { UsersPage } from "../pages/admin/UsersPage";
 
@@ -69,6 +71,7 @@ export const ROUTE_CODES: Record<string, string[]> = {
   "/filler/instances/:id": FORM_FILL, // inherits /filler/forms
   "/filler/submissions": FORM_SUBMIT,
   "/approver/pending": APPROVAL_PENDING,
+  "/approver/approvals/:id": APPROVAL_PENDING, // review page inherits the list
   "/approver/history": APPROVAL_PENDING,
   "/admin/users": ADMIN_USERS,
   "/admin/roles": ADMIN_ROLES,
@@ -287,10 +290,19 @@ export const routes: RouteObject[] = [
             path: "/approver/pending",
             element: (
               <RequirePermission codes={ROUTE_CODES["/approver/pending"]!}>
-                <PlaceholderPage />
+                <ApprovalPendingList />
               </RequirePermission>
             ),
             handle: { title: "待审批", crumb: "审批" } satisfies ShellHandle,
+          },
+          {
+            path: "/approver/approvals/:id",
+            element: (
+              <RequirePermission codes={ROUTE_CODES["/approver/approvals/:id"]!}>
+                <ApprovalPage />
+              </RequirePermission>
+            ),
+            handle: { title: "审批详情", crumb: "审批" } satisfies ShellHandle,
           },
           {
             path: "/approver/history",

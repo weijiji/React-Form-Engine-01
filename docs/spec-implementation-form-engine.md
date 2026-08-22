@@ -202,7 +202,8 @@ TEMPLATE_LOCKED           → 409  模板已被他人签出（或已发布模板
 TEMPLATE_NOT_DRAFT        → 400  模板非草稿，无法删除
 TEMPLATE_ARCHIVED         → 400  模板已归档，只读不可编辑/签出/发布
 TEMPLATE_NOT_PUBLISHED    → 400  模板未发布或已下线
-APPROVAL_NOT_PENDING      → 400  审批已处理，无法操作
+APPROVAL_NOT_PENDING      → 409  审批已处理，无法操作（含审批人已处理、状态不允许、节点不匹配）
+INSTANCE_WITHDRAWN        → 409  提交已被撤回，无法审批（撤回 vs 审批竞态，后操作方 409）
 APPROVER_RESOLUTION_FAILED → 500  审批人解析失败（配置错误：审批人不存在/角色为空）
 APPROVER_DISABLED         → 409  审批人已停用，提交被拦截（ADR-0015 ③）
 SCHEMA_VERSION_UNKNOWN    → 400  Schema 版本不被引擎支持
