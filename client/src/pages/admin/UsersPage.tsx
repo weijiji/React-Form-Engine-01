@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiClient } from "../../config/api";
-import { Pagination } from "../../components";
+import { Badge, Pagination } from "../../components";
 import { UsersIcon } from "../../layouts/icons";
 import type {
   AdminUser,
+  ApprovalReference,
+  ApprovalReferenceListResponse,
   RoleListResponse,
   RoleSummary,
   UserListResponse,
@@ -18,6 +21,55 @@ import "./admin.css";
  */
 
 const PAGE_SIZE = 20;
+
+/** 模板状态徽章（与设计器 TemplatesPage 同约定）。 */
+function statusBadge(status: string): React.ReactNode {
+  if (status === "published") {
+    return (
+      <Badge color="green" dot>
+        已发布
+      </Badge>
+    );
+  }
+  if (status === "draft") {
+    return (
+      <Badge color="amber" dot>
+        草稿
+      </Badge>
+    );
+  }
+  return (
+    <Badge color="gray" dot>
+      已归档
+    </Badge>
+  );
+}
+
+/** 引用方式人读标签：「直接引用」「角色成员（角色名）」或两者叠加。 */
+function refTypeLabel(ref: ApprovalReference): string {
+  const parts: string[] = [];
+  if (ref.refTypes.includes("direct")) parts.push("直接引用");
+  if (ref.refTypes.includes("role")) {
+    const names = (ref.roles ?? []).map((r) => r.name).join("、");
+    parts.push(names ? `角色成员（${names}）` : "角色成员");
+  }
+  return parts.join(" + ");
+}
+
+/** 引用模板列表（查看引用弹层 + 停用确认共用）。 */
+const RefList: React.FC<{ refs: ApprovalReference[] }> = ({ refs }) => (
+  <ul className="rbac-ref-list">
+    {refs.map((ref) => (
+      <li key={ref.templateId} className="rbac-ref-item">
+        <Link to={`/designer/templates/${ref.templateId}`} className="rbac-link">
+          {ref.templateName}
+        </Link>
+        {statusBadge(ref.status)}
+        <span className="rbac-muted">{refTypeLabel(ref)}</span>
+      </li>
+    ))}
+  </ul>
+);
 
 export const UsersPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
@@ -37,6 +89,8 @@ export const UsersPage: React.FC = () => {
     { mode: "create" } | { mode: "edit"; user: AdminUser } | null
   >(null);
   const [deleting, setDeleting] = useState<AdminUser | null>(null);
+  /** 查看审批链引用的目标用户（工单 23 / ADR-0015 决策 4）。 */
+  const [refsUser, setRefsUser] = useState<AdminUser | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -201,6 +255,13 @@ export const UsersPage: React.FC = () => {
                         <button
                           type="button"
                           className="rbac-btn rbac-btn-sm"
+                          onClick={() => setRefsUser(user)}
+                        >
+                          查看引用
+                        </button>
+                        <button
+                          type="button"
+                          className="rbac-btn rbac-btn-sm"
                           onClick={() => setDeleting(user)}
                         >
                           删除
@@ -263,6 +324,75 @@ export const UsersPage: React.FC = () => {
           }}
         />
       )}
+
+      {refsUser && <ApprovalRefsDialog user={refsUser} onClose={() => setRefsUser(null)} />}
+    </div>
+  );
+};
+
+// ── 审批链引用弹层（工单 23 / ADR-0015 决策 4）────────────────────────────────
+
+interface ApprovalRefsDialogProps {
+  user: AdminUser;
+  onClose: () => void;
+}
+
+const ApprovalRefsDialog: React.FC<ApprovalRefsDialogProps> = ({
+  user,
+  onClose,
+}) => {
+  const [refs, setRefs] = useState<ApprovalReference[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    apiClient<ApprovalReferenceListResponse>(
+      `/users/${user.id}/approval-references`,
+    )
+      .then((res) => alive && setRefs(res.items))
+      .catch((err: unknown) =>
+        alive && setError(err instanceof Error ? err.message : "加载失败"),
+      );
+    return () => {
+      alive = false;
+    };
+  }, [user.id]);
+
+  return (
+    <div className="rbac-editor-overlay" role="dialog" aria-label="审批链引用">
+      <div className="rbac-editor-panel">
+        <div className="rbac-editor-head">
+          <h3>
+            审批链引用 <span className="rbac-muted">{user.name}</span>
+          </h3>
+          <button type="button" className="rbac-icon-btn" aria-label="关闭" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="rbac-editor-body">
+          {error ? (
+            <p className="rbac-error">加载失败：{error}</p>
+          ) : refs === null ? (
+            <p className="rbac-empty">加载中…</p>
+          ) : refs.length === 0 ? (
+            <p className="rbac-empty">该用户未被任何模板的审批链引用。</p>
+          ) : (
+            <>
+              <p className="rbac-ref-intro">
+                该用户被 {refs.length} 个模板的审批链引用（点击跳转设计器编辑审批链）：
+              </p>
+              <RefList refs={refs} />
+            </>
+          )}
+        </div>
+
+        <div className="rbac-editor-foot">
+          <button type="button" className="rbac-btn" onClick={onClose}>
+            关闭
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -389,6 +519,8 @@ const UserEditor: React.FC<UserEditorProps> = ({
   );
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** 停用确认阶段命中的审批链引用；null = 未进入确认。 */
+  const [disableRefs, setDisableRefs] = useState<ApprovalReference[] | null>(null);
 
   function toggleRole(roleId: string) {
     setSelectedRoles((cur) => {
@@ -399,19 +531,37 @@ const UserEditor: React.FC<UserEditorProps> = ({
     });
   }
 
+  /** PATCH 当前 name/email/is_active 到正在编辑的用户。 */
+  async function patchUser() {
+    if (!user) return;
+    await apiClient(`/users/${user.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        is_active: isActive,
+      }),
+    });
+  }
+
   async function submit() {
     setSaving(true);
     setFormError(null);
     try {
       if (isEdit && user) {
-        await apiClient(`/users/${user.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            name: name.trim(),
-            email: email.trim(),
-            is_active: isActive,
-          }),
-        });
+        // 停用前查引用（ADR-0015 决策 2）：有引用 → 先确认（不拦截）；无引用 → 直接停用。
+        // 仅当本次由「启用→停用」才提醒——已停用用户的普通改名/改邮箱不重复打扰。
+        if (!isActive && user.is_active === true) {
+          const refs = await apiClient<ApprovalReferenceListResponse>(
+            `/users/${user.id}/approval-references`,
+          );
+          if (refs.items.length > 0) {
+            setDisableRefs(refs.items);
+            setSaving(false);
+            return;
+          }
+        }
+        await patchUser();
       } else {
         await apiClient("/users", {
           method: "POST",
@@ -423,6 +573,18 @@ const UserEditor: React.FC<UserEditorProps> = ({
           }),
         });
       }
+      onSaved();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "保存失败");
+      setSaving(false);
+    }
+  }
+
+  async function confirmDisable() {
+    setSaving(true);
+    setFormError(null);
+    try {
+      await patchUser();
       onSaved();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "保存失败");
@@ -445,87 +607,122 @@ const UserEditor: React.FC<UserEditorProps> = ({
         </div>
 
         <div className="rbac-editor-body">
-          <label className="rbac-field">
-            <span className="rbac-field-label">姓名</span>
-            <input
-              className="rbac-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-          <label className="rbac-field">
-            <span className="rbac-field-label">邮箱</span>
-            <input
-              className="rbac-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
+          {disableRefs !== null ? (
+            <>
+              <p className="rbac-warn">
+                该用户被 {disableRefs.length} 个模板的审批链引用。可继续停用；但提交到该用户（作为审批人）的实例将被拦截。
+              </p>
+              <RefList refs={disableRefs} />
+              {formError && <p className="rbac-error">{formError}</p>}
+            </>
+          ) : (
+            <>
+              <label className="rbac-field">
+                <span className="rbac-field-label">姓名</span>
+                <input
+                  className="rbac-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+              <label className="rbac-field">
+                <span className="rbac-field-label">邮箱</span>
+                <input
+                  className="rbac-input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
 
-          {!isEdit && (
-            <label className="rbac-field">
-              <span className="rbac-field-label">初始密码</span>
-              <input
-                className="rbac-input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-          )}
-
-          {isEdit && (
-            <label className="perm-check">
-              <input
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-              />
-              <span className="perm-check-code">启用该账号</span>
-            </label>
-          )}
-
-          {!isEdit && (
-            <div className="rbac-field">
-              <span className="rbac-field-label">初始角色</span>
-              <div className="role-picker">
-                {roles.map((role) => (
-                  <label key={role.id} className="perm-check">
-                    <input
-                      type="checkbox"
-                      checked={selectedRoles.has(role.id)}
-                      onChange={() => toggleRole(role.id)}
-                    />
-                    <span className="perm-check-code">{role.name}</span>
-                    {role.description && (
-                      <span className="perm-check-name">{role.description}</span>
-                    )}
-                  </label>
-                ))}
-              </div>
-              {roles.length === 0 && (
-                <p className="rbac-muted">
-                  <UsersIcon /> 暂无角色，请先在「角色管理」中创建。
-                </p>
+              {!isEdit && (
+                <label className="rbac-field">
+                  <span className="rbac-field-label">初始密码</span>
+                  <input
+                    className="rbac-input"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
               )}
-            </div>
-          )}
 
-          {formError && <p className="rbac-error">{formError}</p>}
+              {isEdit && (
+                <label className="perm-check">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                  />
+                  <span className="perm-check-code">启用该账号</span>
+                </label>
+              )}
+
+              {!isEdit && (
+                <div className="rbac-field">
+                  <span className="rbac-field-label">初始角色</span>
+                  <div className="role-picker">
+                    {roles.map((role) => (
+                      <label key={role.id} className="perm-check">
+                        <input
+                          type="checkbox"
+                          checked={selectedRoles.has(role.id)}
+                          onChange={() => toggleRole(role.id)}
+                        />
+                        <span className="perm-check-code">{role.name}</span>
+                        {role.description && (
+                          <span className="perm-check-name">{role.description}</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                  {roles.length === 0 && (
+                    <p className="rbac-muted">
+                      <UsersIcon /> 暂无角色，请先在「角色管理」中创建。
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {formError && <p className="rbac-error">{formError}</p>}
+            </>
+          )}
         </div>
 
         <div className="rbac-editor-foot">
-          <button type="button" className="rbac-btn" onClick={onCancel}>
-            取消
-          </button>
-          <button
-            type="button"
-            className="rbac-btn rbac-btn-primary"
-            disabled={saving}
-            onClick={submit}
-          >
-            {saving ? "保存中…" : "保存"}
-          </button>
+          {disableRefs !== null ? (
+            <>
+              <button
+                type="button"
+                className="rbac-btn"
+                disabled={saving}
+                onClick={() => setDisableRefs(null)}
+              >
+                返回
+              </button>
+              <button
+                type="button"
+                className="rbac-btn rbac-btn-danger"
+                disabled={saving}
+                onClick={confirmDisable}
+              >
+                {saving ? "停用中…" : "确认停用"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="rbac-btn" onClick={onCancel}>
+                取消
+              </button>
+              <button
+                type="button"
+                className="rbac-btn rbac-btn-primary"
+                disabled={saving}
+                onClick={submit}
+              >
+                {saving ? "保存中…" : "保存"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

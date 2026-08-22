@@ -16,6 +16,7 @@ let adminId: string;
 let fillerRoleId: string;
 const createdUserIds: string[] = [];
 const createdTemplateIds: string[] = [];
+const createdRoleIds: string[] = [];
 
 // Login is rate-limited per IP; each session logs in from a distinct IP.
 let ipSeed = 0;
@@ -44,6 +45,9 @@ afterAll(async () => {
   }
   for (const id of createdUserIds) {
     await db("users").where({ id }).del();
+  }
+  for (const id of createdRoleIds) {
+    await db("roles").where({ id }).del();
   }
   await closeDb();
 });
@@ -284,6 +288,209 @@ describe("DELETE /api/v1/users/:id — delete", () => {
     const res = await agent
       .delete("/api/v1/users/00000000-0000-0000-0000-000000000000")
       .set("X-CSRF-Token", csrf);
+    expect(res.status).toBe(404);
+  });
+});
+
+// ── GET /api/v1/users/:id/approval-references (ADR-0015 决策 4) ───────────────
+
+async function createRoleForRefs(name: string) {
+  const { agent, csrf } = await adminSession();
+  const res = await agent
+    .post("/api/v1/roles")
+    .set("X-CSRF-Token", csrf)
+    .send({ name, permissionCodes: ["form:fill"] });
+  if (res.status === 201) createdRoleIds.push(res.body.id);
+  return res;
+}
+
+async function assignRoles(userId: string, roleIds: string[]) {
+  const { agent, csrf } = await adminSession();
+  await agent
+    .post(`/api/v1/users/${userId}/roles`)
+    .set("X-CSRF-Token", csrf)
+    .send({ roleIds });
+}
+
+/** Insert a template with an arbitrary approval_chain and register it for cleanup. */
+async function insertTemplateWithChain(chain: unknown): Promise<string> {
+  const db = getDb();
+  const [template] = await db("form_templates")
+    .insert({
+      name: `引用检索模板-${createdTemplateIds.length + 1}`,
+      created_by: adminId,
+      approval_chain: JSON.stringify(chain),
+    })
+    .returning("id");
+  createdTemplateIds.push(template.id);
+  return template.id;
+}
+
+describe("GET /api/v1/users/:id/approval-references — approval-chain references (ADR-0015 ④)", () => {
+  it("returns templates that reference the user directly (specific rule)", async () => {
+    const created = await createUser();
+    const tplId = await insertTemplateWithChain({
+      nodes: [
+        {
+          id: "ref-node-1",
+          order: 1,
+          label: "指定审批",
+          approverRule: { type: "specific", userId: created.body.id },
+        },
+      ],
+    });
+
+    const { agent } = await adminSession();
+    const res = await agent.get(
+      `/api/v1/users/${created.body.id}/approval-references`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0]).toMatchObject({
+      templateId: tplId,
+      refTypes: ["direct"],
+    });
+  });
+
+  it("returns templates referenced through a role the user holds", async () => {
+    const created = await createUser();
+    const role = await createRoleForRefs(`引用角色-${nextIp()}`);
+    await assignRoles(created.body.id, [role.body.id]);
+    const tplId = await insertTemplateWithChain({
+      nodes: [
+        {
+          id: "ref-node-2",
+          order: 1,
+          label: "角色审批",
+          approverRule: { type: "role", roleId: role.body.id },
+        },
+      ],
+    });
+
+    const { agent } = await adminSession();
+    const res = await agent.get(
+      `/api/v1/users/${created.body.id}/approval-references`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0]).toMatchObject({
+      templateId: tplId,
+      refTypes: ["role"],
+      roles: [{ id: role.body.id, name: role.body.name }],
+    });
+  });
+
+  it("a template referenced both directly and via role appears once with both refTypes", async () => {
+    const created = await createUser();
+    const role = await createRoleForRefs(`双重引用角色-${nextIp()}`);
+    await assignRoles(created.body.id, [role.body.id]);
+    const tplId = await insertTemplateWithChain({
+      nodes: [
+        {
+          id: "ref-node-3a",
+          order: 1,
+          label: "指定审批",
+          approverRule: { type: "specific", userId: created.body.id },
+        },
+        {
+          id: "ref-node-3b",
+          order: 2,
+          label: "角色审批",
+          approverRule: { type: "role", roleId: role.body.id },
+        },
+      ],
+    });
+
+    const { agent } = await adminSession();
+    const res = await agent.get(
+      `/api/v1/users/${created.body.id}/approval-references`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0].templateId).toBe(tplId);
+    expect(res.body.items[0].refTypes).toEqual(
+      expect.arrayContaining(["direct", "role"]),
+    );
+    expect(res.body.items[0].roles).toEqual([
+      { id: role.body.id, name: role.body.name },
+    ]);
+  });
+
+  it("a template referenced by two of the user's roles lists \"role\" once and both roles", async () => {
+    const created = await createUser();
+    const roleA = await createRoleForRefs(`角色A-${nextIp()}`);
+    const roleB = await createRoleForRefs(`角色B-${nextIp()}`);
+    await assignRoles(created.body.id, [roleA.body.id, roleB.body.id]);
+    const tplId = await insertTemplateWithChain({
+      nodes: [
+        {
+          id: "ref-node-3c",
+          order: 1,
+          label: "角色审批",
+          approverRule: { type: "role", roleId: roleA.body.id },
+        },
+        {
+          id: "ref-node-3d",
+          order: 2,
+          label: "角色审批",
+          approverRule: { type: "role", roleId: roleB.body.id },
+        },
+      ],
+    });
+
+    const { agent } = await adminSession();
+    const res = await agent.get(
+      `/api/v1/users/${created.body.id}/approval-references`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0].templateId).toBe(tplId);
+    // refTypes 去重：两个角色命中同一模板，也只出现一次 "role"。
+    expect(res.body.items[0].refTypes).toEqual(["role"]);
+    const roleIds = res.body.items[0].roles.map(
+      (r: { id: string }) => r.id,
+    );
+    expect(roleIds).toEqual(
+      expect.arrayContaining([roleA.body.id, roleB.body.id]),
+    );
+  });
+
+  it("ignores org_structure rules (they name no user)", async () => {
+    const created = await createUser();
+    await insertTemplateWithChain({
+      nodes: [
+        {
+          id: "ref-node-4",
+          order: 1,
+          label: "直属上级",
+          approverRule: { type: "org_structure", relation: "direct_manager" },
+        },
+      ],
+    });
+
+    const { agent } = await adminSession();
+    const res = await agent.get(
+      `/api/v1/users/${created.body.id}/approval-references`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toEqual([]);
+  });
+
+  it("returns an empty list for a user no template references", async () => {
+    const created = await createUser();
+    const { agent } = await adminSession();
+    const res = await agent.get(
+      `/api/v1/users/${created.body.id}/approval-references`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.items).toEqual([]);
+  });
+
+  it("returns 404 for a missing user", async () => {
+    const { agent } = await adminSession();
+    const res = await agent.get(
+      "/api/v1/users/00000000-0000-0000-0000-000000000000/approval-references",
+    );
     expect(res.status).toBe(404);
   });
 });

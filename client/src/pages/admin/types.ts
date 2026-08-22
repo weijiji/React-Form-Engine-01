@@ -17,3 +17,6 @@ export type PermissionListResponse = components["schemas"]["PermissionListRespon
 export type UserListResponse = components["schemas"]["UserListResponse"];
 export type UserCreateRequest = components["schemas"]["UserCreateRequest"];
 export type UserUpdateRequest = components["schemas"]["UserUpdateRequest"];
+export type ApprovalReference = components["schemas"]["ApprovalReferenceItem"];
+export type ApprovalReferenceListResponse =
+  components["schemas"]["ApprovalReferenceListResponse"];

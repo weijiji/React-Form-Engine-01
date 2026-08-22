@@ -1010,6 +1010,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /api/v1/users/{id}/approval-references:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [users]
+      summary: List a user's approval-chain references
+      description: |
+        Templates whose approval_chain references this user — directly (a
+        specific-user rule) or through a role the user holds. `org_structure`
+        rules are excluded because they name no user (ADR-0015 决策 4).
+        Powers the reference list and the disable reminder; disabling is not
+        blocked by references (决策 2). Requires admin:manage_users.
+      operationId: listUserApprovalReferences
+      responses:
+        "200":
+          description: Reference list (empty when nothing references the user)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalReferenceListResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /api/v1/users/{id}/roles:
     parameters:
       - $ref: "#/components/parameters/UserId"
@@ -1539,6 +1566,46 @@ components:
           type: integer
         pageSize:
           type: integer
+
+    ApprovalReferenceItem:
+      type: object
+      description: |
+        A template whose approval_chain references a user (ADR-0015 决策 4).
+        A template referenced both directly and via role appears once, with both
+        ref types.
+      required: [templateId, templateName, status, refTypes]
+      properties:
+        templateId:
+          type: string
+          format: uuid
+        templateName:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, archived]
+        refTypes:
+          type: array
+          description: >-
+            How the template references the user — "direct" (a specific-user
+            rule names the user) or "role" (a role rule names a role the user
+            holds). org_structure rules never appear.
+          items:
+            type: string
+            enum: [direct, role]
+        roles:
+          type: array
+          description: The roles that cause the reference (present when refTypes includes "role").
+          items:
+            $ref: "#/components/schemas/RoleSummary"
+
+    ApprovalReferenceListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApprovalReferenceItem"
 
     RoleAssignmentRequest:
       type: object

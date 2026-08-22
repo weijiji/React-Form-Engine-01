@@ -4,7 +4,10 @@ import { AppError } from "../middleware/errorHandler";
 import { authenticate, isAdminClassPermission, requirePermission } from "../middleware/auth";
 import { asyncHandler, clampInt } from "./helpers";
 import { hashPassword } from "../services/password";
-import { templatesReferencingUser } from "../services/approvalRefs";
+import {
+  approvalReferencesForUser,
+  templatesReferencingUser,
+} from "../services/approvalRefs";
 
 /**
  * User administration + role assignment (work order 09, extended by BUG-01).
@@ -329,6 +332,23 @@ router.patch(
       is_active: updated.is_active !== false,
       roles: await rolesForUser(req.params.id),
     });
+  }),
+);
+
+// ── GET /api/v1/users/:id/approval-references — reference search (ADR-0015 ④)
+// Templates whose approval_chain references this user, directly (specific rule)
+// or through a role the user holds. `org_structure` rules name no user and are
+// excluded. Powers the 账号治理 reference list and the disable reminder; the
+// disable itself is not blocked (decision 2).
+router.get(
+  "/:id/approval-references",
+  authenticate,
+  requirePermission(MANAGE_USERS),
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = await getDb()("users").where({ id: req.params.id }).first();
+    if (!user) throw new AppError("NOT_FOUND", "用户不存在", 404);
+
+    res.json({ items: await approvalReferencesForUser(req.params.id) });
   }),
 );
 

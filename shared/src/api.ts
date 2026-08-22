@@ -604,6 +604,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/approval-references": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User UUID. */
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List a user's approval-chain references
+         * @description Templates whose approval_chain references this user — directly (a
+         *     specific-user rule) or through a role the user holds. `org_structure`
+         *     rules are excluded because they name no user (ADR-0015 决策 4).
+         *     Powers the reference list and the disable reminder; disabling is not
+         *     blocked by references (决策 2). Requires admin:manage_users.
+         */
+        get: operations["listUserApprovalReferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}/roles": {
         parameters: {
             query?: never;
@@ -883,6 +910,25 @@ export interface components {
             total: number;
             page: number;
             pageSize: number;
+        };
+        /**
+         * @description A template whose approval_chain references a user (ADR-0015 决策 4).
+         *     A template referenced both directly and via role appears once, with both
+         *     ref types.
+         */
+        ApprovalReferenceItem: {
+            /** Format: uuid */
+            templateId: string;
+            templateName: string;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            /** @description How the template references the user — "direct" (a specific-user rule names the user) or "role" (a role rule names a role the user holds). org_structure rules never appear. */
+            refTypes: ("direct" | "role")[];
+            /** @description The roles that cause the reference (present when refTypes includes "role"). */
+            roles?: components["schemas"]["RoleSummary"][];
+        };
+        ApprovalReferenceListResponse: {
+            items: components["schemas"]["ApprovalReferenceItem"][];
         };
         RoleAssignmentRequest: {
             roleIds: string[];
@@ -2304,6 +2350,38 @@ export interface operations {
             };
             /** @description Missing or invalid name, email, or password */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listUserApprovalReferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User UUID. */
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reference list (empty when nothing references the user) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalReferenceListResponse"];
+                };
+            };
+            /** @description User not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
