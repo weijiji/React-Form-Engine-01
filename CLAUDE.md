@@ -16,7 +16,7 @@ Monorepo with three packages plus docs. There is **no npm workspaces config** �
 - **`server/`** — Express API server (port 3001). Knex migrations/seeds, Pino logging.
 - **`shared/`** — package `form-engine-core`: the pure-logic engine. **Zero runtime dependencies.** It compiles to `dist/` (`npm run build:shared`); its `package.json` `exports` points at `./dist/index.js`. The **client** consumes the TypeScript source directly via a Vite alias to `../shared/src/index.ts`, while the **server** imports the compiled `dist` through a `file:../shared` dependency.
 - **`docs/`** — product/design/UX specs, `design-system-form-engine.md` (design tokens + shared shell, ADR-0008), `adr/` (11 ADRs), and `spec-implementation-form-engine.md` (the implementation spec, contains the canonical test seams and error-code table).
-- **`.scratch/form-engine-mvp/issues/`** — the 13 work orders (工单) that drive implementation. `13 个工单：执行顺序.md` maps their dependency graph and execution order.
+- **`.scratch/form-engine-mvp/issues/`** — the work orders (工单) that drive implementation. `工单执行顺序.md` maps their dependency graph and execution order.
 - **`CONTEXT.md`** — the domain glossary (Chinese). The semantic authority for all terms: `FormTemplate`, `FormInstance`, `ApprovalRecord`, `Draft`, `OrgDataSource`, `schemaVersion`, etc. Read it before introducing or renaming domain concepts.
 
 ## Commands

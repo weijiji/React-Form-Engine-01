@@ -8,7 +8,16 @@ import { ACTION_LABEL, formatDate } from "./labels";
  * hint until the record resolves at submit time.
  */
 export function ApprovalChainSidebar({ detail }: { detail: InstanceDetail }) {
-  const chain = detail.template.approval_chain as
+  // A draft edits the live template chain; a submitted instance renders the
+  // frozen snapshot chain so approval records (matched by node_id) stay aligned
+  // with the chain that was in effect at submit time (BUG-10).
+  const isDraft = detail.status === "draft";
+  const chain = (
+    isDraft
+      ? detail.template.approval_chain
+      : (detail.template_snapshot as { approval_chain?: unknown } | null | undefined)
+          ?.approval_chain ?? detail.template.approval_chain
+  ) as
     | { nodes?: Array<{ id: string; order: number; label?: string }> }
     | null
     | undefined;

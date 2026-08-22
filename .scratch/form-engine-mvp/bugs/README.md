@@ -7,8 +7,8 @@
 
 ## 统计
 
-- 总数：9（fixed 6 / open 3）
-- 最近更新：2026-08-21
+- 总数：12（fixed 6 / open 6）
+- 最近更新：2026-08-22
 
 ## 清单
 
@@ -23,6 +23,9 @@
 | [BUG-07](./07-designer-no-readonly-guard.md) | 设计器「未签出」时仍可编辑：组件面板可拖拽到画布，无只读保护 | 编辑权限守卫缺失 | 中-高 | 🟢 fixed |
 | [BUG-08](./08-users-page-limited-admin-crash.md) | 仅持 `admin:manage_users` 打开用户管理页整页报「加载用户失败」（页面误拉 `/roles` 被 403 拖垮） | 权限/页面错误 | 中 | 🟢 fixed |
 | [BUG-09](./09-privilege-escalation-role-grant.md) | 越权提权：仅 `admin:manage_users` 可自授「管理员」角色（分配接口无授权范围校验） | 越权/安全 | 高 | 🟢 fixed |
+| [BUG-10](./10-approval-chain-snapshot-mismatch.md) | 已提交实例审批链视图用活模板而非快照（节点与记录错位） | 错误行为 | 高 | 🟡 open |
+| [BUG-11](./11-template-offline-workflow-missing.md) | 系统缺少模板下架/停用流程：发布后无法下线，`archived` 状态无入口 | 功能缺口 | 中-高 | 🟡 open |
+| [BUG-12](./12-fill-click-creates-undeletable-draft.md) | 点击「填写」即创建空草稿实例，且草稿无法删除（误触即产生脏数据） | 错误行为/体验 | 中 | 🟡 open |
 
 ## 图例
 

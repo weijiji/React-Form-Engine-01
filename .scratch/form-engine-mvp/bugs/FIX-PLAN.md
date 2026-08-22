@@ -17,6 +17,9 @@
 | ⑦ | [BUG-03](./03-page-layout-consistency.md) | 全站布局缺乏统一（大整顿） | UI 专项 | 低 | **P3** | 🎨 需 UI/UX 设计师介入；可吸收 ⑤⑥ |
 | ⑧ | [BUG-09](./09-privilege-escalation-role-grant.md) | 越权提权：仅 `admin:manage_users` 可自授「管理员」角色 | 越权/安全 | 高 | **P0** | 与 ⑨ 同场景，hotfix 同批 |
 | ⑨ | [BUG-08](./08-users-page-limited-admin-crash.md) | 仅持 `admin:manage_users` 打开用户管理页整页崩溃 | 权限/页面错误 | 中 | **P1** | 与 ⑧ 同源，hotfix 同批 |
+| ⑩ | [BUG-10](./10-approval-chain-snapshot-mismatch.md) | 已提交实例的审批链视图用活模板而非快照（节点与记录错位） | 错误行为 | 高 | **P0** | 独立；与 ADR-0015 同批 |
+| ⑪ | [BUG-12](./12-fill-click-creates-undeletable-draft.md) | 点击「填写」即创建空草稿且无法删除（误触脏数据） | 错误行为/体验 | 中 | **P1** | ⚠️ 需产品确认草稿可否删除；与 ⑫ 同属表单生命周期 |
+| ⑫ | [BUG-11](./11-template-offline-workflow-missing.md) | 模板发布后无法下架/停用，`archived` 无入口 | 功能缺口 | 中-高 | **P1** | ⚠️ 需产品确认下架语义（停用可恢复/归档终态）；建议与 BUG-04 同批（设计器动作区） |
 
 ## 批次打包
 
@@ -54,4 +57,6 @@
 | --- | --- | --- |
 | ~~模板可见性策略~~ ✅ 已定（ADR-0012）：默认「仅本人」，`scope=all` 需 `template:view_all` | 产品 | BUG-06 已解除阻塞 |
 | 删除用户时关联数据（FormInstance/ApprovalRecord/Draft）处理策略 | 产品/技术 | BUG-01 |
+| 草稿是否允许删除（对已提交实例无影响，仅 `draft` 状态） | 产品 | BUG-12 |
+| 模板下架语义：软停用（可恢复）/ 归档终态 / 是否允许强删及级联策略 | 产品 | BUG-11 |
 | 全站布局统一规范定稿 | UI/UX 设计师 | BUG-03 |

@@ -15,10 +15,15 @@ export function resolveInstanceSchema(
     ? detail.template.schema
     : (detail.template_snapshot as { schema?: unknown } | null | undefined)
         ?.schema ?? detail.template.schema;
-  const chain = (detail.template.approval_chain ?? null) as
-    | ApprovalChain
-    | Record<string, never>
-    | null;
+  // Symmetric with `rawSchema` above (BUG-10): a submitted instance renders the
+  // frozen snapshot chain so later template edits can't shift the approval
+  // records' node ids out from under the sidebar.
+  const chain = (
+    isDraft
+      ? detail.template.approval_chain
+      : (detail.template_snapshot as { approval_chain?: unknown } | null | undefined)
+          ?.approval_chain ?? detail.template.approval_chain
+  ) as ApprovalChain | Record<string, never> | null;
   try {
     return parseSchema(rawSchema, chain ?? null);
   } catch {
