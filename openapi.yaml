@@ -1996,7 +1996,7 @@ components:
           enum: [draft, submitted, in_approval, approved, rejected, returned, withdrawn]
         current_node_index:
           type: integer
-          description: Current approval node index (0-based).
+          description: Current approval node index (0-based). Complement of the active node's 1-based node_order (node_order - 1).
         version:
           type: integer
           description: Optimistic-locking version.
@@ -2029,7 +2029,7 @@ components:
           description: Approval node ID from the approval_chain.
         node_order:
           type: integer
-          description: Sequential order in the chain.
+          description: 1-based position in the chain (first node = 1). Matches the chain's ApprovalNode.order; instance.current_node_index is the 0-based complement (node_order - 1).
         approver_id:
           type: [string, "null"]
           format: uuid
@@ -2157,6 +2157,7 @@ components:
           type: string
         node_order:
           type: integer
+          description: 1-based position in the chain (first node = 1).
         approver_id:
           type: [string, "null"]
           format: uuid

@@ -219,6 +219,13 @@ export type ApproverRule =
 
 export interface ApprovalNode {
   id: string;
+  /**
+   * 1-based position of this node in the approval chain (first node = 1).
+   * This is the same value the server stores as `approval_records.node_order`;
+   * `current_node_index` is the matching 0-based index (`node_order - 1`).
+   * SchemaParser enforces `order >= 1` — the designer writes 1-based so a
+   * chain stays execution-consistent (BUG-13).
+   */
   order: number;
   label?: string;
   approverRule: ApproverRule;

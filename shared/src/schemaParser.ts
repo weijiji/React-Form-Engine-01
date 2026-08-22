@@ -322,8 +322,17 @@ function parseApprovalChain(value: unknown, path: string): ApprovalChain {
     seenIds.add(id);
 
     const order = n.order;
-    if (typeof order !== "number" || !Number.isFinite(order)) {
-      throw new SchemaParseError("APPROVAL_CHAIN_INVALID", "node.order must be a finite number", nodePath);
+    // `order` is the 1-based position in the chain (BUG-13): it flows verbatim
+    // into `approval_records.node_order` and the execution guard compares
+    // `node_order - 1` against the 0-based `current_node_index`. A 0-based or
+    // fractional order would silently break every approval action, so reject it
+    // here rather than let it pass through to execution.
+    if (typeof order !== "number" || !Number.isInteger(order) || order < 1) {
+      throw new SchemaParseError(
+        "APPROVAL_CHAIN_INVALID",
+        "node.order must be an integer >= 1 (1-based position in the chain)",
+        nodePath,
+      );
     }
     if (seenOrders.has(order)) {
       throw new SchemaParseError("APPROVAL_CHAIN_INVALID", `duplicate node order ${order}`, nodePath);

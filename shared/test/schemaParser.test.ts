@@ -110,6 +110,30 @@ describe("SchemaParser", () => {
       assertThrows(validSchema(), chain, "APPROVAL_CHAIN_INVALID");
     });
 
+    // BUG-13: order is the 1-based position in the chain — it flows verbatim
+    // into approval_records.node_order and the execution guard compares
+    // `node_order - 1` to the 0-based current_node_index. A 0-based or
+    // fractional order silently breaks every approval action, so it's rejected.
+    it("rejects a 0-based node order (BUG-13)", () => {
+      const chain = {
+        nodes: [
+          { id: "n1", order: 0, approverRule: { type: "specific", userId: "u1" } },
+          { id: "n2", order: 1, approverRule: { type: "specific", userId: "u2" } },
+        ],
+      };
+      assertThrows(validSchema(), chain, "APPROVAL_CHAIN_INVALID");
+    });
+
+    it("rejects a negative node order", () => {
+      const chain = { nodes: [{ id: "n", order: -1, approverRule: { type: "specific", userId: "u1" } }] };
+      assertThrows(validSchema(), chain, "APPROVAL_CHAIN_INVALID");
+    });
+
+    it("rejects a fractional node order", () => {
+      const chain = { nodes: [{ id: "n", order: 1.5, approverRule: { type: "specific", userId: "u1" } }] };
+      assertThrows(validSchema(), chain, "APPROVAL_CHAIN_INVALID");
+    });
+
     it("rejects an org_structure rule missing relation", () => {
       const chain = { nodes: [{ id: "n", order: 1, approverRule: { type: "org_structure" } }] };
       assertThrows(validSchema(), chain, "APPROVAL_CHAIN_INVALID");

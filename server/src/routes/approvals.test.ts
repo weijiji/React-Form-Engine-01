@@ -30,6 +30,7 @@ let lisiId: string;
 let publishedTemplateId: string;
 
 const createdInstanceIds: string[] = [];
+const createdTemplateIds: string[] = [];
 
 const validValues = {
   "fld-001": "李四",
@@ -85,6 +86,9 @@ afterAll(async () => {
   const db = getDb();
   for (const id of createdInstanceIds) {
     await db("form_instances").where({ id }).del();
+  }
+  for (const id of createdTemplateIds) {
+    await db("form_templates").where({ id }).del();
   }
   await closeDb();
 });
@@ -530,6 +534,162 @@ describe("withdraw vs approval race (工单 06: 后操作方 409)", () => {
     expect(withdraw.status).toBe(409);
     expect(withdraw.body.error.code).toBe("APPROVAL_NOT_PENDING");
     expect(withdraw.body.error.message).toContain("已处理");
+  });
+});
+
+describe("BUG-13: designer-created template (1-based node order)", () => {
+  // The designer writes `ApprovalNode.order` as the 1-based position ("第 N 级",
+  // first node = 1), matching the seed and the execution invariant
+  // `node_order - 1 === current_node_index`. Before BUG-13 was fixed the
+  // designer stored the 0-based array index, so a designer template's first
+  // record had node_order 0 → every approval action 409'd. These tests drive a
+  // template through the real designer save → publish → submit → act path (the
+  // seed-based cases above don't cover it) to lock the contract end-to-end.
+  it("first-node approve succeeds and advances (no 409 node-mismatch)", async () => {
+    const tpl = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .send({ name: "出差申请表" });
+    expect(tpl.status).toBe(201);
+    createdTemplateIds.push(tpl.body.id);
+
+    const put = await request(app)
+      .put(`/api/v1/templates/${tpl.body.id}/schema`)
+      .set("Cookie", authCookie(adminId))
+      .send({
+        schema: { schemaVersion: "1.0.0", sections: [] },
+        approval_chain: {
+          nodes: [
+            { id: "n1", order: 1, label: "张三审批", approverRule: { type: "specific", userId: zhangsanId } },
+            { id: "n2", order: 2, label: "管理员审批", approverRule: { type: "specific", userId: adminId } },
+          ],
+        },
+      });
+    expect(put.status).toBe(200);
+
+    const publish = await request(app)
+      .post(`/api/v1/templates/${tpl.body.id}/publish`)
+      .set("Cookie", authCookie(adminId));
+    expect(publish.status).toBe(200);
+
+    const created = await request(app)
+      .post("/api/v1/instances")
+      .set("Cookie", authCookie(lisiId))
+      .send({ template_id: tpl.body.id });
+    expect(created.status).toBe(201);
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: {} });
+    expect(submit.status).toBe(200);
+    const rec1 = submit.body.approval_records.find(
+      (r: { node_order: number }) => r.node_order === 1,
+    );
+    expect(rec1).toBeTruthy();
+
+    const approve = await request(app)
+      .post(`/api/v1/approvals/${rec1.id}/approve`)
+      .set("Cookie", authCookie(zhangsanId))
+      .set("Idempotency-Key", `bug13-a-${instanceId}`)
+      .send({ instanceVersion: submit.body.version });
+    expect(approve.status).toBe(200);
+    expect(approve.body.approval.action).toBe("approved");
+    expect(approve.body.instance.status).toBe("in_approval");
+    expect(approve.body.instance.current_node_index).toBe(1);
+  });
+
+  it("first-node reject works on a designer template", async () => {
+    const tpl = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .send({ name: "出差申请表-2" });
+    expect(tpl.status).toBe(201);
+    createdTemplateIds.push(tpl.body.id);
+
+    const put = await request(app)
+      .put(`/api/v1/templates/${tpl.body.id}/schema`)
+      .set("Cookie", authCookie(adminId))
+      .send({
+        schema: { schemaVersion: "1.0.0", sections: [] },
+        approval_chain: {
+          nodes: [
+            { id: "n1", order: 1, label: "张三审批", approverRule: { type: "specific", userId: zhangsanId } },
+            { id: "n2", order: 2, label: "管理员审批", approverRule: { type: "specific", userId: adminId } },
+          ],
+        },
+      });
+    expect(put.status).toBe(200);
+    await request(app)
+      .post(`/api/v1/templates/${tpl.body.id}/publish`)
+      .set("Cookie", authCookie(adminId));
+
+    const created = await request(app)
+      .post("/api/v1/instances")
+      .set("Cookie", authCookie(lisiId))
+      .send({ template_id: tpl.body.id });
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: {} });
+    expect(submit.status).toBe(200);
+    const rec1 = submit.body.approval_records.find(
+      (r: { node_order: number }) => r.node_order === 1,
+    );
+    expect(rec1).toBeTruthy();
+
+    const reject = await request(app)
+      .post(`/api/v1/approvals/${rec1.id}/reject`)
+      .set("Cookie", authCookie(zhangsanId))
+      .set("Idempotency-Key", `bug13-r-${instanceId}`)
+      .send({ instanceVersion: submit.body.version, comment: "预算不足" });
+    expect(reject.status).toBe(200);
+    expect(reject.body.instance.status).toBe("rejected");
+  });
+
+  it("rejects a legacy 0-based chain at submit (APPROVAL_CHAIN_INVALID)", async () => {
+    // The old designer wrote order 0, 1. Such a chain is now invalid per the
+    // 1-based contract — the parser rejects it at submit rather than letting
+    // every approval action 409. This is the loud-fail half of BUG-13.
+    const tpl = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .send({ name: "出差申请表-旧版" });
+    expect(tpl.status).toBe(201);
+    createdTemplateIds.push(tpl.body.id);
+
+    await request(app)
+      .put(`/api/v1/templates/${tpl.body.id}/schema`)
+      .set("Cookie", authCookie(adminId))
+      .send({
+        schema: { schemaVersion: "1.0.0", sections: [] },
+        approval_chain: {
+          nodes: [
+            { id: "n1", order: 0, label: "张三审批", approverRule: { type: "specific", userId: zhangsanId } },
+            { id: "n2", order: 1, label: "管理员审批", approverRule: { type: "specific", userId: adminId } },
+          ],
+        },
+      });
+    await request(app)
+      .post(`/api/v1/templates/${tpl.body.id}/publish`)
+      .set("Cookie", authCookie(adminId));
+
+    const created = await request(app)
+      .post("/api/v1/instances")
+      .set("Cookie", authCookie(lisiId))
+      .send({ template_id: tpl.body.id });
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: {} });
+    expect(submit.status).toBe(422);
+    expect(submit.body.error.code).toBe("APPROVAL_CHAIN_INVALID");
   });
 });
 

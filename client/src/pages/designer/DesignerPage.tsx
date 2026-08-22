@@ -84,7 +84,13 @@ function toChain(raw: unknown): ApprovalChain {
     return {
       nodes: (raw as ApprovalChain).nodes.map((n, i) => ({
         id: n.id ?? newId("c"),
-        order: n.order ?? i,
+        // `order` is the 1-based position in the chain (BUG-13). A legacy chain
+        // stored before the 1-based contract (missing order, or a 0-based one
+        // from the old array-index writer) is healed to 1-based on load.
+        order:
+          Number.isInteger(n.order) && (n.order as number) >= 1
+            ? (n.order as number)
+            : i + 1,
         label: n.label,
         approverRule: toRule(n.approverRule),
       })),
@@ -277,7 +283,9 @@ export const DesignerPage: React.FC = () => {
         ...prev.nodes,
         {
           id: newId("c"),
-          order: prev.nodes.length,
+          // 1-based position (BUG-13): the engine/seed/display all treat order
+          // as "第 N 级" starting at 1, so a new node goes at length + 1.
+          order: prev.nodes.length + 1,
           label: "新增审批节点",
           approverRule: { type: "org_structure", relation: "direct_manager" },
         },
@@ -291,7 +299,7 @@ export const DesignerPage: React.FC = () => {
     setChain((prev) => ({
       nodes: prev.nodes
         .filter((n) => n.id !== id)
-        .map((n, i) => ({ ...n, order: i })),
+        .map((n, i) => ({ ...n, order: i + 1 })),
     }));
     setDirty(true);
   }, []);
@@ -304,7 +312,7 @@ export const DesignerPage: React.FC = () => {
       const t = i + delta;
       if (i < 0 || t < 0 || t >= nodes.length) return prev;
       [nodes[i], nodes[t]] = [nodes[t], nodes[i]];
-      return { nodes: nodes.map((n, idx) => ({ ...n, order: idx })) };
+      return { nodes: nodes.map((n, idx) => ({ ...n, order: idx + 1 })) };
     });
     setDirty(true);
   }, []);

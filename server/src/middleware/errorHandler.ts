@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { SchemaParseError } from "form-engine-core";
 import { logger } from "./logger";
 
 /**
@@ -44,6 +45,18 @@ export function errorHandlerMiddleware(
         message: err.message,
         ...(err.details ? { details: err.details } : {}),
       },
+    });
+    return;
+  }
+
+  // A template schema / approval chain failed to parse (submit or save). The
+  // stored data is invalid — a client error with the machine-readable code, not
+  // a 500. e.g. a 0-based node `order` is rejected as APPROVAL_CHAIN_INVALID
+  // (BUG-13) instead of silently breaking every approval action.
+  if (err instanceof SchemaParseError) {
+    logger.warn({ err, traceId: req.traceId }, `SchemaParseError: ${err.code} - ${err.message}`);
+    res.status(422).json({
+      error: { code: err.code, message: err.message },
     });
     return;
   }
