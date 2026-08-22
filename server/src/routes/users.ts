@@ -4,6 +4,7 @@ import { AppError } from "../middleware/errorHandler";
 import { authenticate, isAdminClassPermission, requirePermission } from "../middleware/auth";
 import { asyncHandler, clampInt } from "./helpers";
 import { hashPassword } from "../services/password";
+import { templatesReferencingUser } from "../services/approvalRefs";
 
 /**
  * User administration + role assignment (work order 09, extended by BUG-01).
@@ -353,6 +354,17 @@ router.delete(
       throw new AppError(
         "USER_HAS_TEMPLATES",
         "该用户创建过模板，请先处理模板归属后再删除",
+        409,
+      );
+    }
+
+    // ADR-0015 决策 1: JSONB approval_chain has no FK — a hard delete must not
+    // leave a dangling `specific` reference behind.
+    const referenced = await templatesReferencingUser(req.params.id);
+    if (referenced.length > 0) {
+      throw new AppError(
+        "USER_REFERENCED_IN_APPROVAL_CHAIN",
+        `该用户被 ${referenced.length} 个模板的审批链引用，请先处理引用后再删除`,
         409,
       );
     }

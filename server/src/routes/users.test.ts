@@ -250,6 +250,35 @@ describe("DELETE /api/v1/users/:id — delete", () => {
     expect(res.body.error.code).toBe("USER_HAS_TEMPLATES");
   });
 
+  it("rejects deleting a user referenced in an approval chain (409 USER_REFERENCED_IN_APPROVAL_CHAIN)", async () => {
+    const created = await createUser();
+    const db = getDb();
+    const [template] = await db("form_templates")
+      .insert({
+        name: "引用临时用户模板",
+        created_by: adminId,
+        approval_chain: JSON.stringify({
+          nodes: [
+            {
+              id: "ref-node",
+              order: 1,
+              label: "指定审批",
+              approverRule: { type: "specific", userId: created.body.id },
+            },
+          ],
+        }),
+      })
+      .returning("id");
+    createdTemplateIds.push(template.id);
+
+    const { agent, csrf } = await adminSession();
+    const res = await agent
+      .delete(`/api/v1/users/${created.body.id}`)
+      .set("X-CSRF-Token", csrf);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("USER_REFERENCED_IN_APPROVAL_CHAIN");
+  });
+
   it("returns 404 for a missing user", async () => {
     const { agent, csrf } = await adminSession();
     const res = await agent

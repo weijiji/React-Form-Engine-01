@@ -524,7 +524,9 @@ export interface paths {
         post?: never;
         /**
          * Delete a role
-         * @description Deletes the role and cascades its user/permission assignments.
+         * @description Deletes the role and cascades its user/permission assignments. Rejected
+         *     (409) when any template approval_chain still references the role
+         *     (ADR-0015 决策 1).
          */
         delete: operations["deleteRole"];
         options?: never;
@@ -645,7 +647,8 @@ export interface paths {
         /**
          * Delete a user
          * @description Hard-deletes a user. Rejected (409) for self-operation, the last admin,
-         *     or a user who created templates. Requires admin:manage_users.
+         *     a user who created templates, or a user referenced by a template
+         *     approval_chain (ADR-0015 决策 1). Requires admin:manage_users.
          */
         delete: operations["deleteUser"];
         options?: never;
@@ -1825,7 +1828,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Already submitted */
+            /** @description Already submitted, or an approver is disabled (APPROVER_DISABLED, ADR-0015 ③) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2170,6 +2173,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Role referenced by a template approval_chain */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     listPermissions: {
@@ -2397,7 +2409,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Self-operation, last admin, or user has templates */
+            /** @description Self-operation, last admin, user has templates, or referenced in an approval chain */
             409: {
                 headers: {
                     [name: string]: unknown;

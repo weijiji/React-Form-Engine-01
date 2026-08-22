@@ -196,12 +196,15 @@ EMAIL_TAKEN               → 409  邮箱已被其他用户占用
 USER_SELF_OPERATION       → 409  不能删除/停用当前登录账号
 LAST_ADMIN                → 409  不能删除/停用最后一个管理员
 USER_HAS_TEMPLATES        → 409  该用户创建过模板，请先处理归属
+USER_REFERENCED_IN_APPROVAL_CHAIN → 409  用户被模板审批链引用，无法硬删（ADR-0015 决策 1）
+ROLE_REFERENCED_IN_APPROVAL_CHAIN → 409  角色被模板审批链引用，无法硬删（ADR-0015 决策 1）
 TEMPLATE_LOCKED           → 409  模板已被他人签出（或已发布模板未签出即重发布）
 TEMPLATE_NOT_DRAFT        → 400  模板非草稿，无法删除
 TEMPLATE_ARCHIVED         → 400  模板已归档，只读不可编辑/签出/发布
 TEMPLATE_NOT_PUBLISHED    → 400  模板未发布或已下线
 APPROVAL_NOT_PENDING      → 400  审批已处理，无法操作
-APPROVER_RESOLUTION_FAILED → 500  审批人解析失败
+APPROVER_RESOLUTION_FAILED → 500  审批人解析失败（配置错误：审批人不存在/角色为空）
+APPROVER_DISABLED         → 409  审批人已停用，提交被拦截（ADR-0015 ③）
 SCHEMA_VERSION_UNKNOWN    → 400  Schema 版本不被引擎支持
 DRAFT_EXPIRED             → 410  草稿已过期，无法继续（保留策略 BR-15，仅草稿状态实例）
 RATE_LIMITED              → 429  触发速率限制

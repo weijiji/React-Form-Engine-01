@@ -30,6 +30,7 @@ let publishedTemplateId: string;
 
 const createdTemplateIds: string[] = [];
 const createdInstanceIds: string[] = [];
+const createdUserIds: string[] = [];
 
 beforeAll(async () => {
   await runMigrations();
@@ -54,6 +55,9 @@ afterAll(async () => {
   }
   for (const id of createdTemplateIds) {
     await db("form_templates").where({ id }).del();
+  }
+  for (const id of createdUserIds) {
+    await db("users").where({ id }).del();
   }
   await closeDb();
 });
@@ -226,6 +230,74 @@ describe("submit atomicity on approver-resolution failure", () => {
     const detail = await request(app)
       .get(`/api/v1/instances/${instanceId}`)
       .set("Cookie", authCookie(zhangsanId));
+    expect(detail.body.status).toBe("draft");
+    expect(detail.body.approval_records).toHaveLength(0);
+  });
+});
+
+describe("disabled approver backstop (ADR-0015 ③)", () => {
+  it("rejects submit with a clean 409 APPROVER_DISABLED and rolls back", async () => {
+    // A `specific` approver who was later disabled (停用) must produce a clean
+    // business error, not a 500, and the submit must roll back (still draft).
+    const db = getDb();
+    const [disabledUser] = await db("users")
+      .insert({
+        name: "被停用审批人",
+        email: `disabled-approver-${createdUserIds.length}@example.com`,
+        password_hash: "unused-hash",
+        is_active: true,
+      })
+      .returning("id");
+    createdUserIds.push(disabledUser.id);
+
+    const tpl = await request(app)
+      .post("/api/v1/templates")
+      .set("Cookie", authCookie(adminId))
+      .send({ name: "停用审批人模板" });
+    createdTemplateIds.push(tpl.body.id);
+
+    const put = await request(app)
+      .put(`/api/v1/templates/${tpl.body.id}/schema`)
+      .set("Cookie", authCookie(adminId))
+      .send({
+        schema: { schemaVersion: "1.0.0", sections: [] },
+        approval_chain: {
+          nodes: [
+            {
+              id: "n1",
+              order: 1,
+              label: "指定审批",
+              approverRule: { type: "specific", userId: disabledUser.id },
+            },
+          ],
+        },
+      });
+    expect(put.status).toBe(200);
+
+    const publish = await request(app)
+      .post(`/api/v1/templates/${tpl.body.id}/publish`)
+      .set("Cookie", authCookie(adminId));
+    expect(publish.status).toBe(200);
+
+    // 停用 happens after publish — the live template still names the user.
+    await db("users").where({ id: disabledUser.id }).update({ is_active: false });
+
+    const created = await createDraftInstance(tpl.body.id, lisiId);
+    const instanceId = created.body.id;
+    createdInstanceIds.push(instanceId);
+
+    const submit = await request(app)
+      .post(`/api/v1/instances/${instanceId}/submit`)
+      .set("Cookie", authCookie(lisiId))
+      .send({ field_values: {} });
+    expect(submit.status).toBe(409);
+    expect(submit.body.error.code).toBe("APPROVER_DISABLED");
+    expect(submit.body.error.message).toContain("已停用");
+
+    // The submit rolled back inside the transaction (ADR-0001).
+    const detail = await request(app)
+      .get(`/api/v1/instances/${instanceId}`)
+      .set("Cookie", authCookie(lisiId));
     expect(detail.body.status).toBe("draft");
     expect(detail.body.approval_records).toHaveLength(0);
   });

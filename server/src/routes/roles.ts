@@ -3,6 +3,7 @@ import { getDb } from "../db/connection";
 import { AppError } from "../middleware/errorHandler";
 import { authenticate, isAdminClassPermission, requireAnyPermission, requirePermission } from "../middleware/auth";
 import { asyncHandler } from "./helpers";
+import { templatesReferencingRole } from "../services/approvalRefs";
 
 /**
  * Role CRUD (work order 09). Mounted at `/api/v1/roles`.
@@ -162,6 +163,16 @@ router.delete(
   requirePermission("admin:manage_roles"),
   asyncHandler(async (req: Request, res: Response) => {
     const role = await findRole(req.params.id);
+    // ADR-0015 决策 1: a `role` reference in a template approval_chain must be
+    // resolved before the role can go — otherwise submits would point nowhere.
+    const referenced = await templatesReferencingRole(role.id);
+    if (referenced.length > 0) {
+      throw new AppError(
+        "ROLE_REFERENCED_IN_APPROVAL_CHAIN",
+        `该角色被 ${referenced.length} 个模板的审批链引用，请先处理引用后再删除`,
+        409,
+      );
+    }
     await getDb()("roles").where({ id: role.id }).del();
     res.status(204).end();
   }),

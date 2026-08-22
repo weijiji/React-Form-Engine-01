@@ -630,7 +630,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "409":
-          description: Already submitted
+          description: Already submitted, or an approver is disabled (APPROVER_DISABLED, ADR-0015 ③)
           content:
             application/json:
               schema:
@@ -866,13 +866,22 @@ paths:
     delete:
       tags: [roles]
       summary: Delete a role
-      description: Deletes the role and cascades its user/permission assignments.
+      description: |
+        Deletes the role and cascades its user/permission assignments. Rejected
+        (409) when any template approval_chain still references the role
+        (ADR-0015 决策 1).
       operationId: deleteRole
       responses:
         "204":
           description: Role deleted
         "404":
           description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Role referenced by a template approval_chain
           content:
             application/json:
               schema:
@@ -1097,7 +1106,8 @@ paths:
       summary: Delete a user
       description: |
         Hard-deletes a user. Rejected (409) for self-operation, the last admin,
-        or a user who created templates. Requires admin:manage_users.
+        a user who created templates, or a user referenced by a template
+        approval_chain (ADR-0015 决策 1). Requires admin:manage_users.
       operationId: deleteUser
       responses:
         "204":
@@ -1109,7 +1119,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "409":
-          description: Self-operation, last admin, or user has templates
+          description: Self-operation, last admin, user has templates, or referenced in an approval chain
           content:
             application/json:
               schema:

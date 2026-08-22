@@ -132,6 +132,88 @@ describe("ApprovalResolver", () => {
     });
   });
 
+  describe("disabled approvers (ADR-0015 ③)", () => {
+    it("rejects a disabled specific approver (APPROVER_DISABLED)", async () => {
+      const disabled = user({ id: "target-1", name: "已停用人", isActive: false });
+      const res = await resolveApprover(
+        { type: "specific", userId: "target-1" },
+        submitter,
+        org({ getUser: async (id) => (id === "target-1" ? disabled : null) }),
+      );
+      expect(res.approver).toBeNull();
+      expect(res.errorCode).toBe("APPROVER_DISABLED");
+      expect(res.reason).toContain("已停用");
+    });
+
+    it("rejects a disabled direct manager (APPROVER_DISABLED)", async () => {
+      const manager = user({ id: "mgr-1", name: "直属上级", isActive: false });
+      const res = await resolveApprover(
+        { type: "org_structure", relation: "direct_manager" },
+        submitter,
+        org({ getUserManager: async () => manager }),
+      );
+      expect(res.approver).toBeNull();
+      expect(res.errorCode).toBe("APPROVER_DISABLED");
+      expect(res.reason).toContain("已停用");
+    });
+
+    it("does not flag APPROVER_DISABLED when a specific user is missing (config error)", async () => {
+      const res = await resolveApprover(
+        { type: "specific", userId: "missing" },
+        submitter,
+        org({ getUser: async () => null }),
+      );
+      expect(res.approver).toBeNull();
+      expect(res.errorCode).toBeUndefined();
+    });
+
+    it("rejects a role whose every member is disabled — no fallback to a disabled user", async () => {
+      const res = await resolveApprover(
+        { type: "role", roleId: "role-it" },
+        submitter,
+        org({
+          getUsersByRole: async () => [
+            user({ id: "r1", isActive: false }),
+            user({ id: "r2", isActive: false }),
+          ],
+        }),
+      );
+      expect(res.approver).toBeNull();
+      expect(res.errorCode).toBe("APPROVER_DISABLED");
+      expect(res.reason).toContain("无启用用户");
+    });
+
+    it("does not flag APPROVER_DISABLED when a role is empty (config error)", async () => {
+      const res = await resolveApprover(
+        { type: "role", roleId: "role-empty" },
+        submitter,
+        org({ getUsersByRole: async () => [] }),
+      );
+      expect(res.approver).toBeNull();
+      expect(res.errorCode).toBeUndefined();
+    });
+
+    it("rejects a department whose every member is disabled", async () => {
+      const res = await resolveApprover(
+        { type: "org_structure", relation: "department_manager" },
+        submitter,
+        org({ getUsersByDepartment: async () => [user({ isActive: false })] }),
+      );
+      expect(res.approver).toBeNull();
+      expect(res.errorCode).toBe("APPROVER_DISABLED");
+    });
+
+    it("does not flag APPROVER_DISABLED when a department is empty (config error)", async () => {
+      const res = await resolveApprover(
+        { type: "org_structure", relation: "department_manager" },
+        submitter,
+        org({ getUsersByDepartment: async () => [] }),
+      );
+      expect(res.approver).toBeNull();
+      expect(res.errorCode).toBeUndefined();
+    });
+  });
+
   it("never throws — an org data-source error becomes a null approver + reason", async () => {
     const res = await resolveApprover(
       { type: "role", roleId: "role-it" },
