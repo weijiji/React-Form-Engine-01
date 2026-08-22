@@ -7,7 +7,7 @@
 
 ## 统计
 
-- 总数：14（fixed 7 / open 7）
+- 总数：14（fixed 8 / open 6）
 - 最近更新：2026-08-22
 
 ## 清单
@@ -27,7 +27,7 @@
 | [BUG-11](./11-template-offline-workflow-missing.md) | 系统缺少模板下架/停用流程：发布后无法下线，`archived` 状态无入口 | 功能缺口 | 中-高 | 🟡 open |
 | [BUG-12](./12-fill-click-creates-undeletable-draft.md) | 点击「填写」即创建空草稿实例，且草稿无法删除（误触即产生脏数据） | 错误行为/体验 | 中 | 🟡 open |
 | [BUG-13](./13-approval-node-order-off-by-one.md) | 审批操作全部 409「当前审批节点不匹配」：设计器存 0 基 `order` vs 服务端 1 基 `node_order` 差一 | 错误行为/核心功能 | 高 | 🟢 fixed |
-| [BUG-14](./14-pending-list-go-approve-button-dead.md) | 待审批列表「去审批」按钮无响应（无 onClick + 单元格 `stopPropagation` 吞点击） | UI | 中 | 🟡 open |
+| [BUG-14](./14-pending-list-go-approve-button-dead.md) | 待审批列表「去审批」按钮无响应（无 onClick + 单元格 `stopPropagation` 吞点击） | UI | 中 | 🟢 fixed |
 
 ## 图例
 

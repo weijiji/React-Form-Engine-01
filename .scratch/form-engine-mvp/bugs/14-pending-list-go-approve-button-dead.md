@@ -1,7 +1,8 @@
 # BUG-14 — 待审批列表「去审批」按钮无响应：按钮无 onClick，且单元格 `stopPropagation` 吞掉行点击
 
-**Status:** open
+**Status:** fixed
 **记录日期:** 2026-08-22
+**修复日期:** 2026-08-22
 **来源:** 现场使用（工单 06 审批操作 UI）
 
 ## 现象
@@ -63,3 +64,20 @@
 - 同现场发现的 BUG-13（审批操作 409「节点不匹配」差一错误）
 - 对照：`client/src/pages/filler/MySubmissions.tsx`（操作按钮显式绑 onClick 的
   正确先例）
+
+## 修复记录（2026-08-22）
+
+**改动**（`client/src/pages/approver/ApprovalPendingList.tsx`）：
+- 「去审批」按钮补 `onClick={() => navigate(\`/approver/approvals/${item.approval.id}\`)}`，
+  成为行的独立主操作入口（原生 `<button>`，键盘 Enter/Space 同样生效）
+- 保留单元格 `stopPropagation`：按钮自有导航，点击不再冒泡触发行级重复导航
+- 注释注明缘由（BUG-14）
+
+**全库核查**（bug 报告建议 4）：`MySubmissions` / `TemplatesPage` 操作按钮均显式
+绑 `onClick`，仅本处遗漏。
+
+**回归测试**（先红后绿）：`ApprovalPendingList.test.tsx` 新增「点击「去审批」按钮
+→ 跳转审批详情」；点击按钮 → 断言目标路由渲染 `审批详情-rec-1`。修复前此用例
+失败（点击后目标路由不出现），修复后通过。
+
+**验证**：client 全量 191（+1）/ 190 → 191 全绿，typecheck 通过。

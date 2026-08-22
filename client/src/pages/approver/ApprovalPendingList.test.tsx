@@ -86,6 +86,17 @@ describe("ApprovalPendingList", () => {
     expect(await screen.findByText("审批详情-rec-1")).toBeInTheDocument();
   });
 
+  it("BUG-14: navigates to the review page when the 去审批 button is clicked", async () => {
+    renderList();
+
+    // The button is the row's primary action. It had no onClick, and the
+    // actions cell's stopPropagation swallowed the row navigation — so the
+    // click did nothing. Clicking the button must land on the review page.
+    fireEvent.click(await screen.findByRole("button", { name: "去审批" }));
+
+    expect(await screen.findByText("审批详情-rec-1")).toBeInTheDocument();
+  });
+
   it("shows the empty state when there is nothing to approve", async () => {
     vi.stubGlobal(
       "fetch",

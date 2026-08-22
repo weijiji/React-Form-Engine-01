@@ -75,7 +75,16 @@ export const ApprovalPendingList: React.FC = () => {
                 </td>
                 <td>{formatDate(item.instance.updated_at)}</td>
                 <td className="filler-actions" onClick={(e) => e.stopPropagation()}>
-                  <Button size="sm">去审批</Button>
+                  {/* BUG-14: the button is the row's primary action and must
+                      navigate on its own — without an onClick it was a dead
+                      gesture shell. stopPropagation on the cell keeps the button
+                      click from also bubbling to the row navigation. */}
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/approver/approvals/${item.approval.id}`)}
+                  >
+                    去审批
+                  </Button>
                 </td>
               </tr>
             ))}
